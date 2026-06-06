@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relay - Stream Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="Relay dashboard">
+      <span class="brand-mark"><span></span><span></span><span></span></span>
+      <span>relay<span class="brand-dot">.</span></span>
+    </a>
+
+    <nav class="nav-list" aria-label="Primary navigation">
+      <button class="nav-item active" aria-label="Command center" title="Command center">
+        <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>
+      </button>
+      <button class="nav-item" aria-label="Analytics" title="Analytics">
+        <svg viewBox="0 0 24 24"><path d="M5 20V10m7 10V4m7 16v-7"/></svg>
+      </button>
+      <button class="nav-item" aria-label="Schedule" title="Schedule">
+        <svg viewBox="0 0 24 24"><path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>
+      </button>
+      <button class="nav-item" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.55 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-1.2-1H3v-4h.09A1.7 1.7 0 0 0 4.6 8.55a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.2a1.7 1.7 0 0 0 1-1.2V3h4v.09A1.7 1.7 0 0 0 15.45 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.8 9c.17.5.6.88 1.1 1H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+      </button>
+    </nav>
+
+    <div class="profile">
+      <div class="avatar">HS</div>
+      <span class="online-dot"></span>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Studio / Main setup</p>
+        <h1>Command Center</h1>
+      </div>
+      <div class="broadcast-status">
+        <span class="status-light"></span>
+        <div>
+          <span class="status-label">Broadcast live</span>
+          <span id="liveTimer" class="timer">01:42:18</span>
+        </div>
+        <span class="quality">1080p · 60fps</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></svg>
+          <span class="notification-dot"></span>
+        </button>
+        <button class="connection-pill disconnected" id="connectionButton"><span></span><b id="connectionLabel">Connect OBS</b></button>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      <section class="workspace">
+        <div class="control-strip panel">
+          <div class="strip-heading">
+            <p class="eyebrow">Quick controls</p>
+            <span class="keyboard-hint">Keyboard shortcuts enabled</span>
+          </div>
+          <div class="control-buttons">
+            <button id="streamButton" class="control-button" data-active="false">
+              <span class="control-icon"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z"/></svg></span>
+              <span><strong id="streamButtonLabel">Start stream</strong><small id="streamSub">Connect OBS to control</small></span>
+              <kbd>⌘ S</kbd>
+            </button>
+            <button id="recordButton" class="control-button" data-active="false">
+              <span class="control-icon"><span class="record-square"></span></span>
+              <span><strong id="recordLabel">Start recording</strong><small id="recordSub">Connect OBS to control</small></span>
+              <kbd>⌘ R</kbd>
+            </button>
+            <button id="muteButton" class="control-button">
+              <span class="control-icon"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2m7 9v3m-4 0h8"/></svg></span>
+              <span><strong id="muteLabel">Mute microphone</strong><small id="micName">Microphone</small></span>
+              <kbd>M</kbd>
+            </button>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <section class="panel scenes-panel">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Production</p>
+                <h2>Scenes</h2>
+              </div>
+              <button class="text-button" id="addScene">+ Add scene</button>
+            </div>
+            <div class="scene-grid" id="sceneGrid">
+              <button class="scene-card active" data-scene="Main Camera">
+                <span class="preview main-preview"><span class="preview-person"></span><span class="preview-desk"></span></span>
+                <span class="scene-meta"><strong>Main Camera</strong><small>LIVE</small></span>
+              </button>
+              <button class="scene-card" data-scene="Screen Share">
+                <span class="preview screen-preview"><span></span><span></span><span></span></span>
+                <span class="scene-meta"><strong>Screen Share</strong><small>⌘ 2</small></span>
+              </button>
+              <button class="scene-card" data-scene="Be Right Back">
+                <span class="preview brb-preview"><b>BRB</b><i></i></span>
+                <span class="scene-meta"><strong>Be Right Back</strong><small>⌘ 3</small></span>
+              </button>
+              <button class="scene-card" data-scene="Starting Soon">
+                <span class="preview starting-preview"><b>STARTING<br>SOON</b><i></i></span>
+                <span class="scene-meta"><strong>Starting Soon</strong><small>⌘ 4</small></span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel health-panel">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">OBS health</p>
+                <h2>Signal</h2>
+              </div>
+              <span class="signal-good"><span></span> Excellent</span>
+            </div>
+            <div class="meter-card">
+              <div class="meter-label"><span>Audio input</span><strong>-8.2 dB</strong></div>
+              <div class="audio-meter"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="stats-row">
+              <div><span>Bitrate</span><strong>6,284</strong><small>kbps</small></div>
+              <div><span>Dropped</span><strong>0.02</strong><small>%</small></div>
+              <div><span>CPU</span><strong>12.4</strong><small>%</small></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel platforms-panel">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Live reach</p>
+              <h2>Platforms</h2>
+            </div>
+            <div class="total-viewers"><span>Current viewers</span><strong id="totalViewers">3,842</strong><span class="trend">↗ 18%</span></div>
+          </div>
+          <div class="platform-list">
+            <article class="platform-row">
+              <div class="platform-icon youtube">▶</div>
+              <div class="platform-name"><strong>YouTube</strong><span><i></i> Live · Excellent</span></div>
+              <div class="sparkline"><svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3"/><path class="fill" d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3V34H2Z"/></svg></div>
+              <div class="viewer-count"><strong>2,148</strong><span>viewers</span></div>
+              <button class="row-menu">•••</button>
+            </article>
+            <article class="platform-row">
+              <div class="platform-icon twitch">◈</div>
+              <div class="platform-name"><strong>Twitch</strong><span><i></i> Live · Excellent</span></div>
+              <div class="sparkline purple"><svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8"/><path class="fill" d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8V34H2Z"/></svg></div>
+              <div class="viewer-count"><strong>1,204</strong><span>viewers</span></div>
+              <button class="row-menu">•••</button>
+            </article>
+            <article class="platform-row">
+              <div class="platform-icon facebook">f</div>
+              <div class="platform-name"><strong>Facebook</strong><span><i></i> Live · Good</span></div>
+              <div class="sparkline blue"><svg viewBox="0 0 120 34"><path d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13"/><path class="fill" d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13V34H2Z"/></svg></div>
+              <div class="viewer-count"><strong>388</strong><span>viewers</span></div>
+              <button class="row-menu">•••</button>
+            </article>
+            <article class="platform-row">
+              <div class="platform-icon tiktok">♪</div>
+              <div class="platform-name"><strong>TikTok</strong><span><i></i> Live · Good</span></div>
+              <div class="sparkline pink"><svg viewBox="0 0 120 34"><path d="M2 31 16 27 28 30 40 23 52 25 65 19 77 21 90 16 104 18 118 10"/><path class="fill" d="M2 31 16 27 28 30 40 23 52 25 65 19 77 21 90 16 104 18 118 10V34H2Z"/></svg></div>
+              <div class="viewer-count"><strong>102</strong><span>viewers</span></div>
+              <button class="row-menu">•••</button>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <aside class="chat-panel panel">
+        <div class="chat-header">
+          <div>
+            <p class="eyebrow">Community</p>
+            <h2>All comments</h2>
+          </div>
+          <button class="icon-button" aria-label="Chat settings"><svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12h2M3 12h2m7-9v2m0 14v2m6.36-15.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/></svg></button>
+        </div>
+        <div class="chat-filters" id="chatFilters">
+          <button class="active" data-filter="all">All <span>128</span></button>
+          <button data-filter="youtube">YouTube</button>
+          <button data-filter="twitch">Twitch</button>
+          <button data-filter="facebook">Facebook</button>
+          <button data-filter="tiktok">TikTok</button>
+        </div>
+        <div class="chat-feed" id="chatFeed">
+          <article class="comment" data-platform="youtube">
+            <div class="comment-avatar coral">MK</div>
+            <div><div class="comment-meta"><strong>Maya K.</strong><span class="tag youtube-tag">YouTube</span><time>now</time></div><p>This lighting setup looks incredible! What key light are you using?</p></div>
+          </article>
+          <article class="comment" data-platform="twitch">
+            <div class="comment-avatar violet">JL</div>
+            <div><div class="comment-meta"><strong>jules_live</strong><span class="tag twitch-tag">Twitch</span><time>1m</time></div><p>Audio is crystal clear on my end 🔥</p></div>
+          </article>
+          <article class="comment highlighted" data-platform="youtube">
+            <div class="comment-avatar gold">AR</div>
+            <div><div class="comment-meta"><strong>Alex Rivera</strong><span class="tag youtube-tag">YouTube</span><time>2m</time></div><p>Great breakdown. Can you show the settings page next?</p><button class="reply-action">Reply</button></div>
+          </article>
+          <article class="comment" data-platform="facebook">
+            <div class="comment-avatar blue">SP</div>
+            <div><div class="comment-meta"><strong>Sam Patel</strong><span class="tag facebook-tag">Facebook</span><time>3m</time></div><p>Watching from London. The stream has been smooth the whole time.</p></div>
+          </article>
+          <article class="comment" data-platform="tiktok">
+            <div class="comment-avatar cyan">NV</div>
+            <div><div class="comment-meta"><strong>nova</strong><span class="tag tiktok-tag">TikTok</span><time>4m</time></div><p>Need a full studio tour after this 👀</p></div>
+          </article>
+          <article class="comment" data-platform="twitch">
+            <div class="comment-avatar green">BC</div>
+            <div><div class="comment-meta"><strong>ByteCaster</strong><span class="tag twitch-tag">Twitch</span><time>5m</time></div><p>That scene transition was clean.</p></div>
+          </article>
+        </div>
+        <form class="chat-compose" id="chatForm">
+          <div class="reply-target"><span>Replying as</span><strong>Relay Studio</strong><span>to all platforms</span></div>
+          <div class="compose-row">
+            <input id="chatInput" type="text" placeholder="Send a message to everyone..." autocomplete="off">
+            <button type="submit" aria-label="Send comment"><svg viewBox="0 0 24 24"><path d="m4 4 16 8-16 8 3-8-3-8Zm3 8h13"/></svg></button>
+          </div>
+        </form>
+      </aside>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal-backdrop" id="stopModal" aria-hidden="true">
+    <div class="modal">
+      <span class="modal-icon"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg></span>
+      <p class="eyebrow">End broadcast</p>
+      <h2>Stop streaming everywhere?</h2>
+      <p>This sends the StopStream command to OBS. Your recording will remain available.</p>
+      <div class="modal-actions">
+        <button id="cancelStop" class="secondary-button">Keep streaming</button>
+        <button id="confirmStop" class="danger-button">Stop stream</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="connectionModal" aria-hidden="true">
+    <form class="modal connection-modal" id="connectionForm">
+      <span class="modal-icon connect-icon"><svg viewBox="0 0 24 24"><path d="M8 12h8m-4-4v8M5 5h14v14H5z"/></svg></span>
+      <p class="eyebrow">OBS WebSocket 5.x</p>
+      <h2>Connect to OBS Studio</h2>
+      <p>In OBS, open Tools &gt; WebSocket Server Settings, enable the server, then enter the same details here.</p>
+      <label class="field-label">WebSocket address<input id="obsAddress" type="text" value="ws://127.0.0.1:4455" required></label>
+      <label class="field-label">WebSocket password<input id="obsPassword" type="password" placeholder="Password from OBS"></label>
+      <label class="field-label">Microphone input name<input id="obsMicInput" type="text" value="Mic/Aux" required></label>
+      <p class="connection-error" id="connectionError"></p>
+      <div class="modal-actions">
+        <button type="button" id="cancelConnection" class="secondary-button">Cancel</button>
+        <button type="submit" class="connect-button" id="connectSubmit">Connect OBS</button>
+      </div>
+    </form>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
