@@ -40,6 +40,8 @@ APP_SECRET=long-random-application-secret
 
 Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials. Never expose `SUPABASE_SECRET_KEY` in browser code.
 
+The server also accepts the legacy variable name `SUPABASE_SERVICE_ROLE_KEY`. After adding or changing Vercel environment variables, redeploy the project. Visit `/api/health` on the deployed domain to verify the function configuration.
+
 ### 2. Push To GitHub
 
 ```powershell

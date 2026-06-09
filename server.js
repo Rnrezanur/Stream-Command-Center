@@ -6,14 +6,21 @@ const { createClient } = require("@supabase/supabase-js");
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 4173);
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
-  throw new Error("SUPABASE_URL and SUPABASE_SECRET_KEY are required");
-}
-if (process.env.VERCEL && !process.env.APP_SECRET) throw new Error("APP_SECRET is required on Vercel");
 const APP_SECRET = process.env.APP_SECRET || "change-this-development-secret";
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+let supabase;
+
+function getSupabase() {
+  if (supabase) return supabase;
+  const url = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const missing = [];
+  if (!url) missing.push("SUPABASE_URL");
+  if (!secret) missing.push("SUPABASE_SECRET_KEY");
+  if (process.env.VERCEL && !process.env.APP_SECRET) missing.push("APP_SECRET");
+  if (missing.length) throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+  supabase = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
+  return supabase;
+}
 
 const twitchChats = new Map();
 const detectedBroadcasts = new Map();
@@ -59,6 +66,7 @@ function sessionCookies(session) {
 }
 
 async function requireUser(req, res) {
+  const supabase = getSupabase();
   const auth = cookies(req);
   if (auth.relay_access) {
     const { data } = await supabase.auth.getUser(auth.relay_access);
@@ -76,6 +84,7 @@ async function requireUser(req, res) {
 }
 
 async function getSettings(userId) {
+  const supabase = getSupabase();
   const { data: row, error } = await supabase.from("platform_settings").select("encrypted_json").eq("user_id", userId).maybeSingle();
   if (error) throw error;
   return row ? decrypt(row.encrypted_json) : {};
@@ -198,6 +207,15 @@ async function dashboard(user) {
 }
 
 async function handleApi(req, res, url) {
+  if (req.method === "GET" && url.pathname === "/api/health") {
+    const configured = {
+      supabaseUrl: Boolean(process.env.SUPABASE_URL),
+      supabaseSecret: Boolean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
+      appSecret: Boolean(process.env.APP_SECRET)
+    };
+    return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, environment: process.env.VERCEL ? "vercel" : "local" });
+  }
+  const supabase = getSupabase();
   if (req.method === "POST" && url.pathname === "/api/register") {
     const body = await readBody(req);
     if (!body.email || !body.password || body.password.length < 8) return json(res, 400, { error: "Email and password of at least 8 characters are required" });
