@@ -2,39 +2,18 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { createClient } = require("@libsql/client");
+const { createClient } = require("@supabase/supabase-js");
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 4173);
-if (process.env.VERCEL && !process.env.TURSO_DATABASE_URL) throw new Error("TURSO_DATABASE_URL is required on Vercel");
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+  throw new Error("SUPABASE_URL and SUPABASE_SECRET_KEY are required");
+}
 if (process.env.VERCEL && !process.env.APP_SECRET) throw new Error("APP_SECRET is required on Vercel");
 const APP_SECRET = process.env.APP_SECRET || "change-this-development-secret";
-const DATA_DIR = path.join(ROOT, "data");
-fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || `file:${path.join(DATA_DIR, "relay.db")}`,
-  authToken: process.env.TURSO_AUTH_TOKEN
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false }
 });
-const dbReady = db.batch([
-  `CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
-  `CREATE TABLE IF NOT EXISTS sessions (
-    token_hash TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS settings (
-    user_id INTEGER PRIMARY KEY,
-    encrypted_json TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`
-]);
 
 const twitchChats = new Map();
 const detectedBroadcasts = new Map();
@@ -51,16 +30,6 @@ const readBody = (req) => new Promise((resolve, reject) => {
   });
   req.on("end", () => { try { resolve(data ? JSON.parse(data) : {}); } catch (error) { reject(error); } });
 });
-const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
-const passwordHash = (password) => {
-  const salt = crypto.randomBytes(16).toString("hex");
-  return `${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`;
-};
-const passwordValid = (password, stored) => {
-  const [salt, expected] = stored.split(":");
-  const actual = crypto.scryptSync(password, salt, 64);
-  return crypto.timingSafeEqual(actual, Buffer.from(expected, "hex"));
-};
 const encrypt = (value) => {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
@@ -74,37 +43,46 @@ const decrypt = (value) => {
   return JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString());
 };
 
-async function currentUser(req) {
-  await dbReady;
-  const token = (req.headers.cookie || "").match(/relay_session=([^;]+)/)?.[1];
-  if (!token) return null;
-  const result = await db.execute({
-    sql: `
-    SELECT users.id, users.email, users.name FROM sessions
-    JOIN users ON users.id = sessions.user_id
-    WHERE token_hash = ? AND expires_at > ?
-  `,
-    args: [hashToken(token), Date.now()]
-  });
-  return result.rows[0] || null;
+function cookies(req) {
+  return Object.fromEntries((req.headers.cookie || "").split(";").filter(Boolean).map((part) => {
+    const index = part.indexOf("=");
+    return [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1))];
+  }));
+}
+
+function sessionCookies(session) {
+  const secure = process.env.VERCEL ? "; Secure" : "";
+  return [
+    `relay_access=${encodeURIComponent(session.access_token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.expires_in || 3600}${secure}`,
+    `relay_refresh=${encodeURIComponent(session.refresh_token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure}`
+  ];
 }
 
 async function requireUser(req, res) {
-  const user = await currentUser(req);
-  if (!user) json(res, 401, { error: "Sign in required" });
-  return user;
-}
-
-async function createSession(userId) {
-  const token = crypto.randomBytes(32).toString("base64url");
-  await db.execute({ sql: "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", args: [hashToken(token), userId, Date.now() + 30 * 86400000] });
-  return `relay_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${process.env.VERCEL ? "; Secure" : ""}`;
+  const auth = cookies(req);
+  if (auth.relay_access) {
+    const { data } = await supabase.auth.getUser(auth.relay_access);
+    if (data.user) return normalizeUser(data.user);
+  }
+  if (auth.relay_refresh) {
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: auth.relay_refresh });
+    if (!error && data.session) {
+      res.setHeader("set-cookie", sessionCookies(data.session));
+      return normalizeUser(data.user);
+    }
+  }
+  json(res, 401, { error: "Sign in required" });
+  return null;
 }
 
 async function getSettings(userId) {
-  const result = await db.execute({ sql: "SELECT encrypted_json FROM settings WHERE user_id = ?", args: [userId] });
-  const row = result.rows[0];
+  const { data: row, error } = await supabase.from("platform_settings").select("encrypted_json").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
   return row ? decrypt(row.encrypted_json) : {};
+}
+
+function normalizeUser(user) {
+  return { id: user.id, email: user.email, name: user.user_metadata?.name || user.email?.split("@")[0] || "User" };
 }
 
 function safeSettings(settings) {
@@ -220,27 +198,32 @@ async function dashboard(user) {
 }
 
 async function handleApi(req, res, url) {
-  await dbReady;
   if (req.method === "POST" && url.pathname === "/api/register") {
     const body = await readBody(req);
     if (!body.email || !body.password || body.password.length < 8) return json(res, 400, { error: "Email and password of at least 8 characters are required" });
-    try {
-      const result = await db.execute({ sql: "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)", args: [body.email.toLowerCase(), body.name || body.email.split("@")[0], passwordHash(body.password)] });
-      const userId = Number(result.lastInsertRowid);
-      return json(res, 201, { user: { id: userId, email: body.email.toLowerCase(), name: body.name || body.email.split("@")[0] } }, { "set-cookie": await createSession(userId) });
-    } catch (_) { return json(res, 409, { error: "An account with this email already exists" }); }
+    const email = body.email.toLowerCase();
+    const name = body.name || email.split("@")[0];
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email, password: body.password, email_confirm: true, user_metadata: { name }
+    });
+    if (createError) return json(res, 409, { error: createError.message });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: body.password });
+    if (error || !data.session) return json(res, 400, { error: error?.message || "Account created. Please sign in." });
+    return json(res, 201, { user: normalizeUser(created.user) }, { "set-cookie": sessionCookies(data.session) });
   }
   if (req.method === "POST" && url.pathname === "/api/login") {
     const body = await readBody(req);
-    const result = await db.execute({ sql: "SELECT * FROM users WHERE email = ?", args: [String(body.email || "").toLowerCase()] });
-    const user = result.rows[0];
-    if (!user || !passwordValid(body.password || "", user.password_hash)) return json(res, 401, { error: "Invalid email or password" });
-    return json(res, 200, { user: { id: user.id, email: user.email, name: user.name } }, { "set-cookie": await createSession(user.id) });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: String(body.email || "").toLowerCase(), password: body.password || "" });
+    if (error || !data.session) return json(res, 401, { error: error?.message || "Invalid email or password" });
+    return json(res, 200, { user: normalizeUser(data.user) }, { "set-cookie": sessionCookies(data.session) });
   }
   if (req.method === "POST" && url.pathname === "/api/logout") {
-    const token = (req.headers.cookie || "").match(/relay_session=([^;]+)/)?.[1];
-    if (token) await db.execute({ sql: "DELETE FROM sessions WHERE token_hash = ?", args: [hashToken(token)] });
-    return json(res, 200, { ok: true }, { "set-cookie": "relay_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0" });
+    const auth = cookies(req);
+    if (auth.relay_access) await supabase.auth.admin.signOut(auth.relay_access).catch(() => {});
+    return json(res, 200, { ok: true }, { "set-cookie": [
+      "relay_access=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
+      "relay_refresh=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"
+    ] });
   }
   const user = await requireUser(req, res);
   if (!user) return;
@@ -255,10 +238,8 @@ async function handleApi(req, res, url) {
         if (incoming[platform][secret] === "••••••••") incoming[platform][secret] = current[platform]?.[secret] || "";
       }
     }
-    await db.execute({
-      sql: "INSERT INTO settings (user_id, encrypted_json) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET encrypted_json=excluded.encrypted_json, updated_at=CURRENT_TIMESTAMP",
-      args: [user.id, encrypt(incoming)]
-    });
+    const { error } = await supabase.from("platform_settings").upsert({ user_id: user.id, encrypted_json: encrypt(incoming), updated_at: new Date().toISOString() });
+    if (error) throw error;
     return json(res, 200, { settings: safeSettings(incoming) });
   }
   if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, await dashboard(user));

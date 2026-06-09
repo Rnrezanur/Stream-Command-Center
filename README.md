@@ -8,33 +8,37 @@ Requires Node.js 24 or newer.
 
 ```powershell
 $env:APP_SECRET="replace-with-a-long-random-secret"
+$env:SUPABASE_URL="https://your-project.supabase.co"
+$env:SUPABASE_SECRET_KEY="your-supabase-secret-key"
 npm start
 ```
 
 Open `http://127.0.0.1:4173`. When opening the dashboard from another device, use the server computer's LAN address, such as `http://192.168.0.188:4173`.
 
-`APP_SECRET` encrypts saved platform credentials. Use the same value every time the server starts. Without Turso variables, the local database is saved at `data/relay.db`.
+`APP_SECRET` encrypts saved platform credentials. Use the same value every time the server starts.
 
 ## Deploy With GitHub And Vercel
 
-The hosted application requires a persistent Turso database. Vercel Functions do not provide persistent local filesystem storage.
+The hosted application uses Supabase Auth and PostgreSQL.
 
-### 1. Create A Turso Database
+### 1. Create A Supabase Project
 
-1. Create an account at [Turso](https://turso.tech/).
-2. Create a database.
-3. Copy its database URL.
-4. Create and copy a database authentication token.
+1. Create a project at [Supabase](https://supabase.com/dashboard).
+2. Open **SQL Editor**, paste the contents of `supabase.sql`, and run it once.
+3. Open the project's **Connect** dialog or **Settings > API Keys**.
+4. Copy the Project URL and the server-side Secret key. Legacy projects can use the `service_role` key.
+
+Accounts created before this Supabase migration are not migrated automatically. Create new accounts after switching to Supabase.
 
 Required environment variables:
 
 ```text
-TURSO_DATABASE_URL=libsql://database-name-organization.turso.io
-TURSO_AUTH_TOKEN=long-database-token
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-supabase-secret-or-service-role-key
 APP_SECRET=long-random-application-secret
 ```
 
-Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials.
+Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials. Never expose `SUPABASE_SECRET_KEY` in browser code.
 
 ### 2. Push To GitHub
 
@@ -53,7 +57,7 @@ Do not commit `.env`, `data/`, API tokens, OBS passwords, or platform credential
 1. Open [Vercel New Project](https://vercel.com/new).
 2. Import the GitHub repository.
 3. Keep the framework preset as **Other**.
-4. Add `APP_SECRET`, `TURSO_DATABASE_URL`, and `TURSO_AUTH_TOKEN` as Environment Variables.
+4. Add `APP_SECRET`, `SUPABASE_URL`, and `SUPABASE_SECRET_KEY` as Environment Variables.
 5. Click **Deploy**.
 
 The included `vercel.json` routes `/api/*` to the Node Vercel Function. Static dashboard assets are served directly by Vercel.
@@ -68,7 +72,7 @@ Twitch viewer counts work on Vercel. Twitch public chat currently uses a persist
 
 ## Features
 
-- Accounts with password hashing and secure HTTP-only sessions
+- Supabase Auth accounts with secure HTTP-only sessions
 - Encrypted per-user platform settings
 - OBS WebSocket 5.x scene, stream, recording, mute, and statistics controls
 - YouTube concurrent viewers and live comments
@@ -132,8 +136,9 @@ The backend automatically queries the Page's live videos and selects the active 
 ## Security Notes
 
 - Platform credentials are encrypted at rest using `APP_SECRET`.
-- Passwords are hashed with `scrypt`.
+- Password authentication and password hashing are managed by Supabase Auth.
 - Platform credentials are never returned to the browser after being saved.
+- The `platform_settings` table has Row Level Security enabled and is accessed only through the server-side Supabase secret key.
 - This is suitable for a private/local deployment foundation. Before exposing it publicly, add HTTPS, CSRF protection, rate limiting, email verification, password reset, and a production secrets manager.
 
 ## API Sources
