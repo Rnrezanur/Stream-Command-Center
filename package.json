@@ -1,0 +1,15 @@
+{
+  "name": "stream-command-center",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check api/index.js && node --check app.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.3"
+  }
+}
