@@ -6,6 +6,7 @@ let elapsed = 0;
 let micInputName = "Mic/Aux";
 let signedInUser = null;
 let dashboardTimer = null;
+let remoteObsTimer = null;
 
 function showToast(message) {
   toast.textContent = message;
@@ -202,7 +203,7 @@ function normalizeOBSAddress(value) {
 
 $("#connectionButton").addEventListener("click", () => {
   if (location.protocol === "https:") {
-    showToast("OBS control requires the local HTTP dashboard because browsers block LAN ws:// connections from HTTPS");
+    $("#remoteObsModal").classList.add("open");
     return;
   }
   if (obs?.socket?.readyState === WebSocket.OPEN) {
@@ -262,35 +263,35 @@ $("#connectionForm").addEventListener("submit", async (event) => {
 $("#muteButton").addEventListener("click", async () => {
   try {
     const muted = $("#muteButton").dataset.muted === "true";
-    await obs.call("SetInputMute", { inputName: micInputName, inputMuted: !muted });
+    await callOBS("SetInputMute", { inputName: micInputName, inputMuted: !muted });
   } catch (error) { showToast(error.message); }
 });
 
 $("#recordButton").addEventListener("click", async () => {
-  try { await obs.call($("#recordButton").dataset.active === "true" ? "StopRecord" : "StartRecord"); }
+  try { await callOBS($("#recordButton").dataset.active === "true" ? "StopRecord" : "StartRecord"); }
   catch (error) { showToast(error.message); }
 });
 
 const stopModal = $("#stopModal");
 $("#streamButton").addEventListener("click", async () => {
-  if (!obs) return showToast("Connect OBS first");
+  if (!obs && location.protocol !== "https:") return showToast("Connect OBS first");
   if ($("#streamButton").dataset.active === "true") {
     stopModal.classList.add("open");
     stopModal.setAttribute("aria-hidden", "false");
   } else {
-    try { await obs.call("StartStream"); } catch (error) { showToast(error.message); }
+    try { await callOBS("StartStream"); } catch (error) { showToast(error.message); }
   }
 });
 $("#cancelStop").addEventListener("click", closeStopModal);
 function closeStopModal() { stopModal.classList.remove("open"); stopModal.setAttribute("aria-hidden", "true"); }
 $("#confirmStop").addEventListener("click", async () => {
-  try { await obs.call("StopStream"); closeStopModal(); } catch (error) { showToast(error.message); }
+  try { await callOBS("StopStream"); closeStopModal(); } catch (error) { showToast(error.message); }
 });
 
 $("#sceneGrid").addEventListener("click", async (event) => {
   const card = event.target.closest(".scene-card");
   if (!card) return;
-  try { await obs.call("SetCurrentProgramScene", { sceneName: card.dataset.scene }); }
+  try { await callOBS("SetCurrentProgramScene", { sceneName: card.dataset.scene }); }
   catch (error) { showToast(error.message); }
 });
 $("#addScene").addEventListener("click", () => showToast("Create scenes inside OBS, then reconnect"));
@@ -319,8 +320,8 @@ $("#obsAddress").value = localStorage.getItem("obsAddress") || "ws://127.0.0.1:4
 $("#obsMicInput").value = localStorage.getItem("obsMicInput") || "Mic/Aux";
 setConnectionState("disconnected");
 if (location.protocol === "https:") {
-  $("#connectionLabel").textContent = "OBS local only";
-  $("#connectionButton").title = "Open the dashboard locally to control OBS";
+  $("#connectionLabel").textContent = "Connect remote OBS";
+  $("#connectionButton").title = "Pair the secure local OBS agent";
 }
 
 async function api(path, options = {}) {
@@ -338,6 +339,40 @@ async function api(path, options = {}) {
   }
   return body;
 }
+
+async function callOBS(requestType, requestData = {}) {
+  if (location.protocol !== "https:") return obs.call(requestType, requestData);
+  const result = await api("/api/obs/commands", { method: "POST", body: JSON.stringify({ requestType, requestData }) });
+  showToast("Command sent to remote OBS");
+  return result;
+}
+
+async function refreshRemoteOBS() {
+  if (location.protocol !== "https:" || !signedInUser) return;
+  try {
+    const { online, state } = await api("/api/obs/state");
+    setConnectionState(online ? "connected" : "disconnected");
+    $("#connectionLabel").textContent = online ? "Remote OBS online" : "Connect remote OBS";
+    if (!online) return;
+    micInputName = state.micInput || micInputName;
+    $("#micName").textContent = micInputName;
+    updateStream(Boolean(state.streamActive), state.streamTimecode);
+    updateRecord(Boolean(state.recordActive));
+    updateMute(Boolean(state.micMuted));
+    if (state.scenes?.length) renderScenes(state.scenes.map((sceneName) => ({ sceneName })), state.currentScene);
+    if (state.cpuUsage != null) $(".stats-row div:nth-child(3) strong").textContent = Number(state.cpuUsage).toFixed(1);
+  } catch (_) {}
+}
+
+$("#cancelRemoteObs").addEventListener("click", () => $("#remoteObsModal").classList.remove("open"));
+$("#generatePairingCode").addEventListener("click", async () => {
+  try {
+    const { pairingCode } = await api("/api/obs/pairing-code", { method: "POST", body: "{}" });
+    $("#pairingCode").textContent = pairingCode;
+    $("#agentCommand").textContent = `npm install; $env:RELAYCAST_URL="${location.origin}"; $env:RELAYCAST_PAIRING_CODE="${pairingCode}"; npm run agent`;
+    $("#remoteObsError").textContent = "Pairing code expires in 10 minutes.";
+  } catch (error) { $("#remoteObsError").textContent = error.message; }
+});
 
 function initials(name) {
   return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -358,8 +393,11 @@ async function loadCurrentUser() {
     const { user } = await api("/api/me");
     setSignedInUser(user);
     await refreshDashboard();
+    await refreshRemoteOBS();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 15000);
+    clearInterval(remoteObsTimer);
+    remoteObsTimer = setInterval(refreshRemoteOBS, 3000);
   } catch (_) {
     setSignedInUser(null);
     renderDashboard({ platforms: {}, comments: [], totalViewers: 0 });
@@ -445,6 +483,7 @@ $("#accountForm").addEventListener("submit", async (event) => {
 $("#logoutButton").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   clearInterval(dashboardTimer);
+  clearInterval(remoteObsTimer);
   setSignedInUser(null);
   accountModal.classList.remove("open");
   renderDashboard({ platforms: {}, comments: [], totalViewers: 0 });
@@ -477,6 +516,8 @@ $("#authPageForm").addEventListener("submit", async (event) => {
     await refreshDashboard();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 15000);
+    clearInterval(remoteObsTimer);
+    remoteObsTimer = setInterval(refreshRemoteOBS, 3000);
     showToast(authPageRegistering ? "Account created" : "Welcome back");
   } catch (error) {
     $("#authPageError").textContent = error.message;

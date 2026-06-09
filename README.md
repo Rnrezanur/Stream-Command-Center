@@ -66,9 +66,23 @@ The included `vercel.json` routes `/api/*` to the Node Vercel Function. Static d
 
 ### Hosted OBS Limitation
 
-The Vercel dashboard supports accounts, saved settings, viewer counts, and API-polled comments. Direct OBS control remains local-only because browsers block LAN `ws://` connections from public HTTPS pages. Never expose OBS port `4455` directly to the internet.
+The hosted Vercel dashboard can control OBS through the included secure local agent. The agent makes outbound HTTPS requests to Vercel and connects locally to OBS, so port `4455` is never exposed to the internet.
 
-Run `npm start` on the streaming computer and use the local HTTP dashboard when controlling OBS.
+1. Run the updated `supabase.sql` in Supabase SQL Editor.
+2. Open the deployed dashboard and click **Connect Remote OBS**.
+3. Generate a pairing code.
+4. On the OBS computer, clone/download the project and run the PowerShell command shown by the dashboard. It installs dependencies, pairs the agent, and starts it.
+5. Keep `npm run agent` running while using remote OBS control.
+
+The agent stores its pairing token and local OBS settings in ignored `data/obs-agent.json`. To configure a non-default local OBS connection before first pairing:
+
+```powershell
+$env:OBS_ADDRESS="ws://127.0.0.1:4455"
+$env:OBS_PASSWORD="your-obs-websocket-password"
+$env:OBS_MIC_INPUT="Mic/Aux"
+```
+
+Never expose OBS port `4455` directly to the internet.
 
 Twitch viewer counts work on Vercel. Twitch public chat currently uses a persistent IRC WebSocket, which Vercel Functions cannot reliably keep alive; production Twitch chat requires a persistent worker service or Twitch EventSub implementation.
 

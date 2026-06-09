@@ -328,6 +328,28 @@
       </div>
     </form>
   </div>
+  <div class="modal-backdrop" id="remoteObsModal" aria-hidden="true">
+    <div class="modal remote-obs-modal">
+      <p class="eyebrow">Secure outbound agent</p>
+      <h2>Connect Remote OBS</h2>
+      <div class="connect-guide">
+        <strong>Run this on the OBS computer</strong>
+        <ol>
+          <li>Download or clone this project on the OBS computer.</li>
+          <li>Open PowerShell in the project folder.</li>
+          <li>Run the pairing command below within 10 minutes.</li>
+          <li>Keep the agent terminal running while using remote control.</li>
+        </ol>
+      </div>
+      <div class="pairing-code" id="pairingCode">--------</div>
+      <code class="agent-command" id="agentCommand">Generate a pairing code to continue.</code>
+      <p class="connection-error" id="remoteObsError"></p>
+      <div class="modal-actions">
+        <button type="button" id="cancelRemoteObs" class="secondary-button">Close</button>
+        <button type="button" id="generatePairingCode" class="connect-button">Generate pairing code</button>
+      </div>
+    </div>
+  </div>
   </div>
   <script src="app.js"></script>
 </body>

@@ -7,7 +7,8 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check api/index.js && node --check app.js"
+    "agent": "node obs-agent.js",
+    "check": "node --check server.js && node --check api/index.js && node --check app.js && node --check obs-agent.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1"

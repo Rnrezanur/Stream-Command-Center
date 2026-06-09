@@ -43,6 +43,7 @@ const encrypt = (value) => {
   const encrypted = Buffer.concat([cipher.update(JSON.stringify(value)), cipher.final()]);
   return [iv.toString("base64"), cipher.getAuthTag().toString("base64"), encrypted.toString("base64")].join(".");
 };
+const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const decrypt = (value) => {
   const [iv, tag, encrypted] = value.split(".").map((part) => Buffer.from(part, "base64"));
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -216,6 +217,41 @@ async function handleApi(req, res, url) {
     return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, environment: process.env.VERCEL ? "vercel" : "local" });
   }
   const supabase = getSupabase();
+  if (req.method === "POST" && url.pathname === "/api/agent/pair") {
+    const body = await readBody(req);
+    const pairingHash = hash(String(body.pairingCode || "").toUpperCase());
+    const { data: agent, error } = await supabase.from("obs_agents").select("user_id,pairing_expires_at").eq("pairing_code_hash", pairingHash).maybeSingle();
+    if (error || !agent || new Date(agent.pairing_expires_at) < new Date()) return json(res, 401, { error: "Invalid or expired pairing code" });
+    const agentToken = crypto.randomBytes(32).toString("base64url");
+    const { error: updateError } = await supabase.from("obs_agents").update({
+      agent_token_hash: hash(agentToken), pairing_code_hash: null, pairing_expires_at: null, updated_at: new Date().toISOString()
+    }).eq("user_id", agent.user_id);
+    if (updateError) throw updateError;
+    return json(res, 200, { agentToken });
+  }
+  if (url.pathname.startsWith("/api/agent/") && url.pathname !== "/api/agent/pair") {
+    const agentToken = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const { data: agent, error } = await supabase.from("obs_agents").select("user_id").eq("agent_token_hash", hash(agentToken)).maybeSingle();
+    if (error || !agent) return json(res, 401, { error: "Invalid agent token" });
+    if (req.method === "POST" && url.pathname === "/api/agent/poll") {
+      const body = await readBody(req);
+      await supabase.from("obs_agents").update({ state_json: body.state || {}, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("user_id", agent.user_id);
+      const { data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").order("created_at").limit(20);
+      if (commandsError) throw commandsError;
+      if (commands?.length) await supabase.from("obs_commands").update({ status: "processing" }).in("id", commands.map((item) => item.id));
+      return json(res, 200, { commands: commands || [] });
+    }
+    const commandMatch = url.pathname.match(/^\/api\/agent\/commands\/([^/]+)$/);
+    if (req.method === "POST" && commandMatch) {
+      const body = await readBody(req);
+      const { error: updateError } = await supabase.from("obs_commands").update({
+        status: body.error ? "failed" : "completed", result_json: body.result || null,
+        error_text: body.error || null, completed_at: new Date().toISOString()
+      }).eq("id", commandMatch[1]).eq("user_id", agent.user_id);
+      if (updateError) throw updateError;
+      return json(res, 200, { ok: true });
+    }
+  }
   if (req.method === "POST" && url.pathname === "/api/register") {
     const body = await readBody(req);
     if (!body.email || !body.password || body.password.length < 8) return json(res, 400, { error: "Email and password of at least 8 characters are required" });
@@ -246,6 +282,35 @@ async function handleApi(req, res, url) {
   const user = await requireUser(req, res);
   if (!user) return;
   if (req.method === "GET" && url.pathname === "/api/me") return json(res, 200, { user });
+  if (req.method === "POST" && url.pathname === "/api/obs/pairing-code") {
+    const pairingCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+    const { error } = await supabase.from("obs_agents").upsert({
+      user_id: user.id, pairing_code_hash: hash(pairingCode), pairing_expires_at: new Date(Date.now() + 10 * 60000).toISOString(), updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return json(res, 200, { pairingCode, expiresIn: 600 });
+  }
+  if (req.method === "GET" && url.pathname === "/api/obs/state") {
+    const { data: agent, error } = await supabase.from("obs_agents").select("state_json,last_seen_at").eq("user_id", user.id).maybeSingle();
+    if (error) throw error;
+    const online = agent?.last_seen_at && Date.now() - new Date(agent.last_seen_at).getTime() < 10000;
+    return json(res, 200, { online: Boolean(online), state: agent?.state_json || {} });
+  }
+  if (req.method === "POST" && url.pathname === "/api/obs/commands") {
+    const body = await readBody(req);
+    const allowed = new Set(["StartStream", "StopStream", "StartRecord", "StopRecord", "SetInputMute", "SetCurrentProgramScene"]);
+    if (!allowed.has(body.requestType)) return json(res, 400, { error: "Unsupported OBS command" });
+    const { data: agent, error: agentError } = await supabase.from("obs_agents").select("last_seen_at").eq("user_id", user.id).maybeSingle();
+    if (agentError) throw agentError;
+    if (!agent?.last_seen_at || Date.now() - new Date(agent.last_seen_at).getTime() >= 10000) {
+      return json(res, 409, { error: "Remote OBS agent is offline" });
+    }
+    const { data: command, error } = await supabase.from("obs_commands").insert({
+      user_id: user.id, request_type: body.requestType, request_data: body.requestData || {}
+    }).select("id,status").single();
+    if (error) throw error;
+    return json(res, 202, { command });
+  }
   if (req.method === "GET" && url.pathname === "/api/settings") return json(res, 200, { settings: safeSettings(await getSettings(user.id)) });
   if (req.method === "PUT" && url.pathname === "/api/settings") {
     const incoming = await readBody(req);
