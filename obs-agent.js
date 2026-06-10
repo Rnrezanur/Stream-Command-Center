@@ -86,6 +86,13 @@ class OBS {
 }
 
 const obs = new OBS();
+let connecting;
+async function ensureOBS() {
+  if (obs.socket?.readyState === WebSocket.OPEN) return;
+  if (!connecting) connecting = obs.connect().finally(() => { connecting = null; });
+  return connecting;
+}
+
 async function state() {
   const [scenes, stream, record, mute, stats] = await Promise.all([
     obs.call("GetSceneList"), obs.call("GetStreamStatus"), obs.call("GetRecordStatus"),
@@ -114,13 +121,11 @@ async function pair() {
   console.log("Agent paired successfully.");
 }
 
-async function run() {
-  await pair();
-  let retryDelay = 2000;
+async function commandLoop() {
   for (;;) {
     try {
-      if (!obs.socket || obs.socket.readyState !== WebSocket.OPEN) await obs.connect();
-      const payload = await api("/api/agent/poll", { method: "POST", body: JSON.stringify({ state: await state() }) });
+      await ensureOBS();
+      const payload = await api("/api/agent/poll", { method: "POST", body: "{}" });
       for (const command of payload.commands || []) {
         try {
           const result = await obs.call(command.request_type, command.request_data || {});
@@ -129,13 +134,36 @@ async function run() {
           await api(`/api/agent/commands/${command.id}`, { method: "POST", body: JSON.stringify({ error: error.message }) });
         }
       }
-      retryDelay = 2000;
     } catch (error) {
-      console.error(`[agent] ${error.message}`);
-      retryDelay = Math.min(retryDelay * 2, 30000);
+      console.error(`[agent command] ${error.message}`);
     }
-    await sleep(retryDelay);
+    await sleep(1000);
   }
+}
+
+async function stateLoop() {
+  for (;;) {
+    let snapshot;
+    try {
+      await ensureOBS();
+      snapshot = await state();
+    } catch (error) {
+      console.error(`[agent state] ${error.message}`);
+      snapshot = { connected: Boolean(obs.socket?.readyState === WebSocket.OPEN), error: error.message, micInput };
+    }
+    try {
+      await api("/api/agent/state", { method: "POST", body: JSON.stringify({ state: snapshot }) });
+    } catch (error) {
+      console.error(`[agent heartbeat] ${error.message}`);
+    }
+    await sleep(3000);
+  }
+}
+
+async function run() {
+  await pair();
+  console.log("RelayCast agent online. Remote commands are ready.");
+  await Promise.all([commandLoop(), stateLoop()]);
 }
 
 run().catch((error) => { console.error(error.message); process.exitCode = 1; });

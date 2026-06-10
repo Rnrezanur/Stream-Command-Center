@@ -237,12 +237,18 @@ async function handleApi(req, res, url) {
     const { data: agent, error } = await supabase.from("obs_agents").select("user_id").eq("agent_token_hash", hash(agentToken)).maybeSingle();
     if (error || !agent) return json(res, 401, { error: "Invalid agent token" });
     if (req.method === "POST" && url.pathname === "/api/agent/poll") {
-      const body = await readBody(req);
-      await supabase.from("obs_agents").update({ state_json: body.state || {}, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("user_id", agent.user_id);
       const { data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").order("created_at").limit(20);
       if (commandsError) throw commandsError;
       if (commands?.length) await supabase.from("obs_commands").update({ status: "processing" }).in("id", commands.map((item) => item.id));
       return json(res, 200, { commands: commands || [] });
+    }
+    if (req.method === "POST" && url.pathname === "/api/agent/state") {
+      const body = await readBody(req);
+      const { error: stateError } = await supabase.from("obs_agents").update({
+        state_json: body.state || {}, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      }).eq("user_id", agent.user_id);
+      if (stateError) throw stateError;
+      return json(res, 200, { ok: true });
     }
     const commandMatch = url.pathname.match(/^\/api\/agent\/commands\/([^/]+)$/);
     if (req.method === "POST" && commandMatch) {

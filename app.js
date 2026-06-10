@@ -355,6 +355,11 @@ async function refreshRemoteOBS() {
     $("#connectionLabel").textContent = online ? "Remote OBS online" : "Connect remote OBS";
     if (online) $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 2));
     if (!online) return;
+    if (state.error) {
+      $(".signal-good").innerHTML = `<span style="background:#e6c341"></span> ${escapeHtml(state.error)}`;
+    } else {
+      $(".signal-good").innerHTML = `<span></span> Excellent`;
+    }
     micInputName = state.micInput || micInputName;
     $("#micName").textContent = micInputName;
     updateStream(Boolean(state.streamActive), state.streamTimecode);
