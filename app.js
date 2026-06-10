@@ -7,7 +7,7 @@ let micInputName = "Mic/Aux";
 let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
-const REQUIRED_AGENT_VERSION = "20260610-3";
+const REQUIRED_AGENT_VERSION = "20260610-4";
 
 function showToast(message) {
   toast.textContent = message;
@@ -262,15 +262,24 @@ $("#connectionForm").addEventListener("submit", async (event) => {
 });
 
 $("#muteButton").addEventListener("click", async () => {
+  const muted = $("#muteButton").dataset.muted === "true";
+  if (location.protocol === "https:") updateMute(!muted);
   try {
-    const muted = $("#muteButton").dataset.muted === "true";
     await callOBS("SetInputMute", { inputName: micInputName, inputMuted: !muted });
-  } catch (error) { showToast(error.message); }
+  } catch (error) {
+    if (location.protocol === "https:") updateMute(muted);
+    showToast(error.message);
+  }
 });
 
 $("#recordButton").addEventListener("click", async () => {
-  try { await callOBS($("#recordButton").dataset.active === "true" ? "StopRecord" : "StartRecord"); }
-  catch (error) { showToast(error.message); }
+  const active = $("#recordButton").dataset.active === "true";
+  if (location.protocol === "https:") updateRecord(!active);
+  try { await callOBS(active ? "StopRecord" : "StartRecord"); }
+  catch (error) {
+    if (location.protocol === "https:") updateRecord(active);
+    showToast(error.message);
+  }
 });
 
 const stopModal = $("#stopModal");
@@ -280,20 +289,33 @@ $("#streamButton").addEventListener("click", async () => {
     stopModal.classList.add("open");
     stopModal.setAttribute("aria-hidden", "false");
   } else {
-    try { await callOBS("StartStream"); } catch (error) { showToast(error.message); }
+    if (location.protocol === "https:") updateStream(true);
+    try { await callOBS("StartStream"); } catch (error) {
+      if (location.protocol === "https:") updateStream(false);
+      showToast(error.message);
+    }
   }
 });
 $("#cancelStop").addEventListener("click", closeStopModal);
 function closeStopModal() { stopModal.classList.remove("open"); stopModal.setAttribute("aria-hidden", "true"); }
 $("#confirmStop").addEventListener("click", async () => {
-  try { await callOBS("StopStream"); closeStopModal(); } catch (error) { showToast(error.message); }
+  if (location.protocol === "https:") updateStream(false);
+  try { await callOBS("StopStream"); closeStopModal(); } catch (error) {
+    if (location.protocol === "https:") updateStream(true);
+    showToast(error.message);
+  }
 });
 
 $("#sceneGrid").addEventListener("click", async (event) => {
   const card = event.target.closest(".scene-card");
   if (!card) return;
+  const previous = $(".scene-card.active")?.dataset.scene;
+  if (location.protocol === "https:") updateScene(card.dataset.scene);
   try { await callOBS("SetCurrentProgramScene", { sceneName: card.dataset.scene }); }
-  catch (error) { showToast(error.message); }
+  catch (error) {
+    if (location.protocol === "https:" && previous) updateScene(previous);
+    showToast(error.message);
+  }
 });
 $("#addScene").addEventListener("click", () => showToast("Create scenes inside OBS, then reconnect"));
 

@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const AGENT_VERSION = "20260610-3";
+const AGENT_VERSION = "20260610-4";
 
 const configPath = path.join(__dirname, "obs-agent.json");
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -138,7 +138,7 @@ async function commandLoop() {
     } catch (error) {
       console.error(`[agent command] ${error.message}`);
     }
-    await sleep(1000);
+    await sleep(500);
   }
 }
 

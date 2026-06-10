@@ -44,6 +44,18 @@ const encrypt = (value) => {
   return [iv.toString("base64"), cipher.getAuthTag().toString("base64"), encrypted.toString("base64")].join(".");
 };
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
+const signAgentToken = (userId) => {
+  const payload = Buffer.from(JSON.stringify({ userId, nonce: crypto.randomBytes(16).toString("hex") })).toString("base64url");
+  const signature = crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+};
+const verifyAgentToken = (token) => {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url");
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  try { return JSON.parse(Buffer.from(payload, "base64url").toString()); } catch (_) { return null; }
+};
 const decrypt = (value) => {
   const [iv, tag, encrypted] = value.split(".").map((part) => Buffer.from(part, "base64"));
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -225,7 +237,7 @@ async function handleApi(req, res, url) {
     const pairingHash = hash(String(body.pairingCode || "").toUpperCase());
     const { data: agent, error } = await supabase.from("obs_agents").select("user_id,pairing_expires_at").eq("pairing_code_hash", pairingHash).maybeSingle();
     if (error || !agent || new Date(agent.pairing_expires_at) < new Date()) return json(res, 401, { error: "Invalid or expired pairing code" });
-    const agentToken = crypto.randomBytes(32).toString("base64url");
+    const agentToken = signAgentToken(agent.user_id);
     const { error: updateError } = await supabase.from("obs_agents").update({
       agent_token_hash: hash(agentToken), pairing_code_hash: null, pairing_expires_at: null, updated_at: new Date().toISOString()
     }).eq("user_id", agent.user_id);
@@ -234,12 +246,12 @@ async function handleApi(req, res, url) {
   }
   if (url.pathname.startsWith("/api/agent/") && url.pathname !== "/api/agent/pair") {
     const agentToken = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const { data: agent, error } = await supabase.from("obs_agents").select("user_id").eq("agent_token_hash", hash(agentToken)).maybeSingle();
-    if (error || !agent) return json(res, 401, { error: "Invalid agent token" });
+    const agent = verifyAgentToken(agentToken);
+    if (!agent?.userId) return json(res, 401, { error: "Invalid agent token" });
+    agent.user_id = agent.userId;
     if (req.method === "POST" && url.pathname === "/api/agent/poll") {
-      const { data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").order("created_at").limit(20);
+      const { data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").gte("created_at", new Date(Date.now() - 15000).toISOString()).order("created_at").limit(20);
       if (commandsError) throw commandsError;
-      if (commands?.length) await supabase.from("obs_commands").update({ status: "processing" }).in("id", commands.map((item) => item.id));
       return json(res, 200, { commands: commands || [] });
     }
     if (req.method === "POST" && url.pathname === "/api/agent/state") {
@@ -309,11 +321,6 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const allowed = new Set(["StartStream", "StopStream", "StartRecord", "StopRecord", "SetInputMute", "SetCurrentProgramScene"]);
     if (!allowed.has(body.requestType)) return json(res, 400, { error: "Unsupported OBS command" });
-    const { data: agent, error: agentError } = await supabase.from("obs_agents").select("last_seen_at").eq("user_id", user.id).maybeSingle();
-    if (agentError) throw agentError;
-    if (!agent?.last_seen_at || Date.now() - new Date(agent.last_seen_at).getTime() >= 10000) {
-      return json(res, 409, { error: "Remote OBS agent is offline" });
-    }
     const { data: command, error } = await supabase.from("obs_commands").insert({
       user_id: user.id, request_type: body.requestType, request_data: body.requestData || {}
     }).select("id,status").single();
