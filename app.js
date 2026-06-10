@@ -7,6 +7,7 @@ let micInputName = "Mic/Aux";
 let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
+const REQUIRED_AGENT_VERSION = "20260610-3";
 
 function showToast(message) {
   toast.textContent = message;
@@ -353,7 +354,7 @@ async function refreshRemoteOBS() {
     const { online, state } = await api("/api/obs/state");
     setConnectionState(online ? "connected" : "disconnected");
     $("#connectionLabel").textContent = online ? "Remote OBS online" : "Connect remote OBS";
-    setRemoteObsModalState(online);
+    setRemoteObsModalState(online, state.agentVersion);
     if (!online) return;
     if (state.error) {
       $(".signal-good").innerHTML = `<span style="background:#e6c341"></span> ${escapeHtml(state.error)}`;
@@ -370,18 +371,19 @@ async function refreshRemoteOBS() {
   } catch (_) {}
 }
 
-function setRemoteObsModalState(online) {
+function setRemoteObsModalState(online, agentVersion) {
   $$(".remote-step").forEach((step, index) => step.classList.toggle("active", online ? index === 2 : step.classList.contains("active")));
   if (!online) return;
+  const outdated = agentVersion !== REQUIRED_AGENT_VERSION;
   $(".remote-obs-modal h2").textContent = "Remote OBS connected";
-  $(".remote-intro").textContent = "Your streaming PC is online and ready to receive commands.";
-  $("#agentCommand").textContent = "Connected securely. Keep the agent PowerShell window open.";
+  $(".remote-intro").textContent = outdated ? "An older agent is connected. Restart it using a newly generated command for fast controls." : "Your streaming PC is online and ready to receive commands.";
+  $("#agentCommand").textContent = outdated ? "Agent update required. Close the old PowerShell window, then generate and run a new command." : "Connected securely. Keep the agent PowerShell window open.";
   $("#agentCommand").classList.add("agent-connected");
   $("#copyAgentCommand").disabled = true;
-  $("#copyAgentCommand").textContent = "Ready";
-  $("#remoteObsError").textContent = "";
-  $("#generatePairingCode").textContent = "Done";
-  $("#generatePairingCode").dataset.connected = "true";
+  $("#copyAgentCommand").textContent = outdated ? "Old" : "Ready";
+  $("#remoteObsError").textContent = outdated ? "Old agent versions can delay commands by one minute or more." : "";
+  $("#generatePairingCode").textContent = outdated ? "Generate update command" : "Done";
+  $("#generatePairingCode").dataset.connected = outdated ? "false" : "true";
 }
 
 $("#cancelRemoteObs").addEventListener("click", () => $("#remoteObsModal").classList.remove("open"));
@@ -392,7 +394,7 @@ $("#generatePairingCode").addEventListener("click", async () => {
   }
   try {
     const { pairingCode } = await api("/api/obs/pairing-code", { method: "POST", body: "{}" });
-    $("#agentCommand").textContent = `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Rnrezanur/Stream-Command-Center/main/agent.ps1))) -Server "${location.origin}" -Code "${pairingCode}"`;
+    $("#agentCommand").textContent = `& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/Rnrezanur/Stream-Command-Center/main/agent.ps1?v=${Date.now()}"))) -Server "${location.origin}" -Code "${pairingCode}"`;
     $("#copyAgentCommand").disabled = false;
     $("#agentCommand").classList.remove("agent-connected");
     $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 1));

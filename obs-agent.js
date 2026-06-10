@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const AGENT_VERSION = "20260610-3";
 
 const configPath = path.join(__dirname, "obs-agent.json");
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -99,7 +100,7 @@ async function state() {
     obs.call("GetInputMute", { inputName: micInput }), obs.call("GetStats")
   ]);
   return {
-    connected: true, currentScene: scenes.currentProgramSceneName, scenes: (scenes.scenes || []).map((scene) => scene.sceneName),
+    connected: true, agentVersion: AGENT_VERSION, currentScene: scenes.currentProgramSceneName, scenes: (scenes.scenes || []).map((scene) => scene.sceneName),
     streamActive: stream.outputActive, streamTimecode: stream.outputTimecode, recordActive: record.outputActive,
     micMuted: mute.inputMuted, micInput, cpuUsage: stats.cpuUsage, memoryUsage: stats.memoryUsage
   };
@@ -149,7 +150,7 @@ async function stateLoop() {
       snapshot = await state();
     } catch (error) {
       console.error(`[agent state] ${error.message}`);
-      snapshot = { connected: Boolean(obs.socket?.readyState === WebSocket.OPEN), error: error.message, micInput };
+      snapshot = { connected: Boolean(obs.socket?.readyState === WebSocket.OPEN), agentVersion: AGENT_VERSION, error: error.message, micInput };
     }
     try {
       await api("/api/agent/state", { method: "POST", body: JSON.stringify({ state: snapshot }) });
@@ -162,7 +163,7 @@ async function stateLoop() {
 
 async function run() {
   await pair();
-  console.log("RelayCast agent online. Remote commands are ready.");
+  console.log(`RelayCast agent ${AGENT_VERSION} online. Remote commands are ready.`);
   await Promise.all([commandLoop(), stateLoop()]);
 }
 
