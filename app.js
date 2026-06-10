@@ -9,6 +9,35 @@ let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
 const REQUIRED_AGENT_VERSION = "20260610-7";
+const pendingOBS = new Map();
+
+function setControlPending(name, desired, element) {
+  pendingOBS.set(name, { desired, expiresAt: Date.now() + 15000 });
+  element?.classList.add("pending");
+  if (element) element.disabled = true;
+}
+
+function clearControlPending(name, element) {
+  pendingOBS.delete(name);
+  element?.classList.remove("pending");
+  if (element) element.disabled = false;
+  if (name === "scene") {
+    $$(".scene-card").forEach((card) => {
+      card.classList.remove("pending");
+      card.disabled = false;
+    });
+  }
+}
+
+function acceptRemoteState(name, actual, element) {
+  const pending = pendingOBS.get(name);
+  if (!pending) return true;
+  if (actual === pending.desired || Date.now() >= pending.expiresAt) {
+    clearControlPending(name, element);
+    return true;
+  }
+  return false;
+}
 
 function showToast(message) {
   toast.textContent = message;
@@ -276,36 +305,57 @@ $("#connectionForm").addEventListener("submit", async (event) => {
 });
 
 $("#muteButton").addEventListener("click", async () => {
+  if ($("#muteButton").disabled) return;
   const muted = $("#muteButton").dataset.muted === "true";
-  if (location.protocol === "https:") updateMute(!muted);
+  if (location.protocol === "https:") {
+    updateMute(!muted);
+    setControlPending("mute", !muted, $("#muteButton"));
+  }
   try {
     await callOBS("SetInputMute", { inputName: micInputName, inputMuted: !muted });
   } catch (error) {
-    if (location.protocol === "https:") updateMute(muted);
+    if (location.protocol === "https:") {
+      clearControlPending("mute", $("#muteButton"));
+      updateMute(muted);
+    }
     showToast(error.message);
   }
 });
 
 $("#recordButton").addEventListener("click", async () => {
+  if ($("#recordButton").disabled) return;
   const active = $("#recordButton").dataset.active === "true";
-  if (location.protocol === "https:") updateRecord(!active);
+  if (location.protocol === "https:") {
+    updateRecord(!active);
+    setControlPending("record", !active, $("#recordButton"));
+  }
   try { await callOBS(active ? "StopRecord" : "StartRecord"); }
   catch (error) {
-    if (location.protocol === "https:") updateRecord(active);
+    if (location.protocol === "https:") {
+      clearControlPending("record", $("#recordButton"));
+      updateRecord(active);
+    }
     showToast(error.message);
   }
 });
 
 const stopModal = $("#stopModal");
 $("#streamButton").addEventListener("click", async () => {
+  if ($("#streamButton").disabled) return;
   if (!obs && location.protocol !== "https:") return showToast("Connect OBS first");
   if ($("#streamButton").dataset.active === "true") {
     stopModal.classList.add("open");
     stopModal.setAttribute("aria-hidden", "false");
   } else {
-    if (location.protocol === "https:") updateStream(true);
+    if (location.protocol === "https:") {
+      updateStream(true);
+      setControlPending("stream", true, $("#streamButton"));
+    }
     try { await callOBS("StartStream"); } catch (error) {
-      if (location.protocol === "https:") updateStream(false);
+      if (location.protocol === "https:") {
+        clearControlPending("stream", $("#streamButton"));
+        updateStream(false);
+      }
       showToast(error.message);
     }
   }
@@ -313,21 +363,34 @@ $("#streamButton").addEventListener("click", async () => {
 $("#cancelStop").addEventListener("click", closeStopModal);
 function closeStopModal() { stopModal.classList.remove("open"); stopModal.setAttribute("aria-hidden", "true"); }
 $("#confirmStop").addEventListener("click", async () => {
-  if (location.protocol === "https:") updateStream(false);
+  if (location.protocol === "https:") {
+    updateStream(false);
+    setControlPending("stream", false, $("#streamButton"));
+  }
   try { await callOBS("StopStream"); closeStopModal(); } catch (error) {
-    if (location.protocol === "https:") updateStream(true);
+    if (location.protocol === "https:") {
+      clearControlPending("stream", $("#streamButton"));
+      updateStream(true);
+    }
     showToast(error.message);
   }
 });
 
 $("#sceneGrid").addEventListener("click", async (event) => {
   const card = event.target.closest(".scene-card");
-  if (!card) return;
+  if (!card || card.disabled) return;
   const previous = $(".scene-card.active")?.dataset.scene;
-  if (location.protocol === "https:") updateScene(card.dataset.scene);
+  if (location.protocol === "https:") {
+    updateScene(card.dataset.scene);
+    setControlPending("scene", card.dataset.scene, card);
+    $$(".scene-card").forEach((scene) => { scene.disabled = true; });
+  }
   try { await callOBS("SetCurrentProgramScene", { sceneName: card.dataset.scene }); }
   catch (error) {
-    if (location.protocol === "https:" && previous) updateScene(previous);
+    if (location.protocol === "https:") {
+      clearControlPending("scene", card);
+      if (previous) updateScene(previous);
+    }
     showToast(error.message);
   }
 });
@@ -399,10 +462,15 @@ async function refreshRemoteOBS() {
     }
     micInputName = state.micInput || micInputName;
     $("#micName").textContent = micInputName;
-    updateStream(Boolean(state.streamActive), state.streamTimecode);
-    updateRecord(Boolean(state.recordActive), state.recordTimecode);
-    updateMute(Boolean(state.micMuted));
-    if (state.scenes?.length) renderScenes(state.scenes.map((sceneName) => ({ sceneName })), state.currentScene);
+    const streamActive = Boolean(state.streamActive);
+    const recordActive = Boolean(state.recordActive);
+    const micMuted = Boolean(state.micMuted);
+    if (acceptRemoteState("stream", streamActive, $("#streamButton"))) updateStream(streamActive, state.streamTimecode);
+    if (acceptRemoteState("record", recordActive, $("#recordButton"))) updateRecord(recordActive, state.recordTimecode);
+    if (acceptRemoteState("mute", micMuted, $("#muteButton"))) updateMute(micMuted);
+    if (state.scenes?.length && acceptRemoteState("scene", state.currentScene, $(".scene-card.pending"))) {
+      renderScenes(state.scenes.map((sceneName) => ({ sceneName })), state.currentScene);
+    }
     if (state.cpuUsage != null) $(".stats-row div:nth-child(3) strong").textContent = Number(state.cpuUsage).toFixed(1);
     updateMonitor(state.cpuUsage, state.activeFps, state.targetFps);
   } catch (_) {}
