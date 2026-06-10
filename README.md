@@ -71,7 +71,7 @@ The hosted Vercel dashboard can control OBS through the included secure local ag
 1. Run the updated `supabase.sql` in Supabase SQL Editor.
 2. Open the deployed dashboard and click **Connect Remote OBS**.
 3. Generate a pairing code.
-4. On the OBS computer, clone/download the project and run the PowerShell command shown by the dashboard. It installs dependencies, pairs the agent, and starts it.
+4. On the OBS computer, paste and run the single PowerShell command shown by the dashboard. It downloads, pairs, and starts the agent.
 5. Keep `npm run agent` running while using remote OBS control.
 
 The agent stores its pairing token and local OBS settings in ignored `data/obs-agent.json`. To configure a non-default local OBS connection before first pairing:

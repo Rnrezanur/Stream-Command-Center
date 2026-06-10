@@ -353,6 +353,7 @@ async function refreshRemoteOBS() {
     const { online, state } = await api("/api/obs/state");
     setConnectionState(online ? "connected" : "disconnected");
     $("#connectionLabel").textContent = online ? "Remote OBS online" : "Connect remote OBS";
+    if (online) $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 2));
     if (!online) return;
     micInputName = state.micInput || micInputName;
     $("#micName").textContent = micInputName;
@@ -368,10 +369,19 @@ $("#cancelRemoteObs").addEventListener("click", () => $("#remoteObsModal").class
 $("#generatePairingCode").addEventListener("click", async () => {
   try {
     const { pairingCode } = await api("/api/obs/pairing-code", { method: "POST", body: "{}" });
-    $("#pairingCode").textContent = pairingCode;
-    $("#agentCommand").textContent = `npm install; $env:RELAYCAST_URL="${location.origin}"; $env:RELAYCAST_PAIRING_CODE="${pairingCode}"; npm run agent`;
-    $("#remoteObsError").textContent = "Pairing code expires in 10 minutes.";
+    $("#agentCommand").textContent = `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Rnrezanur/Stream-Command-Center/main/agent.ps1))) -Server "${location.origin}" -Code "${pairingCode}"`;
+    $("#copyAgentCommand").disabled = false;
+    $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 1));
+    $("#generatePairingCode").textContent = "Generate new command";
+    $("#remoteObsError").textContent = "Copy and run this command on the OBS computer within 10 minutes.";
   } catch (error) { $("#remoteObsError").textContent = error.message; }
+});
+$("#copyAgentCommand").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("#agentCommand").textContent);
+    $("#copyAgentCommand").textContent = "Copied";
+    setTimeout(() => { $("#copyAgentCommand").textContent = "Copy"; }, 1800);
+  } catch (_) { showToast("Select and copy the command manually"); }
 });
 
 function initials(name) {
