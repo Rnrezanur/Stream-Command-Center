@@ -353,7 +353,7 @@ async function refreshRemoteOBS() {
     const { online, state } = await api("/api/obs/state");
     setConnectionState(online ? "connected" : "disconnected");
     $("#connectionLabel").textContent = online ? "Remote OBS online" : "Connect remote OBS";
-    if (online) $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 2));
+    setRemoteObsModalState(online);
     if (!online) return;
     if (state.error) {
       $(".signal-good").innerHTML = `<span style="background:#e6c341"></span> ${escapeHtml(state.error)}`;
@@ -370,12 +370,31 @@ async function refreshRemoteOBS() {
   } catch (_) {}
 }
 
+function setRemoteObsModalState(online) {
+  $$(".remote-step").forEach((step, index) => step.classList.toggle("active", online ? index === 2 : step.classList.contains("active")));
+  if (!online) return;
+  $(".remote-obs-modal h2").textContent = "Remote OBS connected";
+  $(".remote-intro").textContent = "Your streaming PC is online and ready to receive commands.";
+  $("#agentCommand").textContent = "Connected securely. Keep the agent PowerShell window open.";
+  $("#agentCommand").classList.add("agent-connected");
+  $("#copyAgentCommand").disabled = true;
+  $("#copyAgentCommand").textContent = "Ready";
+  $("#remoteObsError").textContent = "";
+  $("#generatePairingCode").textContent = "Done";
+  $("#generatePairingCode").dataset.connected = "true";
+}
+
 $("#cancelRemoteObs").addEventListener("click", () => $("#remoteObsModal").classList.remove("open"));
 $("#generatePairingCode").addEventListener("click", async () => {
+  if ($("#generatePairingCode").dataset.connected === "true") {
+    $("#remoteObsModal").classList.remove("open");
+    return;
+  }
   try {
     const { pairingCode } = await api("/api/obs/pairing-code", { method: "POST", body: "{}" });
     $("#agentCommand").textContent = `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Rnrezanur/Stream-Command-Center/main/agent.ps1))) -Server "${location.origin}" -Code "${pairingCode}"`;
     $("#copyAgentCommand").disabled = false;
+    $("#agentCommand").classList.remove("agent-connected");
     $$(".remote-step").forEach((step, index) => step.classList.toggle("active", index === 1));
     $("#generatePairingCode").textContent = "Generate new command";
     $("#remoteObsError").textContent = "Copy and run this command on the OBS computer within 10 minutes.";
