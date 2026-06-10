@@ -28,6 +28,9 @@ The hosted application uses Supabase Auth and PostgreSQL.
 3. Open the project's **Connect** dialog or **Settings > API Keys**.
 4. Copy the Project URL and the server-side Secret key. Legacy projects can use the `service_role` key.
 
+Do not use the `anon` or `publishable` key for `SUPABASE_SECRET_KEY`. Those
+browser-safe keys cannot access the protected OBS agent tables.
+
 Accounts created before this Supabase migration are not migrated automatically. Create new accounts after switching to Supabase.
 
 Required environment variables:
@@ -40,7 +43,7 @@ APP_SECRET=long-random-application-secret
 
 Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials. Never expose `SUPABASE_SECRET_KEY` in browser code.
 
-The server also accepts the legacy variable name `SUPABASE_SERVICE_ROLE_KEY`. After adding or changing Vercel environment variables, redeploy the project. Visit `/api/health` on the deployed domain to verify the function configuration.
+The server also accepts the legacy variable name `SUPABASE_SERVICE_ROLE_KEY`. After adding or changing Vercel environment variables, redeploy the project. Visit `/api/health` on the deployed domain and confirm `supabasePrivilegedKey` is `true`.
 
 ### 2. Push To GitHub
 

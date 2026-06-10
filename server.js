@@ -9,6 +9,17 @@ const PORT = Number(process.env.PORT || 4173);
 const APP_SECRET = process.env.APP_SECRET || "change-this-development-secret";
 let supabase;
 
+function supabaseKeyRole(secret) {
+  if (!secret) return "missing";
+  if (secret.startsWith("sb_secret_")) return "service_role";
+  if (secret.startsWith("sb_publishable_")) return "anon";
+  try {
+    return JSON.parse(Buffer.from(secret.split(".")[1], "base64url").toString()).role || "unknown";
+  } catch (_) {
+    return "unknown";
+  }
+}
+
 function getSupabase() {
   if (supabase) return supabase;
   const url = process.env.SUPABASE_URL;
@@ -18,6 +29,9 @@ function getSupabase() {
   if (!secret) missing.push("SUPABASE_SECRET_KEY");
   if (process.env.VERCEL && !process.env.APP_SECRET) missing.push("APP_SECRET");
   if (missing.length) throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+  if (supabaseKeyRole(secret) === "anon") {
+    throw new Error("SUPABASE_SECRET_KEY is an anon/publishable key. In Vercel, replace it with the Supabase server-side Secret key or legacy service_role key, then redeploy.");
+  }
   supabase = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
   return supabase;
 }
@@ -224,12 +238,15 @@ async function dashboard(user) {
 
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/health") {
+    const supabaseSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseRole = supabaseKeyRole(supabaseSecret);
     const configured = {
       supabaseUrl: Boolean(process.env.SUPABASE_URL),
-      supabaseSecret: Boolean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
+      supabaseSecret: Boolean(supabaseSecret),
+      supabasePrivilegedKey: supabaseRole !== "missing" && supabaseRole !== "anon",
       appSecret: Boolean(process.env.APP_SECRET)
     };
-    return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, environment: process.env.VERCEL ? "vercel" : "local" });
+    return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, supabaseRole, environment: process.env.VERCEL ? "vercel" : "local" });
   }
   const supabase = getSupabase();
   if (req.method === "POST" && url.pathname === "/api/agent/pair") {
@@ -360,7 +377,10 @@ async function requestHandler(req, res) {
     fs.createReadStream(target).pipe(res);
   } catch (error) {
     console.error(error);
-    json(res, 500, { error: error.message || "Server error" });
+    const message = /row-level security policy/i.test(error.message || "")
+      ? "Supabase blocked this request. Set Vercel SUPABASE_SECRET_KEY to the server-side Secret key or legacy service_role key, then redeploy."
+      : error.message || "Server error";
+    json(res, 500, { error: message });
   }
 }
 
