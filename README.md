@@ -39,6 +39,10 @@ Required environment variables:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SECRET_KEY=your-supabase-secret-or-service-role-key
 APP_SECRET=long-random-application-secret
+YOUTUBE_CLIENT_ID=your-google-oauth-client-id
+YOUTUBE_CLIENT_SECRET=your-google-oauth-client-secret
+TWITCH_CLIENT_ID=your-twitch-app-client-id
+TWITCH_CLIENT_SECRET=your-twitch-app-client-secret
 ```
 
 Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials. Never expose `SUPABASE_SECRET_KEY` in browser code.
@@ -66,6 +70,25 @@ Do not commit `.env`, `data/`, API tokens, OBS passwords, or platform credential
 5. Click **Deploy**.
 
 The included `vercel.json` routes `/api/*` to the Node Vercel Function. Static dashboard assets are served directly by Vercel.
+
+### YouTube And Twitch OAuth
+
+OAuth lets the dashboard send messages as the connected YouTube channel and
+Twitch account.
+
+1. In Google Cloud, enable YouTube Data API v3 and create a Web application
+   OAuth client. Add `https://your-domain/api/oauth/youtube/callback` as an
+   authorized redirect URI.
+2. In the Twitch Developer Console, create an application and add
+   `https://your-domain/api/oauth/twitch/callback` as its OAuth redirect URL.
+3. Add the four OAuth environment variables shown above to Vercel, then
+   redeploy.
+4. Open Platform Settings and click **Connect YouTube account** and
+   **Connect Twitch account**.
+
+YouTube requests `youtube.force-ssl`; Twitch requests `user:write:chat`.
+Facebook message sending is not enabled because the required permissions
+usually need Meta App Review.
 
 ### Hosted OBS Limitation
 

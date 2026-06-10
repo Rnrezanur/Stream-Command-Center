@@ -48,6 +48,10 @@ const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { "content-type": "application/json", ...headers });
   res.end(JSON.stringify(body));
 };
+const redirect = (res, location) => {
+  res.writeHead(302, { location, "cache-control": "no-store" });
+  res.end();
+};
 const readBody = (req) => new Promise((resolve, reject) => {
   let data = "";
   req.on("data", (chunk) => {
@@ -74,6 +78,20 @@ const verifyAgentToken = (token) => {
   const expected = crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url");
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try { return JSON.parse(Buffer.from(payload, "base64url").toString()); } catch (_) { return null; }
+};
+const signState = (value) => {
+  const payload = Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${payload}.${crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url")}`;
+};
+const verifyState = (value) => {
+  const [payload, signature] = String(value || "").split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url");
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  try {
+    const state = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return state.expiresAt > Date.now() ? state : null;
+  } catch (_) { return null; }
 };
 const resolveAgentToken = async (supabase, token) => {
   const signed = verifyAgentToken(token);
@@ -102,8 +120,16 @@ function cookies(req) {
 function sessionCookies(session) {
   const secure = process.env.VERCEL ? "; Secure" : "";
   return [
-    `relay_access=${encodeURIComponent(session.access_token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.expires_in || 3600}${secure}`,
-    `relay_refresh=${encodeURIComponent(session.refresh_token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure}`
+    `relay_access=${encodeURIComponent(session.access_token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${session.expires_in || 3600}${secure}`,
+    `relay_refresh=${encodeURIComponent(session.refresh_token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secure}`
+  ];
+}
+
+function existingSessionCookies(auth) {
+  const secure = process.env.VERCEL ? "; Secure" : "";
+  return [
+    `relay_access=${encodeURIComponent(auth.relay_access)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600${secure}`,
+    `relay_refresh=${encodeURIComponent(auth.relay_refresh || "")}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secure}`
   ];
 }
 
@@ -112,7 +138,10 @@ async function requireUser(req, res) {
   const auth = cookies(req);
   if (auth.relay_access) {
     const { data } = await authClient.auth.getUser(auth.relay_access);
-    if (data.user) return normalizeUser(data.user);
+    if (data.user) {
+      res.setHeader("set-cookie", existingSessionCookies(auth));
+      return normalizeUser(data.user);
+    }
   }
   if (auth.relay_refresh) {
     const { data, error } = await authClient.auth.refreshSession({ refresh_token: auth.relay_refresh });
@@ -132,6 +161,14 @@ async function getSettings(userId) {
   return row ? decrypt(row.encrypted_json) : {};
 }
 
+async function saveSettings(userId, settings) {
+  const { error } = await getSupabase().from("platform_settings").upsert({
+    user_id: userId, encrypted_json: encrypt(settings), updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  return settings;
+}
+
 function normalizeUser(user) {
   return { id: user.id, email: user.email, name: user.user_metadata?.name || user.email?.split("@")[0] || "User" };
 }
@@ -139,7 +176,7 @@ function normalizeUser(user) {
 function safeSettings(settings) {
   const masked = structuredClone(settings);
   for (const platform of ["youtube", "twitch", "facebook"]) {
-    for (const field of ["apiKey", "accessToken", "clientSecret"]) {
+    for (const field of ["apiKey", "accessToken", "refreshToken", "clientSecret"]) {
       if (masked[platform]?.[field]) {
         masked[platform][field] = "";
         masked[platform][`${field}Saved`] = true;
@@ -156,38 +193,84 @@ async function apiFetch(url, options = {}) {
   return body;
 }
 
-async function getYouTube(settings) {
-  if (!settings.apiKey || (!settings.videoId && !settings.channelId)) return { connected: false, viewers: 0, comments: [] };
+function requestOrigin(req) {
+  return `${req.headers["x-forwarded-proto"] || (process.env.VERCEL ? "https" : "http")}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+}
+
+async function refreshOAuthToken(platform, settings) {
+  const current = settings[platform] || {};
+  if (current.accessToken && Number(current.tokenExpiresAt || 0) > Date.now() + 60000) return current.accessToken;
+  if (!current.refreshToken) throw new Error(`${platform} account needs to be reconnected`);
+  const params = new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken });
+  let endpoint;
+  if (platform === "youtube") {
+    endpoint = "https://oauth2.googleapis.com/token";
+    params.set("client_id", process.env.YOUTUBE_CLIENT_ID || "");
+    params.set("client_secret", process.env.YOUTUBE_CLIENT_SECRET || "");
+  } else {
+    endpoint = "https://id.twitch.tv/oauth2/token";
+    params.set("client_id", process.env.TWITCH_CLIENT_ID || "");
+    params.set("client_secret", process.env.TWITCH_CLIENT_SECRET || "");
+  }
+  const token = await apiFetch(endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params });
+  current.accessToken = token.access_token;
+  current.refreshToken = token.refresh_token || current.refreshToken;
+  current.tokenExpiresAt = Date.now() + Number(token.expires_in || 3600) * 1000;
+  settings[platform] = current;
+  return current.accessToken;
+}
+
+async function getYouTubeLiveChatId(settings) {
   const cacheKey = `youtube:${settings.channelId || settings.videoId}`;
   let videoId = settings.videoId || detectedBroadcasts.get(cacheKey);
+  const credential = settings.accessToken
+    ? { headers: { Authorization: `Bearer ${settings.accessToken}` } }
+    : {};
   if (!videoId) {
-    const live = await apiFetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&eventType=live&maxResults=1&channelId=${encodeURIComponent(settings.channelId)}&key=${encodeURIComponent(settings.apiKey)}`);
+    const suffix = settings.accessToken ? "" : `&key=${encodeURIComponent(settings.apiKey || "")}`;
+    const live = await apiFetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&eventType=live&maxResults=1&channelId=${encodeURIComponent(settings.channelId || "")}${suffix}`, credential);
     videoId = live.items?.[0]?.id?.videoId;
-    if (!videoId) return { connected: true, viewers: 0, comments: [], status: "No active broadcast detected" };
-    detectedBroadcasts.set(cacheKey, videoId);
+    if (videoId) detectedBroadcasts.set(cacheKey, videoId);
   }
-  const video = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(settings.apiKey)}`);
+  if (!videoId) throw new Error("No active YouTube broadcast detected");
+  const suffix = settings.accessToken ? "" : `&key=${encodeURIComponent(settings.apiKey || "")}`;
+  const video = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(videoId)}${suffix}`, credential);
+  const liveChatId = video.items?.[0]?.liveStreamingDetails?.activeLiveChatId;
+  if (!liveChatId) throw new Error("YouTube live chat is not active");
+  return { liveChatId, videoId };
+}
+
+async function getYouTube(settings) {
+  if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) return { connected: false, viewers: 0, comments: [] };
+  let live;
+  try { live = await getYouTubeLiveChatId(settings); } catch (error) {
+    if (/No active YouTube broadcast/.test(error.message)) return { connected: true, viewers: 0, comments: [], status: "No active broadcast detected", oauth: Boolean(settings.refreshToken) };
+    throw error;
+  }
+  const credential = settings.accessToken ? { headers: { Authorization: `Bearer ${settings.accessToken}` } } : {};
+  const suffix = settings.accessToken ? "" : `&key=${encodeURIComponent(settings.apiKey)}`;
+  const video = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(live.videoId)}${suffix}`, credential);
   const details = video.items?.[0]?.liveStreamingDetails || {};
-  if (details.actualEndTime && !settings.videoId) detectedBroadcasts.delete(cacheKey);
   const comments = [];
-  const liveChatId = details.activeLiveChatId;
+  const liveChatId = live.liveChatId;
   if (liveChatId) {
-    const chat = await apiFetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&maxResults=200&liveChatId=${encodeURIComponent(liveChatId)}&key=${encodeURIComponent(settings.apiKey)}`);
+    const chat = await apiFetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&maxResults=200&liveChatId=${encodeURIComponent(liveChatId)}${suffix}`, credential);
     for (const item of chat.items || []) comments.push({
       id: item.id, platform: "youtube", author: item.authorDetails?.displayName || "YouTube user",
       avatar: item.authorDetails?.profileImageUrl, message: item.snippet?.displayMessage || "", time: item.snippet?.publishedAt
     });
   }
-  return { connected: true, viewers: Number(details.concurrentViewers || 0), comments, broadcastId: videoId };
+  return { connected: true, viewers: Number(details.concurrentViewers || 0), comments, broadcastId: live.videoId, oauth: Boolean(settings.refreshToken) };
 }
 
 async function getTwitch(settings, userId) {
-  if (!settings.clientId || !settings.accessToken || !settings.channel) return { connected: false, viewers: 0, comments: [] };
+  const clientId = settings.clientId || process.env.TWITCH_CLIENT_ID;
+  if (!clientId || !settings.accessToken || !settings.channel) return { connected: false, viewers: 0, comments: [] };
   const stream = await apiFetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(settings.channel)}`, {
-    headers: { "Client-ID": settings.clientId, Authorization: `Bearer ${settings.accessToken}` }
+    headers: { "Client-ID": clientId, Authorization: `Bearer ${settings.accessToken}` }
   });
   ensureTwitchChat(userId, settings.channel);
-  return { connected: true, viewers: Number(stream.data?.[0]?.viewer_count || 0), comments: twitchChats.get(userId)?.messages || [] };
+  return { connected: true, viewers: Number(stream.data?.[0]?.viewer_count || 0), comments: twitchChats.get(userId)?.messages || [], oauth: Boolean(settings.refreshToken) };
 }
 
 function ensureTwitchChat(userId, channel) {
@@ -236,6 +319,14 @@ async function getFacebook(settings) {
 
 async function dashboard(user) {
   const settings = await getSettings(user.id);
+  let changed = false;
+  for (const platform of ["youtube", "twitch"]) {
+    if (settings[platform]?.refreshToken && Number(settings[platform].tokenExpiresAt || 0) <= Date.now() + 60000) {
+      await refreshOAuthToken(platform, settings);
+      changed = true;
+    }
+  }
+  if (changed) await saveSettings(user.id, settings);
   const results = await Promise.allSettled([
     getYouTube(settings.youtube || {}), getTwitch(settings.twitch || {}, user.id), getFacebook(settings.facebook || {})
   ]);
@@ -261,7 +352,11 @@ async function handleApi(req, res, url) {
       supabasePrivilegedKey: supabaseRole !== "missing" && supabaseRole !== "anon",
       appSecret: Boolean(process.env.APP_SECRET)
     };
-    return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, supabaseRole, environment: process.env.VERCEL ? "vercel" : "local" });
+    const oauthConfigured = {
+      youtube: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
+      twitch: Boolean(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET)
+    };
+    return json(res, Object.values(configured).every(Boolean) ? 200 : 503, { ok: Object.values(configured).every(Boolean), configured, oauthConfigured, supabaseRole, environment: process.env.VERCEL ? "vercel" : "local" });
   }
   const supabase = getSupabase();
   if (req.method === "POST" && url.pathname === "/api/agent/pair") {
@@ -332,13 +427,80 @@ async function handleApi(req, res, url) {
     const auth = cookies(req);
     if (auth.relay_access) await supabase.auth.admin.signOut(auth.relay_access).catch(() => {});
     return json(res, 200, { ok: true }, { "set-cookie": [
-      "relay_access=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
-      "relay_refresh=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"
+      "relay_access=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
+      "relay_refresh=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"
     ] });
   }
   const user = await requireUser(req, res);
   if (!user) return;
   if (req.method === "GET" && url.pathname === "/api/me") return json(res, 200, { user });
+  const oauthStart = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/start$/);
+  if (req.method === "GET" && oauthStart) {
+    const platform = oauthStart[1];
+    const origin = requestOrigin(req);
+    const state = signState({ platform, userId: user.id, expiresAt: Date.now() + 10 * 60000 });
+    if (platform === "youtube") {
+      if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) return redirect(res, "/?oauth=youtube&error=YouTube%20OAuth%20is%20not%20configured%20in%20Vercel");
+      const params = new URLSearchParams({
+        client_id: process.env.YOUTUBE_CLIENT_ID, redirect_uri: `${origin}/api/oauth/youtube/callback`,
+        response_type: "code", scope: "https://www.googleapis.com/auth/youtube.force-ssl",
+        access_type: "offline", prompt: "consent", include_granted_scopes: "true", state
+      });
+      return redirect(res, `https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+    }
+    if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) return redirect(res, "/?oauth=twitch&error=Twitch%20OAuth%20is%20not%20configured%20in%20Vercel");
+    const params = new URLSearchParams({
+      client_id: process.env.TWITCH_CLIENT_ID, redirect_uri: `${origin}/api/oauth/twitch/callback`,
+      response_type: "code", scope: "user:write:chat", force_verify: "true", state
+    });
+    return redirect(res, `https://id.twitch.tv/oauth2/authorize?${params}`);
+  }
+  const oauthCallback = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/callback$/);
+  if (req.method === "GET" && oauthCallback) {
+    const platform = oauthCallback[1];
+    const state = verifyState(url.searchParams.get("state"));
+    if (!state || state.platform !== platform || state.userId !== user.id) return redirect(res, `/?oauth=${platform}&error=invalid_state`);
+    if (url.searchParams.get("error")) return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(url.searchParams.get("error"))}`);
+    try {
+      const origin = requestOrigin(req);
+      const params = new URLSearchParams({
+        code: url.searchParams.get("code") || "", grant_type: "authorization_code",
+        redirect_uri: `${origin}/api/oauth/${platform}/callback`
+      });
+      let endpoint;
+      if (platform === "youtube") {
+        endpoint = "https://oauth2.googleapis.com/token";
+        params.set("client_id", process.env.YOUTUBE_CLIENT_ID || "");
+        params.set("client_secret", process.env.YOUTUBE_CLIENT_SECRET || "");
+      } else {
+        endpoint = "https://id.twitch.tv/oauth2/token";
+        params.set("client_id", process.env.TWITCH_CLIENT_ID || "");
+        params.set("client_secret", process.env.TWITCH_CLIENT_SECRET || "");
+      }
+      const token = await apiFetch(endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params });
+      const settings = await getSettings(user.id);
+      settings[platform] ||= {};
+      Object.assign(settings[platform], {
+        accessToken: token.access_token, refreshToken: token.refresh_token || settings[platform].refreshToken,
+        tokenExpiresAt: Date.now() + Number(token.expires_in || 3600) * 1000
+      });
+      if (platform === "youtube") {
+        const channels = await apiFetch("https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", { headers: { Authorization: `Bearer ${token.access_token}` } });
+        settings.youtube.channelId = channels.items?.[0]?.id || settings.youtube.channelId;
+        settings.youtube.accountName = channels.items?.[0]?.snippet?.title || "YouTube";
+      } else {
+        settings.twitch.clientId = process.env.TWITCH_CLIENT_ID;
+        const users = await apiFetch("https://api.twitch.tv/helix/users", { headers: { "Client-ID": process.env.TWITCH_CLIENT_ID, Authorization: `Bearer ${token.access_token}` } });
+        settings.twitch.userId = users.data?.[0]?.id;
+        settings.twitch.channel = users.data?.[0]?.login;
+        settings.twitch.accountName = users.data?.[0]?.display_name || "Twitch";
+      }
+      await saveSettings(user.id, settings);
+      return redirect(res, `/?oauth=${platform}&connected=1`);
+    } catch (error) {
+      return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(error.message)}`);
+    }
+  }
   if (req.method === "POST" && url.pathname === "/api/obs/pairing-code") {
     const pairingCode = crypto.randomBytes(4).toString("hex").toUpperCase();
     const { error } = await supabase.from("obs_agents").upsert({
@@ -368,15 +530,47 @@ async function handleApi(req, res, url) {
     const incoming = await readBody(req);
     const current = await getSettings(user.id);
     for (const platform of ["youtube", "twitch", "facebook"]) {
-      incoming[platform] ||= {};
-      for (const secret of ["apiKey", "accessToken", "clientSecret"]) {
+      incoming[platform] = { ...(current[platform] || {}), ...(incoming[platform] || {}) };
+      for (const secret of ["apiKey", "accessToken", "refreshToken", "clientSecret"]) {
         if (!incoming[platform][secret]) incoming[platform][secret] = current[platform]?.[secret] || "";
         delete incoming[platform][`${secret}Saved`];
       }
     }
-    const { error } = await supabase.from("platform_settings").upsert({ user_id: user.id, encrypted_json: encrypt(incoming), updated_at: new Date().toISOString() });
-    if (error) throw error;
+    await saveSettings(user.id, incoming);
     return json(res, 200, { settings: safeSettings(incoming) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/chat/send") {
+    const body = await readBody(req);
+    const message = String(body.message || "").trim();
+    if (!message || message.length > 500) return json(res, 400, { error: "Message must contain 1 to 500 characters" });
+    const settings = await getSettings(user.id);
+    const requested = Array.isArray(body.platforms) ? body.platforms : ["youtube", "twitch"];
+    const results = {};
+    if (requested.includes("youtube") && settings.youtube?.refreshToken) {
+      try {
+        const accessToken = await refreshOAuthToken("youtube", settings);
+        const { liveChatId } = await getYouTubeLiveChatId(settings.youtube);
+        await apiFetch("https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet", {
+          method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+          body: JSON.stringify({ snippet: { liveChatId, type: "textMessageEvent", textMessageDetails: { messageText: message } } })
+        });
+        results.youtube = { sent: true };
+      } catch (error) { results.youtube = { sent: false, error: error.message }; }
+    }
+    if (requested.includes("twitch") && settings.twitch?.refreshToken) {
+      try {
+        const accessToken = await refreshOAuthToken("twitch", settings);
+        const sent = await apiFetch("https://api.twitch.tv/helix/chat/messages", {
+          method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Client-ID": process.env.TWITCH_CLIENT_ID, "content-type": "application/json" },
+          body: JSON.stringify({ broadcaster_id: settings.twitch.userId, sender_id: settings.twitch.userId, message })
+        });
+        if (sent.data?.[0]?.is_sent === false) throw new Error(sent.data[0].drop_reason?.message || "Twitch rejected the message");
+        results.twitch = { sent: true };
+      } catch (error) { results.twitch = { sent: false, error: error.message }; }
+    }
+    await saveSettings(user.id, settings);
+    if (!Object.values(results).some((result) => result.sent)) return json(res, 400, { error: Object.values(results)[0]?.error || "Connect YouTube or Twitch with OAuth first", results });
+    return json(res, 200, { results });
   }
   if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, await dashboard(user));
   return json(res, 404, { error: "Not found" });

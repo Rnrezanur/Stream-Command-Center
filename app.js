@@ -404,9 +404,28 @@ $("#chatFilters").addEventListener("click", (event) => {
   $$(".comment").forEach((comment) => comment.classList.toggle("hidden", button.dataset.filter !== "all" && comment.dataset.platform !== button.dataset.filter));
 });
 
-$("#chatForm").addEventListener("submit", (event) => {
+$("#chatForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  showToast("Sending replies requires each platform's user OAuth permission");
+  const input = $("#chatInput");
+  const message = input.value.trim();
+  if (!message) return;
+  const button = event.currentTarget.querySelector("button[type='submit']");
+  const filter = $("#chatFilters button.active")?.dataset.filter || "all";
+  const platforms = filter === "all" ? ["youtube", "twitch"] : [filter];
+  if (platforms.includes("facebook")) return showToast("Facebook sending requires Meta App Review");
+  button.disabled = true;
+  try {
+    const { results } = await api("/api/chat/send", { method: "POST", body: JSON.stringify({ message, platforms }) });
+    const sent = Object.entries(results).filter(([, result]) => result.sent).map(([name]) => name);
+    const failed = Object.entries(results).filter(([, result]) => !result.sent).map(([name]) => name);
+    input.value = "";
+    showToast(failed.length ? `Sent to ${sent.join(", ")}. Failed: ${failed.join(", ")}` : `Sent to ${sent.join(" and ")}`);
+    await refreshDashboard();
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.addEventListener("keydown", (event) => {
@@ -681,6 +700,13 @@ async function openPlatformSettings(platform = "youtube") {
       input.placeholder = secretSaved ? "Saved securely - enter a new value to replace" : input.dataset.defaultPlaceholder;
       input.classList.toggle("secret-saved", Boolean(secretSaved));
     });
+    for (const platform of ["youtube", "twitch"]) {
+      const connected = Boolean(settings[platform]?.refreshTokenSaved);
+      const status = $(`#${platform}OAuthStatus`);
+      status.textContent = connected ? `Connected as ${settings[platform]?.accountName || platform}` : `OAuth enables sending messages as your ${platform} account.`;
+      status.classList.toggle("connected", connected);
+      $(`.${platform}-oauth strong`).textContent = connected ? `Reconnect ${platform}` : `Connect ${platform} account`;
+    }
     selectSettingsTab(platform);
     platformModal.classList.add("open");
   } catch (error) { showToast(error.message); }
@@ -724,4 +750,14 @@ $("#platformForm").addEventListener("submit", async (event) => {
   } catch (error) { $("#platformError").textContent = error.message; }
 });
 
-loadCurrentUser();
+const oauthResult = new URLSearchParams(location.search);
+const initialLoad = loadCurrentUser();
+if (oauthResult.has("oauth")) {
+  const platform = oauthResult.get("oauth");
+  const error = oauthResult.get("error");
+  history.replaceState({}, "", location.pathname);
+  initialLoad.finally(() => {
+    showToast(error ? `${platform} connection failed: ${error}` : `${platform} account connected`);
+    if (!error && signedInUser) openPlatformSettings(platform);
+  });
+}

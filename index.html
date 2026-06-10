@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260610-9">
+  <link rel="stylesheet" href="styles.css?v=20260610-10">
 </head>
 <body>
   <section class="auth-screen" id="authScreen">
@@ -200,7 +200,7 @@
         </div>
         <div class="chat-feed" id="chatFeed"><p class="empty-state">Sign in and connect platforms to load comments.</p></div>
         <form class="chat-compose" id="chatForm">
-          <div class="reply-target"><span>Replying as</span><strong>Relay Studio</strong><span>to all platforms</span></div>
+          <div class="reply-target"><span>Sending as</span><strong>connected accounts</strong><span>to YouTube and Twitch</span></div>
           <div class="compose-row">
             <input id="chatInput" type="text" placeholder="Send a message to everyone..." autocomplete="off">
             <button type="submit" aria-label="Send comment"><svg viewBox="0 0 24 24"><path d="m4 4 16 8-16 8 3-8-3-8Zm3 8h13"/></svg></button>
@@ -274,32 +274,33 @@
         <button type="button" data-settings-tab="facebook">Facebook</button>
       </div>
       <section class="settings-section active" data-settings-section="youtube">
+        <a class="oauth-button youtube-oauth" href="/api/oauth/youtube/start"><span>▶</span><strong>Connect YouTube account</strong></a>
+        <p class="oauth-status" id="youtubeOAuthStatus">OAuth enables sending messages as your YouTube channel.</p>
         <div class="platform-guide">
           <strong>Connect YouTube</strong>
           <ol>
-            <li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> and create or select a project.</li>
-            <li>Open <b>APIs &amp; Services &gt; Library</b>, search for <b>YouTube Data API v3</b>, and enable it.</li>
-            <li>Open <b>APIs &amp; Services &gt; Credentials</b>, choose <b>Create credentials &gt; API key</b>, then copy the key.</li>
-            <li>Find your Channel ID in <a href="https://www.youtube.com/account_advanced" target="_blank" rel="noopener">YouTube Advanced Settings</a>.</li>
+            <li>The site owner enables <b>YouTube Data API v3</b> and configures a Google Web OAuth client in Vercel.</li>
+            <li>Add <code>https://your-domain/api/oauth/youtube/callback</code> as the authorized redirect URI.</li>
+            <li>Click <b>Connect YouTube account</b>, choose the channel account, and approve access.</li>
           </ol>
         </div>
-        <label class="field-label">YouTube API key<input name="youtube.apiKey" type="password"></label>
+        <label class="field-label">YouTube API key<input name="youtube.apiKey" type="password"><small>Optional read-only fallback when OAuth is not connected.</small></label>
         <label class="field-label">YouTube channel ID<input name="youtube.channelId" type="text"><small>Used to automatically detect the channel's active live broadcast.</small></label>
         <label class="field-label">Live video ID override<input name="youtube.videoId" type="text"><small>Optional. Leave empty to use automatic detection.</small></label>
       </section>
       <section class="settings-section" data-settings-section="twitch">
+        <a class="oauth-button twitch-oauth" href="/api/oauth/twitch/start"><span>◈</span><strong>Connect Twitch account</strong></a>
+        <p class="oauth-status" id="twitchOAuthStatus">OAuth enables sending messages as your Twitch account.</p>
         <div class="platform-guide">
           <strong>Connect Twitch</strong>
           <ol>
-            <li>Open the <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch Developer Console</a> and register an application.</li>
-            <li>Use <code>http://localhost:4173</code> as the OAuth redirect URL and choose any suitable category.</li>
-            <li>Open the application and copy its <b>Client ID</b>. Click <b>New Secret</b> to get its Client Secret.</li>
-            <li>Generate an App Access Token using the command shown below, then enter your Twitch username without <code>@</code>.</li>
+            <li>The site owner creates a Twitch application and adds its Client ID and Secret to Vercel.</li>
+            <li>Add <code>https://your-domain/api/oauth/twitch/callback</code> as the OAuth redirect URL.</li>
+            <li>Click <b>Connect Twitch account</b> and approve chat access.</li>
           </ol>
-          <code class="guide-command">Invoke-RestMethod -Method Post -Uri "https://id.twitch.tv/oauth2/token?client_id=CLIENT_ID&amp;client_secret=CLIENT_SECRET&amp;grant_type=client_credentials"</code>
         </div>
         <label class="field-label">Twitch Client ID<input name="twitch.clientId" type="text"></label>
-        <label class="field-label">App access token<input name="twitch.accessToken" type="password"></label>
+        <label class="field-label">App access token<input name="twitch.accessToken" type="password"><small>Optional read-only fallback. OAuth is required for sending messages.</small></label>
         <label class="field-label">Channel login name<input name="twitch.channel" type="text"></label>
       </section>
       <section class="settings-section" data-settings-section="facebook">
@@ -346,6 +347,6 @@
     </div>
   </div>
   </div>
-  <script src="app.js?v=20260610-9"></script>
+  <script src="app.js?v=20260610-10"></script>
 </body>
 </html>
