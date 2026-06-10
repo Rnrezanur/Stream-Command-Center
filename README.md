@@ -83,6 +83,10 @@ $env:OBS_PASSWORD="your-obs-websocket-password"
 $env:OBS_MIC_INPUT="Mic/Aux"
 ```
 
+For the lowest remote-control latency, run the latest `supabase.sql` after each
+agent update. Its atomic command-claim function lets the agent poll on a 150 ms
+target cadence without executing a command twice.
+
 Never expose OBS port `4455` directly to the internet.
 
 Twitch viewer counts work on Vercel. Twitch public chat currently uses a persistent IRC WebSocket, which Vercel Functions cannot reliably keep alive; production Twitch chat requires a persistent worker service or Twitch EventSub implementation.

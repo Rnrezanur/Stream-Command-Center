@@ -250,7 +250,10 @@ async function handleApi(req, res, url) {
     if (!agent?.userId) return json(res, 401, { error: "Invalid agent token" });
     agent.user_id = agent.userId;
     if (req.method === "POST" && url.pathname === "/api/agent/poll") {
-      const { data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").gte("created_at", new Date(Date.now() - 15000).toISOString()).order("created_at").limit(20);
+      let { data: commands, error: commandsError } = await supabase.rpc("claim_obs_commands", { p_user_id: agent.user_id });
+      if (commandsError?.code === "PGRST202" || commandsError?.code === "42883") {
+        ({ data: commands, error: commandsError } = await supabase.from("obs_commands").select("id,request_type,request_data").eq("user_id", agent.user_id).eq("status", "pending").gte("created_at", new Date(Date.now() - 15000).toISOString()).order("created_at").limit(20));
+      }
       if (commandsError) throw commandsError;
       return json(res, 200, { commands: commands || [] });
     }

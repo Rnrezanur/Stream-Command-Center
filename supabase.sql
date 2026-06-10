@@ -38,3 +38,34 @@ alter table public.obs_agents enable row level security;
 alter table public.obs_commands enable row level security;
 
 -- These tables are accessed only by the server-side Supabase secret key.
+
+-- Atomically reserve pending commands for an agent. This prevents duplicate
+-- execution and removes the separate select/update round trip from polling.
+create or replace function public.claim_obs_commands(p_user_id uuid)
+returns setof public.obs_commands
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  with claimed as (
+    select id
+    from public.obs_commands
+    where user_id = p_user_id
+      and status = 'pending'
+      and created_at >= now() - interval '15 seconds'
+    order by created_at
+    for update skip locked
+    limit 20
+  )
+  update public.obs_commands as command
+  set status = 'processing'
+  from claimed
+  where command.id = claimed.id
+  returning command.*;
+end;
+$$;
+
+revoke all on function public.claim_obs_commands(uuid) from public, anon, authenticated;
+grant execute on function public.claim_obs_commands(uuid) to service_role;

@@ -1,7 +1,8 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const AGENT_VERSION = "20260610-4";
+const AGENT_VERSION = "20260610-5";
+const POLL_TARGET_MS = 150;
 
 const configPath = path.join(__dirname, "obs-agent.json");
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -124,6 +125,7 @@ async function pair() {
 
 async function commandLoop() {
   for (;;) {
+    const startedAt = Date.now();
     try {
       await ensureOBS();
       const payload = await api("/api/agent/poll", { method: "POST", body: "{}" });
@@ -138,7 +140,7 @@ async function commandLoop() {
     } catch (error) {
       console.error(`[agent command] ${error.message}`);
     }
-    await sleep(500);
+    await sleep(Math.max(0, POLL_TARGET_MS - (Date.now() - startedAt)));
   }
 }
 
