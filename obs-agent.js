@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const AGENT_VERSION = "20260610-5";
+const AGENT_VERSION = "20260610-6";
 const POLL_TARGET_MS = 150;
 
 const configPath = path.join(__dirname, "obs-agent.json");
@@ -96,14 +96,15 @@ async function ensureOBS() {
 }
 
 async function state() {
-  const [scenes, stream, record, mute, stats] = await Promise.all([
+  const [scenes, stream, record, mute, stats, video] = await Promise.all([
     obs.call("GetSceneList"), obs.call("GetStreamStatus"), obs.call("GetRecordStatus"),
-    obs.call("GetInputMute", { inputName: micInput }), obs.call("GetStats")
+    obs.call("GetInputMute", { inputName: micInput }), obs.call("GetStats"), obs.call("GetVideoSettings")
   ]);
   return {
     connected: true, agentVersion: AGENT_VERSION, currentScene: scenes.currentProgramSceneName, scenes: (scenes.scenes || []).map((scene) => scene.sceneName),
-    streamActive: stream.outputActive, streamTimecode: stream.outputTimecode, recordActive: record.outputActive,
-    micMuted: mute.inputMuted, micInput, cpuUsage: stats.cpuUsage, memoryUsage: stats.memoryUsage
+    streamActive: stream.outputActive, streamTimecode: stream.outputTimecode, recordActive: record.outputActive, recordTimecode: record.outputTimecode,
+    micMuted: mute.inputMuted, micInput, cpuUsage: stats.cpuUsage, memoryUsage: stats.memoryUsage,
+    activeFps: stats.activeFps, targetFps: video.fpsDenominator ? video.fpsNumerator / video.fpsDenominator : 0
   };
 }
 
@@ -159,7 +160,7 @@ async function stateLoop() {
     } catch (error) {
       console.error(`[agent heartbeat] ${error.message}`);
     }
-    await sleep(3000);
+    await sleep(1000);
   }
 }
 

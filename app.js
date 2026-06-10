@@ -3,11 +3,12 @@ const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)]
 const toast = $("#toast");
 let toastTimer, obs, statsTimer;
 let elapsed = 0;
+let recordElapsed = 0;
 let micInputName = "Mic/Aux";
 let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
-const REQUIRED_AGENT_VERSION = "20260610-5";
+const REQUIRED_AGENT_VERSION = "20260610-6";
 
 function showToast(message) {
   toast.textContent = message;
@@ -25,8 +26,10 @@ function formatTime(total) {
 
 setInterval(() => {
   if ($("#streamButton").dataset.active === "true") elapsed += 1;
+  if ($("#recordButton").dataset.active === "true") recordElapsed += 1;
   $("#liveTimer").textContent = formatTime(elapsed);
-  if ($("#recordButton").dataset.active === "true") $("#recordSub").textContent = `Recording - ${formatTime(elapsed)}`;
+  $("#recordTimer").textContent = formatTime(recordElapsed);
+  if ($("#recordButton").dataset.active === "true") $("#recordSub").textContent = `Recording - ${formatTime(recordElapsed)}`;
 }, 1000);
 
 class OBSWebSocketClient {
@@ -126,16 +129,21 @@ function updateStream(active, timecode) {
   $("#streamSub").textContent = active ? "OBS output is live" : "Ready to stream";
   $(".status-label").textContent = active ? "Broadcast live" : "Broadcast offline";
   $(".status-light").style.background = active ? "#ff4d58" : "#68717a";
-  $(".quality").textContent = active ? "OBS output active" : "Ready";
+  $(".signal-icon").style.color = active ? "#62db8e" : "#68717a";
+  $(".signal-icon").style.opacity = active ? "1" : ".65";
   if (timecode) elapsed = timecodeToSeconds(timecode);
+  else if (!active) elapsed = 0;
 }
 
-function updateRecord(active) {
+function updateRecord(active, timecode) {
   $("#recordButton").dataset.active = String(active);
   $("#recordButton").classList.toggle("recording", active);
   $(".record-square").style.background = active ? "#ff4d58" : "#879099";
+  $(".record-icon").style.background = active ? "#ff4d58" : "#68717a";
   $("#recordLabel").textContent = active ? "Stop recording" : "Start recording";
-  $("#recordSub").textContent = active ? `Recording - ${formatTime(elapsed)}` : "Ready to record";
+  if (timecode) recordElapsed = timecodeToSeconds(timecode);
+  else if (!active) recordElapsed = 0;
+  $("#recordSub").textContent = active ? `Recording - ${formatTime(recordElapsed)}` : "Ready to record";
 }
 
 function updateMute(muted) {
@@ -166,7 +174,7 @@ async function syncOBSState() {
   ]);
   renderScenes(scenes.scenes || [], scenes.currentProgramSceneName);
   updateStream(stream.outputActive, stream.outputTimecode);
-  updateRecord(record.outputActive);
+  updateRecord(record.outputActive, record.outputTimecode);
   updateMute(mute.inputMuted);
   await updateStats();
 }
@@ -183,11 +191,17 @@ function renderScenes(scenes, activeScene) {
 async function updateStats() {
   if (!obs) return;
   try {
-    const [stats, stream] = await Promise.all([obs.call("GetStats"), obs.call("GetStreamStatus")]);
+    const [stats, stream, video] = await Promise.all([obs.call("GetStats"), obs.call("GetStreamStatus"), obs.call("GetVideoSettings")]);
     $(".stats-row div:nth-child(1) strong").textContent = Math.round((stream.outputBytes || 0) * 8 / Math.max(stream.outputDuration || 1, 1)).toLocaleString();
     $(".stats-row div:nth-child(2) strong").textContent = Number(stream.outputSkippedFrames || 0).toLocaleString();
     $(".stats-row div:nth-child(3) strong").textContent = Number(stats.cpuUsage || 0).toFixed(1);
+    updateMonitor(stats.cpuUsage, stats.activeFps, video.fpsDenominator ? video.fpsNumerator / video.fpsDenominator : 0);
   } catch (_) {}
+}
+
+function updateMonitor(cpuUsage = 0, activeFps = 0, targetFps = 0) {
+  $("#monitorCpu").textContent = `${Number(cpuUsage || 0).toFixed(1)}%`;
+  $("#monitorFps").textContent = `${Number(activeFps || 0).toFixed(2)} / ${Number(targetFps || 0).toFixed(2)} FPS`;
 }
 
 function escapeHtml(value) {
@@ -237,7 +251,7 @@ $("#connectionForm").addEventListener("submit", async (event) => {
     obs.eventHandler = (type, data) => {
       if (type === "CurrentProgramSceneChanged") updateScene(data.sceneName);
       if (type === "StreamStateChanged") updateStream(data.outputActive, data.outputTimecode);
-      if (type === "RecordStateChanged") updateRecord(data.outputActive);
+      if (type === "RecordStateChanged") updateRecord(data.outputActive, data.outputTimecode);
       if (type === "InputMuteStateChanged" && data.inputName === micInputName) updateMute(data.inputMuted);
     };
     await obs.connect(address, $("#obsPassword").value);
@@ -386,10 +400,11 @@ async function refreshRemoteOBS() {
     micInputName = state.micInput || micInputName;
     $("#micName").textContent = micInputName;
     updateStream(Boolean(state.streamActive), state.streamTimecode);
-    updateRecord(Boolean(state.recordActive));
+    updateRecord(Boolean(state.recordActive), state.recordTimecode);
     updateMute(Boolean(state.micMuted));
     if (state.scenes?.length) renderScenes(state.scenes.map((sceneName) => ({ sceneName })), state.currentScene);
     if (state.cpuUsage != null) $(".stats-row div:nth-child(3) strong").textContent = Number(state.cpuUsage).toFixed(1);
+    updateMonitor(state.cpuUsage, state.activeFps, state.targetFps);
   } catch (_) {}
 }
 
@@ -455,7 +470,7 @@ async function loadCurrentUser() {
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 15000);
     clearInterval(remoteObsTimer);
-    remoteObsTimer = setInterval(refreshRemoteOBS, 3000);
+    remoteObsTimer = setInterval(refreshRemoteOBS, 1000);
   } catch (_) {
     setSignedInUser(null);
     renderDashboard({ platforms: {}, comments: [], totalViewers: 0 });
@@ -575,7 +590,7 @@ $("#authPageForm").addEventListener("submit", async (event) => {
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 15000);
     clearInterval(remoteObsTimer);
-    remoteObsTimer = setInterval(refreshRemoteOBS, 3000);
+    remoteObsTimer = setInterval(refreshRemoteOBS, 1000);
     showToast(authPageRegistering ? "Account created" : "Welcome back");
   } catch (error) {
     $("#authPageError").textContent = error.message;

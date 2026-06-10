@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260610-5">
+  <link rel="stylesheet" href="styles.css?v=20260610-6">
 </head>
 <body>
   <section class="auth-screen" id="authScreen">
@@ -65,12 +65,12 @@
         <h1>Command Center</h1>
       </div>
       <div class="broadcast-status">
-        <span class="status-light"></span>
-        <div>
-          <span class="status-label">Broadcast offline</span>
-          <span id="liveTimer" class="timer">00:00:00</span>
-        </div>
-        <span class="quality">Ready</span>
+        <span class="status-light" title="Stream status"></span>
+        <span class="monitor-item"><b class="monitor-icon signal-icon"></b><span id="liveTimer" class="timer">00:00:00</span></span>
+        <span class="monitor-item"><b class="monitor-icon record-icon"></b><span id="recordTimer" class="timer">00:00:00</span></span>
+        <span class="monitor-item monitor-stat"><small>CPU:</small><strong id="monitorCpu">0.0%</strong></span>
+        <span class="monitor-item monitor-stat"><strong id="monitorFps">0.00 / 0.00 FPS</strong></span>
+        <span class="status-label">OBS offline</span>
       </div>
       <div class="header-actions">
         <button class="connection-pill account-pill" id="headerAccountButton"><span></span><b id="headerAccountLabel">Sign in</b></button>
@@ -350,6 +350,6 @@
     </div>
   </div>
   </div>
-  <script src="app.js?v=20260610-5"></script>
+  <script src="app.js?v=20260610-6"></script>
 </body>
 </html>
