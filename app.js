@@ -8,7 +8,7 @@ let micInputName = "Mic/Aux";
 let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
-const REQUIRED_AGENT_VERSION = "20260610-6";
+const REQUIRED_AGENT_VERSION = "20260610-7";
 
 function showToast(message) {
   toast.textContent = message;

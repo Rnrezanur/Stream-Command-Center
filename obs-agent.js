@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const AGENT_VERSION = "20260610-6";
+const AGENT_VERSION = "20260610-7";
 const POLL_TARGET_MS = 150;
 
 const configPath = path.join(__dirname, "obs-agent.json");

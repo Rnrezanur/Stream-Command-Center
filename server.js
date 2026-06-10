@@ -42,6 +42,7 @@ function createSupabaseClient() {
 
 const twitchChats = new Map();
 const detectedBroadcasts = new Map();
+const verifiedAgentTokens = new Map();
 const key = crypto.scryptSync(APP_SECRET, "relay-settings", 32);
 const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { "content-type": "application/json", ...headers });
@@ -73,6 +74,16 @@ const verifyAgentToken = (token) => {
   const expected = crypto.createHmac("sha256", APP_SECRET).update(payload).digest("base64url");
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try { return JSON.parse(Buffer.from(payload, "base64url").toString()); } catch (_) { return null; }
+};
+const resolveAgentToken = async (supabase, token) => {
+  const signed = verifyAgentToken(token);
+  if (signed?.userId) return signed;
+  const tokenHash = hash(token);
+  if (verifiedAgentTokens.has(tokenHash)) return { userId: verifiedAgentTokens.get(tokenHash) };
+  const { data, error } = await supabase.from("obs_agents").select("user_id").eq("agent_token_hash", tokenHash).maybeSingle();
+  if (error || !data?.user_id) return null;
+  verifiedAgentTokens.set(tokenHash, data.user_id);
+  return { userId: data.user_id };
 };
 const decrypt = (value) => {
   const [iv, tag, encrypted] = value.split(".").map((part) => Buffer.from(part, "base64"));
@@ -263,11 +274,12 @@ async function handleApi(req, res, url) {
       agent_token_hash: hash(agentToken), pairing_code_hash: null, pairing_expires_at: null, updated_at: new Date().toISOString()
     }).eq("user_id", agent.user_id);
     if (updateError) throw updateError;
+    verifiedAgentTokens.set(hash(agentToken), agent.user_id);
     return json(res, 200, { agentToken });
   }
   if (url.pathname.startsWith("/api/agent/") && url.pathname !== "/api/agent/pair") {
     const agentToken = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const agent = verifyAgentToken(agentToken);
+    const agent = await resolveAgentToken(supabase, agentToken);
     if (!agent?.userId) return json(res, 401, { error: "Invalid agent token" });
     agent.user_id = agent.userId;
     if (req.method === "POST" && url.pathname === "/api/agent/poll") {
