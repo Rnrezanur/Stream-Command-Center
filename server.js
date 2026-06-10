@@ -99,7 +99,10 @@ function safeSettings(settings) {
   const masked = structuredClone(settings);
   for (const platform of ["youtube", "twitch", "facebook"]) {
     for (const field of ["apiKey", "accessToken", "clientSecret"]) {
-      if (masked[platform]?.[field]) masked[platform][field] = "••••••••";
+      if (masked[platform]?.[field]) {
+        masked[platform][field] = "";
+        masked[platform][`${field}Saved`] = true;
+      }
     }
   }
   return masked;
@@ -318,7 +321,8 @@ async function handleApi(req, res, url) {
     for (const platform of ["youtube", "twitch", "facebook"]) {
       incoming[platform] ||= {};
       for (const secret of ["apiKey", "accessToken", "clientSecret"]) {
-        if (incoming[platform][secret] === "••••••••") incoming[platform][secret] = current[platform]?.[secret] || "";
+        if (!incoming[platform][secret]) incoming[platform][secret] = current[platform]?.[secret] || "";
+        delete incoming[platform][`${secret}Saved`];
       }
     }
     const { error } = await supabase.from("platform_settings").upsert({ user_id: user.id, encrypted_json: encrypt(incoming), updated_at: new Date().toISOString() });

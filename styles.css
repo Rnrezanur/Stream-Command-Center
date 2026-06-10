@@ -160,6 +160,7 @@ kbd { align-self: start; padding: 3px 5px; border: 1px solid #30363b; border-rad
 .field-label{display:flex;flex-direction:column;gap:6px;margin-top:10px;color:#9da6ad;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
 .field-label input{padding:10px;border:1px solid #30373d;border-radius:7px;outline:none;color:#edf0f2;background:#0e1113;font-family:"DM Mono";font-size:10px;text-transform:none;letter-spacing:0}
 .field-label input:focus{border-color:#68757e}
+.field-label input.secret-saved{border-color:rgba(98,219,142,.35)}
 .field-label small{color:#67717a;font-size:7px;font-weight:500;line-height:1.5;text-transform:none;letter-spacing:0}
 .connection-error{min-height:14px;margin:10px 0 -8px!important;color:#ff747d!important;font-size:8px!important}
 .empty-state{padding:24px 12px;color:var(--muted);font-size:9px;line-height:1.6;text-align:center}

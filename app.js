@@ -535,6 +535,10 @@ async function openPlatformSettings(platform = "youtube") {
     $$("[name]", $("#platformForm")).forEach((input) => {
       const [group, field] = input.name.split(".");
       input.value = settings[group]?.[field] || "";
+      const secretSaved = settings[group]?.[`${field}Saved`];
+      if (!input.dataset.defaultPlaceholder) input.dataset.defaultPlaceholder = input.placeholder;
+      input.placeholder = secretSaved ? "Saved securely - enter a new value to replace" : input.dataset.defaultPlaceholder;
+      input.classList.toggle("secret-saved", Boolean(secretSaved));
     });
     selectSettingsTab(platform);
     platformModal.classList.add("open");
@@ -564,7 +568,15 @@ $("#platformForm").addEventListener("submit", async (event) => {
     settings[group][field] = input.value.trim();
   });
   try {
-    await api("/api/settings", { method: "PUT", body: JSON.stringify(settings) });
+    const { settings: savedSettings } = await api("/api/settings", { method: "PUT", body: JSON.stringify(settings) });
+    $$("[name]", event.currentTarget).forEach((input) => {
+      const [group, field] = input.name.split(".");
+      if (savedSettings[group]?.[`${field}Saved`]) {
+        input.value = "";
+        input.placeholder = "Saved securely - enter a new value to replace";
+        input.classList.add("secret-saved");
+      }
+    });
     platformModal.classList.remove("open");
     await refreshDashboard();
     showToast("Platform settings saved");
