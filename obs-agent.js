@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const configPath = path.join(__dirname, "data", "obs-agent.json");
+const configPath = path.join(__dirname, "obs-agent.json");
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
 let config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf8")) : {};
 const apiBase = (process.env.RELAYCAST_URL || config.apiBase || "").replace(/\/$/, "");
@@ -34,14 +34,24 @@ class OBS {
       this.socket.onopen = resolve;
       this.socket.onerror = () => reject(new Error(`Cannot reach OBS at ${obsAddress}`));
     });
-    const hello = await this.next();
-    const identify = { rpcVersion: 1, eventSubscriptions: 0 };
-    if (hello.d.authentication) identify.authentication = await this.auth(hello.d.authentication);
-    this.socket.send(JSON.stringify({ op: 1, d: identify }));
-    const identified = await this.next();
-    if (identified.op !== 2) throw new Error("OBS authentication failed");
-    this.socket.onmessage = (event) => this.handle(JSON.parse(event.data));
-    this.socket.onclose = () => { this.socket = null; };
+    try {
+      const hello = await this.next();
+      const identify = { rpcVersion: 1, eventSubscriptions: 0 };
+      if (hello.d.authentication) {
+        if (!obsPassword) throw new Error("OBS WebSocket password is required");
+        identify.authentication = await this.auth(hello.d.authentication);
+      }
+      this.socket.send(JSON.stringify({ op: 1, d: identify }));
+      const identified = await this.next();
+      if (identified.op !== 2) throw new Error("OBS authentication failed");
+      this.socket.onmessage = (event) => this.handle(JSON.parse(event.data));
+      this.socket.onclose = () => { this.socket = null; };
+    } catch (error) {
+      this.socket?.close();
+      this.socket = null;
+      if (/closed|authentication/i.test(error.message)) throw new Error("OBS rejected the connection. Check the WebSocket password in OBS > Tools > WebSocket Server Settings");
+      throw error;
+    }
   }
   next() {
     return new Promise((resolve, reject) => {
@@ -89,7 +99,13 @@ async function state() {
 }
 
 async function pair() {
-  if (agentToken) return;
+  if (agentToken) {
+    if (obsPassword && obsPassword !== config.obsPassword) {
+      config = { ...config, apiBase, agentToken, obsAddress, obsPassword, micInput };
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    }
+    return;
+  }
   if (!pairingCode) throw new Error("Run with RELAYCAST_PAIRING_CODE from the dashboard");
   const result = await api("/api/agent/pair", { method: "POST", body: JSON.stringify({ pairingCode }) });
   agentToken = result.agentToken;
@@ -100,6 +116,7 @@ async function pair() {
 
 async function run() {
   await pair();
+  let retryDelay = 2000;
   for (;;) {
     try {
       if (!obs.socket || obs.socket.readyState !== WebSocket.OPEN) await obs.connect();
@@ -112,10 +129,12 @@ async function run() {
           await api(`/api/agent/commands/${command.id}`, { method: "POST", body: JSON.stringify({ error: error.message }) });
         }
       }
+      retryDelay = 2000;
     } catch (error) {
       console.error(`[agent] ${error.message}`);
+      retryDelay = Math.min(retryDelay * 2, 30000);
     }
-    await sleep(2000);
+    await sleep(retryDelay);
   }
 }
 

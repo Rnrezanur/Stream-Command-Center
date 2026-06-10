@@ -72,7 +72,8 @@ The hosted Vercel dashboard can control OBS through the included secure local ag
 2. Open the deployed dashboard and click **Connect Remote OBS**.
 3. Generate a pairing code.
 4. On the OBS computer, paste and run the single PowerShell command shown by the dashboard. It downloads, pairs, and starts the agent.
-5. Keep `npm run agent` running while using remote OBS control.
+5. Enter the OBS WebSocket password when PowerShell asks for it.
+6. Keep the PowerShell window running while using remote OBS control.
 
 The agent stores its pairing token and local OBS settings in ignored `data/obs-agent.json`. To configure a non-default local OBS connection before first pairing:
 
