@@ -22,6 +22,11 @@ function supabaseKeyRole(secret) {
 
 function getSupabase() {
   if (supabase) return supabase;
+  supabase = createSupabaseClient();
+  return supabase;
+}
+
+function createSupabaseClient() {
   const url = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const missing = [];
@@ -32,8 +37,7 @@ function getSupabase() {
   if (supabaseKeyRole(secret) === "anon") {
     throw new Error("SUPABASE_SECRET_KEY is an anon/publishable key. In Vercel, replace it with the Supabase server-side Secret key or legacy service_role key, then redeploy.");
   }
-  supabase = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
-  return supabase;
+  return createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
 }
 
 const twitchChats = new Map();
@@ -93,14 +97,14 @@ function sessionCookies(session) {
 }
 
 async function requireUser(req, res) {
-  const supabase = getSupabase();
+  const authClient = createSupabaseClient();
   const auth = cookies(req);
   if (auth.relay_access) {
-    const { data } = await supabase.auth.getUser(auth.relay_access);
+    const { data } = await authClient.auth.getUser(auth.relay_access);
     if (data.user) return normalizeUser(data.user);
   }
   if (auth.relay_refresh) {
-    const { data, error } = await supabase.auth.refreshSession({ refresh_token: auth.relay_refresh });
+    const { data, error } = await authClient.auth.refreshSession({ refresh_token: auth.relay_refresh });
     if (!error && data.session) {
       res.setHeader("set-cookie", sessionCookies(data.session));
       return normalizeUser(data.user);
@@ -302,13 +306,13 @@ async function handleApi(req, res, url) {
       email, password: body.password, email_confirm: true, user_metadata: { name }
     });
     if (createError) return json(res, 409, { error: createError.message });
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: body.password });
+    const { data, error } = await createSupabaseClient().auth.signInWithPassword({ email, password: body.password });
     if (error || !data.session) return json(res, 400, { error: error?.message || "Account created. Please sign in." });
     return json(res, 201, { user: normalizeUser(created.user) }, { "set-cookie": sessionCookies(data.session) });
   }
   if (req.method === "POST" && url.pathname === "/api/login") {
     const body = await readBody(req);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: String(body.email || "").toLowerCase(), password: body.password || "" });
+    const { data, error } = await createSupabaseClient().auth.signInWithPassword({ email: String(body.email || "").toLowerCase(), password: body.password || "" });
     if (error || !data.session) return json(res, 401, { error: error?.message || "Invalid email or password" });
     return json(res, 200, { user: normalizeUser(data.user) }, { "set-cookie": sessionCookies(data.session) });
   }
