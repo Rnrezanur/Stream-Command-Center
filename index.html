@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260610-10">
+  <link rel="stylesheet" href="styles.css?v=20260611-1">
 </head>
 <body>
   <section class="auth-screen" id="authScreen">
@@ -277,11 +277,15 @@
         <a class="oauth-button youtube-oauth" href="/api/oauth/youtube/start"><span>▶</span><strong>Connect YouTube account</strong></a>
         <p class="oauth-status" id="youtubeOAuthStatus">OAuth enables sending messages as your YouTube channel.</p>
         <div class="platform-guide">
-          <strong>Connect YouTube</strong>
+          <strong>YouTube setup guide</strong>
           <ol>
-            <li>The site owner enables <b>YouTube Data API v3</b> and configures a Google Web OAuth client in Vercel.</li>
-            <li>Add <code>https://your-domain/api/oauth/youtube/callback</code> as the authorized redirect URI.</li>
-            <li>Click <b>Connect YouTube account</b>, choose the channel account, and approve access.</li>
+            <li>Open the <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud project creator</a> and create or select a project.</li>
+            <li>Open the <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3 page</a> and click <b>Enable</b>.</li>
+            <li>Configure the <a href="https://console.cloud.google.com/auth/branding" target="_blank" rel="noopener">OAuth consent screen</a>. Add yourself as a test user while the app is in testing.</li>
+            <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google credentials</a>, create an <b>OAuth client ID</b>, and choose <b>Web application</b>.</li>
+            <li>Add this authorized redirect URI:<code class="guide-copy">https://stream-command.vercel.app/api/oauth/youtube/callback</code></li>
+            <li>Copy the Client ID and Client Secret into <a href="https://vercel.com/dashboard" target="_blank" rel="noopener">Vercel Environment Variables</a> as <code>YOUTUBE_CLIENT_ID</code> and <code>YOUTUBE_CLIENT_SECRET</code>, then redeploy.</li>
+            <li>Return here and click <b>Connect YouTube account</b>. Approve the requested <code>youtube.force-ssl</code> permission.</li>
           </ol>
         </div>
         <label class="field-label">YouTube API key<input name="youtube.apiKey" type="password"><small>Optional read-only fallback when OAuth is not connected.</small></label>
@@ -292,11 +296,14 @@
         <a class="oauth-button twitch-oauth" href="/api/oauth/twitch/start"><span>◈</span><strong>Connect Twitch account</strong></a>
         <p class="oauth-status" id="twitchOAuthStatus">OAuth enables sending messages as your Twitch account.</p>
         <div class="platform-guide">
-          <strong>Connect Twitch</strong>
+          <strong>Twitch setup guide</strong>
           <ol>
-            <li>The site owner creates a Twitch application and adds its Client ID and Secret to Vercel.</li>
-            <li>Add <code>https://your-domain/api/oauth/twitch/callback</code> as the OAuth redirect URL.</li>
-            <li>Click <b>Connect Twitch account</b> and approve chat access.</li>
+            <li>Open the <a href="https://dev.twitch.tv/console/apps/create" target="_blank" rel="noopener">Twitch application registration page</a>.</li>
+            <li>Enter a unique application name, choose <b>Application Integration</b>, and set Client Type to <b>Confidential</b>.</li>
+            <li>Add this OAuth redirect URL:<code class="guide-copy">https://stream-command.vercel.app/api/oauth/twitch/callback</code></li>
+            <li>Open the app's <b>Manage</b> page, copy its Client ID, and create a new Client Secret.</li>
+            <li>Add them in <a href="https://vercel.com/dashboard" target="_blank" rel="noopener">Vercel Environment Variables</a> as <code>TWITCH_CLIENT_ID</code> and <code>TWITCH_CLIENT_SECRET</code>, then redeploy.</li>
+            <li>Return here and click <b>Connect Twitch account</b>. Approve the requested <code>user:write:chat</code> permission.</li>
           </ol>
         </div>
         <label class="field-label">Twitch Client ID<input name="twitch.clientId" type="text"></label>
@@ -305,12 +312,14 @@
       </section>
       <section class="settings-section" data-settings-section="facebook">
         <div class="platform-guide">
-          <strong>Connect Facebook</strong>
+          <strong>Facebook setup guide</strong>
           <ol>
-            <li>Open <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Meta for Developers</a> and create an app linked to your Facebook Page.</li>
-            <li>Open <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener">Graph API Explorer</a>, select your app, and generate a token with <b>pages_read_engagement</b> and <b>pages_manage_posts</b>.</li>
-            <li>Request <code>GET /me/accounts</code> in Graph API Explorer. Copy your Page's <b>id</b> and Page <b>access_token</b> from the response.</li>
-            <li>Meta may require App Review before these permissions work for users outside your app roles.</li>
+            <li>Open <a href="https://developers.facebook.com/apps/creation/" target="_blank" rel="noopener">Meta app creation</a> and create a Business app linked to your Facebook Page.</li>
+            <li>Open the <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener">Graph API Explorer</a>, select your app, and request <code>pages_show_list</code>, <code>pages_read_engagement</code>, and <code>pages_manage_posts</code>.</li>
+            <li>Run <code>GET /me/accounts</code>. Copy your Page's <b>id</b> and Page <b>access_token</b> into the fields below.</li>
+            <li>Open <a href="https://www.facebook.com/live/producer/" target="_blank" rel="noopener">Facebook Live Producer</a> to start a Page livestream. Leave Live Video ID empty for automatic detection.</li>
+            <li>Use <a href="https://developers.facebook.com/tools/debug/accesstoken/" target="_blank" rel="noopener">Access Token Debugger</a> to verify token permissions and expiration.</li>
+            <li>Facebook comments can be monitored now. Sending replies for users outside the app's roles usually requires <a href="https://developers.facebook.com/docs/app-review/" target="_blank" rel="noopener">Meta App Review</a>.</li>
           </ol>
         </div>
         <label class="field-label">Page access token<input name="facebook.accessToken" type="password"></label>
@@ -347,6 +356,6 @@
     </div>
   </div>
   </div>
-  <script src="app.js?v=20260610-10"></script>
+  <script src="app.js?v=20260611-1"></script>
 </body>
 </html>
