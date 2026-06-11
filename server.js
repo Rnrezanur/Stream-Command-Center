@@ -189,7 +189,11 @@ function safeSettings(settings) {
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error?.message || body.message || `API returned ${response.status}`);
+  if (!response.ok) {
+    const detail = body.error?.error_user_msg || body.error?.message || body.message || `API returned ${response.status}`;
+    const code = body.error?.code ? ` (Meta code ${body.error.code}${body.error.error_subcode ? `/${body.error.error_subcode}` : ""})` : "";
+    throw new Error(`${detail}${code}`);
+  }
   return body;
 }
 
@@ -299,18 +303,31 @@ function ensureTwitchChat(userId, channel) {
 
 async function getFacebook(settings) {
   if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) return { connected: false, viewers: 0, comments: [] };
-  const version = settings.graphVersion || "v23.0";
+  const version = settings.graphVersion || "v24.0";
   const cacheKey = `facebook:${settings.pageId || settings.liveVideoId}`;
   let liveVideoId = settings.liveVideoId || detectedBroadcasts.get(cacheKey);
   if (!liveVideoId) {
-    const liveVideos = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}/live_videos?fields=id,status&limit=25&access_token=${encodeURIComponent(settings.accessToken)}`);
-    liveVideoId = liveVideos.data?.find((item) => item.status === "LIVE")?.id;
+    const liveVideos = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}/live_videos?fields=id,status,creation_time&limit=25&access_token=${encodeURIComponent(settings.accessToken)}`);
+    liveVideoId = liveVideos.data?.find((item) => ["LIVE", "LIVE_NOW"].includes(item.status))?.id;
     if (!liveVideoId) return { connected: true, viewers: 0, comments: [], status: "No active broadcast detected" };
     detectedBroadcasts.set(cacheKey, liveVideoId);
   }
   const video = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}?fields=live_views,status&access_token=${encodeURIComponent(settings.accessToken)}`);
-  if (video.status && video.status !== "LIVE" && !settings.liveVideoId) detectedBroadcasts.delete(cacheKey);
-  const chat = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}/comments?fields=id,from,message,created_time&limit=100&access_token=${encodeURIComponent(settings.accessToken)}`);
+  if (video.status && !["LIVE", "LIVE_NOW"].includes(video.status) && !settings.liveVideoId) detectedBroadcasts.delete(cacheKey);
+  let chat;
+  let firstError;
+  for (const edge of ["live_comments", "comments"]) {
+    for (const fields of ["id,from,message,created_time", "id,message,created_time"]) {
+      try {
+        chat = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}/${edge}?fields=${fields}&limit=100&access_token=${encodeURIComponent(settings.accessToken)}`);
+        break;
+      } catch (error) {
+        firstError ||= error;
+      }
+    }
+    if (chat) break;
+  }
+  if (!chat) throw firstError;
   return {
     connected: true, viewers: Number(video.live_views || 0), broadcastId: liveVideoId,
     comments: (chat.data || []).map((item) => ({ id: item.id, platform: "facebook", author: item.from?.name || "Facebook user", message: item.message || "", time: item.created_time }))
@@ -526,6 +543,21 @@ async function handleApi(req, res, url) {
     return json(res, 202, { command });
   }
   if (req.method === "GET" && url.pathname === "/api/settings") return json(res, 200, { settings: safeSettings(await getSettings(user.id)) });
+  if (req.method === "POST" && url.pathname === "/api/facebook/test") {
+    const settings = (await getSettings(user.id)).facebook || {};
+    if (!settings.accessToken) return json(res, 400, { error: "Add and save a Facebook Page access token first" });
+    if (!settings.pageId && !settings.liveVideoId) return json(res, 400, { error: "Add a Facebook Page ID or Live Video ID first" });
+    const version = settings.graphVersion || "v24.0";
+    let page;
+    if (settings.pageId) {
+      page = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}?fields=id,name&access_token=${encodeURIComponent(settings.accessToken)}`);
+    }
+    const live = await getFacebook(settings);
+    return json(res, 200, {
+      ok: true, page: page?.name || null, connected: live.connected,
+      broadcastId: live.broadcastId || null, status: live.status || (live.broadcastId ? "Live broadcast detected" : "Connection valid")
+    });
+  }
   if (req.method === "PUT" && url.pathname === "/api/settings") {
     const incoming = await readBody(req);
     const current = await getSettings(user.id);

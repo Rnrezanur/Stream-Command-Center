@@ -727,6 +727,22 @@ $(".settings-tabs").addEventListener("click", (event) => {
 });
 $("#cancelPlatformSettings").addEventListener("click", () => platformModal.classList.remove("open"));
 platformModal.addEventListener("click", (event) => { if (event.target === platformModal) platformModal.classList.remove("open"); });
+$("#testFacebookConnection").addEventListener("click", async () => {
+  const button = $("#testFacebookConnection");
+  const status = $("#facebookTestStatus");
+  button.disabled = true;
+  status.classList.remove("connected");
+  status.textContent = "Testing the saved Page token and live video...";
+  try {
+    const result = await api("/api/facebook/test", { method: "POST", body: "{}" });
+    status.textContent = `${result.page ? `${result.page}: ` : ""}${result.status}`;
+    status.classList.add("connected");
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 $("#platformForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const settings = { youtube: {}, twitch: {}, facebook: {} };

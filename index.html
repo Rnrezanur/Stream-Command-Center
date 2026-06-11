@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260611-1">
+  <link rel="stylesheet" href="styles.css?v=20260611-2">
 </head>
 <body>
   <section class="auth-screen" id="authScreen">
@@ -325,7 +325,9 @@
         <label class="field-label">Page access token<input name="facebook.accessToken" type="password"></label>
         <label class="field-label">Facebook Page ID<input name="facebook.pageId" type="text"><small>Used to automatically detect the Page's active live broadcast.</small></label>
         <label class="field-label">Live video ID override<input name="facebook.liveVideoId" type="text"><small>Optional. Leave empty to use automatic detection.</small></label>
-        <label class="field-label">Graph API version<input name="facebook.graphVersion" type="text" value="v23.0"></label>
+        <label class="field-label">Graph API version<input name="facebook.graphVersion" type="text" value="v24.0"></label>
+        <button type="button" id="testFacebookConnection" class="test-platform-button">Test Facebook connection</button>
+        <p class="oauth-status" id="facebookTestStatus">Save your settings before testing.</p>
       </section>
       <p class="connection-error" id="platformError"></p>
       <div class="modal-actions">
@@ -356,6 +358,6 @@
     </div>
   </div>
   </div>
-  <script src="app.js?v=20260611-1"></script>
+  <script src="app.js?v=20260611-2"></script>
 </body>
 </html>
