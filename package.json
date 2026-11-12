@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": "24.x"
+    "node": ">=20.x"
   },
   "scripts": {
     "start": "node server.js",
@@ -11,6 +11,6 @@
     "check": "node --check server.js && node --check api/index.js && node --check app.js && node --check obs-agent.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.1"
+    "mongodb": "^7.8.0"
   }
 }

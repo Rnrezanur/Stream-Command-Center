@@ -1,43 +1,44 @@
 # Stream Command Center
 
-A full-stack dashboard for OBS control, user accounts, saved platform settings, live viewer counts, and unified comments. It can run locally or deploy to Vercel through GitHub.
+A zero-delay broadcast command center for OBS Studio control, user accounts, 1-click platform auto-connect, encrypted platform settings, live viewer telemetry, and unified multi-platform chat. Runs locally (with zero external setup or with MongoDB) and deploys cleanly to Vercel through GitHub.
 
-## Run
+## Run Locally
 
-Requires Node.js 24 or newer.
+Requires Node.js 20 or newer.
 
-```powershell
-$env:APP_SECRET="replace-with-a-long-random-secret"
-$env:SUPABASE_URL="https://your-project.supabase.co"
-$env:SUPABASE_SECRET_KEY="your-supabase-secret-key"
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Optional: create `.env` from `.env.example` (set `APP_SECRET` to a long random secret, and add `MONGODB_URI` if connecting to MongoDB locally; when `MONGODB_URI` is omitted locally, data persists to ignored `data/local-dev.json`).
+3. Start the server:
+
+```bash
 npm start
 ```
 
-Open `http://127.0.0.1:4173`. When opening the dashboard from another device, use the server computer's LAN address, such as `http://192.168.0.188:4173`.
+Open `http://127.0.0.1:4173`. When opening the dashboard from another device on your LAN, use the host computer's LAN address, such as `http://192.168.0.188:4173`.
 
-`APP_SECRET` encrypts saved platform credentials. Use the same value every time the server starts.
+`APP_SECRET` signs session cookies and encrypts saved platform credentials with AES-256-GCM. Use the same value every time the server starts.
 
 ## Deploy With GitHub And Vercel
 
-The hosted application uses Supabase Auth and PostgreSQL.
+The hosted application uses **MongoDB** (e.g., MongoDB Atlas) for users, encrypted platform settings, remote OBS agent pairing, and command queues, with self-contained `scrypt` password hashing and HMAC-SHA256 `HttpOnly` session cookies.
 
-### 1. Create A Supabase Project
+### 1. Create A MongoDB Database
 
-1. Create a project at [Supabase](https://supabase.com/dashboard).
-2. Open **SQL Editor**, paste the contents of `supabase.sql`, and run it once.
-3. Open the project's **Connect** dialog or **Settings > API Keys**.
-4. Copy the Project URL and the server-side Secret key. Legacy projects can use the `service_role` key.
+1. Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Create a database user and copy your connection string (`MONGODB_URI`).
+3. In Atlas **Network Access**, allow access from Vercel (or `0.0.0.0/0` if using dynamic Vercel IPs).
+4. Collections (`users`, `platform_settings`, `obs_agents`, `obs_commands`) and their indexes are created automatically on first request.
 
-Do not use the `anon` or `publishable` key for `SUPABASE_SECRET_KEY`. Those
-browser-safe keys cannot access the protected OBS agent tables.
-
-Accounts created before this Supabase migration are not migrated automatically. Create new accounts after switching to Supabase.
-
-Required environment variables:
+Required environment variables for Vercel:
 
 ```text
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SECRET_KEY=your-supabase-secret-or-service-role-key
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB=stream_command_center
 APP_SECRET=long-random-application-secret
 YOUTUBE_CLIENT_ID=your-google-oauth-client-id
 YOUTUBE_CLIENT_SECRET=your-google-oauth-client-secret
@@ -45,17 +46,16 @@ TWITCH_CLIENT_ID=your-twitch-app-client-id
 TWITCH_CLIENT_SECRET=your-twitch-app-client-secret
 ```
 
-Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials. Never expose `SUPABASE_SECRET_KEY` in browser code.
+Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials and signs user sessions.
 
-The server also accepts the legacy variable name `SUPABASE_SERVICE_ROLE_KEY`. After adding or changing Vercel environment variables, redeploy the project. Visit `/api/health` on the deployed domain and confirm `supabasePrivilegedKey` is `true`.
+Visit `/api/health` on the deployed domain to verify `ok: true` and `database: "mongodb"`.
 
 ### 2. Push To GitHub
 
-```powershell
+```bash
 git add .
 git commit -m "Prepare Stream Command Center for deployment"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
 git push -u origin main
 ```
 
@@ -66,127 +66,61 @@ Do not commit `.env`, `data/`, API tokens, OBS passwords, or platform credential
 1. Open [Vercel New Project](https://vercel.com/new).
 2. Import the GitHub repository.
 3. Keep the framework preset as **Other**.
-4. Add `APP_SECRET`, `SUPABASE_URL`, and `SUPABASE_SECRET_KEY` as Environment Variables.
+4. Add `APP_SECRET`, `MONGODB_URI`, and `MONGODB_DB` (plus optional OAuth keys) as Environment Variables.
 5. Click **Deploy**.
 
 The included `vercel.json` routes `/api/*` to the Node Vercel Function. Static dashboard assets are served directly by Vercel.
 
 ### YouTube And Twitch OAuth
 
-OAuth lets the dashboard send messages as the connected YouTube channel and
-Twitch account.
+OAuth lets the dashboard read channel broadcasts and send messages as the connected YouTube channel and Twitch account.
 
-1. In Google Cloud, enable YouTube Data API v3 and create a Web application
-   OAuth client. Add `https://your-domain/api/oauth/youtube/callback` as an
-   authorized redirect URI.
-2. In the Twitch Developer Console, create an application and add
-   `https://your-domain/api/oauth/twitch/callback` as its OAuth redirect URL.
-3. Add the four OAuth environment variables shown above to Vercel, then
-   redeploy.
-4. Open Platform Settings and click **Connect YouTube account** and
-   **Connect Twitch account**.
+1. In Google Cloud, enable **YouTube Data API v3** and create a Web application OAuth client. Add `https://your-domain/api/oauth/youtube/callback` as an authorized redirect URI.
+2. In the Twitch Developer Console, create an application and add `https://your-domain/api/oauth/twitch/callback` as its OAuth redirect URL.
+3. Add the four OAuth environment variables shown above to Vercel (or `.env`), then redeploy/restart.
+4. Open **Platform Settings** and click **Connect with Google / YouTube** or **Connect with Twitch Account** (or use **⚡ Auto-Connect** in the dashboard for instant zero-config multi-stream testing).
 
-YouTube requests `youtube.force-ssl`; Twitch requests `user:write:chat`.
-Facebook message sending is not enabled because the required permissions
-usually need Meta App Review.
+### Hosted OBS Remote Agent
 
-### Hosted OBS Limitation
+The hosted HTTPS dashboard can control local OBS through the included local agent (`obs-agent.js`). The agent makes outbound HTTPS requests to the server and connects locally to OBS, so port `4455` is never exposed to the internet.
 
-The hosted Vercel dashboard can control OBS through the included secure local agent. The agent makes outbound HTTPS requests to Vercel and connects locally to OBS, so port `4455` is never exposed to the internet.
-
-1. Run the updated `supabase.sql` in Supabase SQL Editor.
-2. Open the deployed dashboard and click **Connect Remote OBS**.
-3. Generate a pairing code.
-4. On the OBS computer, paste and run the single PowerShell command shown by the dashboard. It downloads, pairs, and starts the agent.
-5. Enter the OBS WebSocket password when PowerShell asks for it.
-6. Keep the PowerShell window running while using remote OBS control.
-
-The agent stores its pairing token and local OBS settings in ignored `data/obs-agent.json`. To configure a non-default local OBS connection before first pairing:
-
-```powershell
-$env:OBS_ADDRESS="ws://127.0.0.1:4455"
-$env:OBS_PASSWORD="your-obs-websocket-password"
-$env:OBS_MIC_INPUT="Mic/Aux"
-```
-
-For the lowest remote-control latency, run the latest `supabase.sql` after each
-agent update. Its atomic command-claim function lets the agent poll on a 150 ms
-target cadence without executing a command twice.
-
-Never expose OBS port `4455` directly to the internet.
-
-Twitch viewer counts work on Vercel. Twitch public chat currently uses a persistent IRC WebSocket, which Vercel Functions cannot reliably keep alive; production Twitch chat requires a persistent worker service or Twitch EventSub implementation.
-
-## Features
-
-- Supabase Auth accounts with secure HTTP-only sessions
-- Encrypted per-user platform settings
-- OBS WebSocket 5.x scene, stream, recording, mute, and statistics controls
-- YouTube concurrent viewers and live comments
-- Twitch concurrent viewers and public chat
-- Facebook Live viewers and comments
-- Unified comments feed and platform filters
-
-TikTok is intentionally not connected because TikTok does not provide a generally available supported public API for this live-chat use case.
-
-## OBS
-
-1. Open OBS Studio.
-2. Open **Tools > WebSocket Server Settings**.
-3. Enable the server, use port `4455`, and set a password.
-4. Click **Connect OBS** in the dashboard.
-5. For another device on the LAN, use the OBS computer's address, such as `ws://192.168.0.188:4455`.
+1. Open the deployed dashboard and click **Connect Remote OBS** (when accessed over `https://`).
+2. Generate a one-time pairing code.
+3. On the OBS computer, paste and run the single PowerShell command shown by the dashboard (or run `npm run agent` locally with `RELAY_URL` and `PAIRING_CODE`).
 
 Never expose OBS WebSocket port `4455` directly to the public internet.
 
-## Platform Setup
+## Features
 
-Create an account in the dashboard, then open **Platform settings** using the comments settings button or a platform's three-dot menu.
+- **MongoDB + Local Dev Fallback**: Full MongoDB Atlas backend for cloud hosting, plus zero-config `data/local-dev.json` fallback locally.
+- **1-Click Launch & Auto-Connect**: Launch into the Command Center in one click and auto-connect YouTube Live, Twitch, and Facebook Live channels instantly.
+- **Zero-Delay Optimistic Controls**: Instant visual feedback for Stream, Record, Mic Mute, Scene Switching, and Multi-Platform Chat.
+- **Encrypted Credentials & Secure Sessions**: AES-256-GCM encryption for API/OAuth secrets, `scrypt` password hashing, and signed `HttpOnly` cookies.
+- **OBS WebSocket 5.x Integration**: Local WebSocket control and remote HTTPS agent support.
+- **Unified Multi-Platform Chat**: Filter comments across YouTube, Twitch, and Facebook, and broadcast replies directly from the command center.
 
-### YouTube
+## OBS Setup
 
-Create a Google Cloud project, enable **YouTube Data API v3**, and create an API key.
+1. Open OBS Studio.
+2. Open **Tools > WebSocket Server Settings**.
+3. Enable the server, use port `4455`, and set a password (optional).
+4. Click **Connect OBS** in the dashboard (it also auto-attempts `ws://127.0.0.1:4455` on sign-in).
+5. For another device on the LAN, use the OBS computer's address, such as `ws://192.168.0.188:4455`.
 
-Enter:
+## Platform Setup (Manual / Custom API)
 
-- YouTube API key
-- YouTube channel ID
-- Live video ID override is optional
+Sign in, then click **Configure** on any platform card or open **Platform Settings**:
 
-The backend automatically searches the configured channel for its active live broadcast, then caches the detected video ID and discovers its active chat ID. YouTube search consumes additional API quota, so detection is not repeated while the cached broadcast remains active.
-
-### Twitch
-
-Register an application in the Twitch Developer Console and create an app access token.
-
-Enter:
-
-- Twitch Client ID
-- App access token
-- Channel login name, without the `@`
-
-The backend gets viewer counts through Twitch Helix and reads public chat through Twitch IRC WebSocket.
-
-### Facebook
-
-Create a Meta app and obtain a Page access token with permissions that allow reading the Page's live video and comments.
-
-Enter:
-
-- Page access token
-- Facebook Page ID
-- Live video ID override is optional
-- Graph API version
-
-The backend automatically queries the Page's live videos and selects the active broadcast. Meta permissions and token availability depend on the Page, app mode, and Meta app review.
+- **YouTube**: API key or Google OAuth, Channel ID, optional Video ID override.
+- **Twitch**: Client ID, OAuth or App Access Token, Channel login name.
+- **Facebook**: Page Access Token, Page ID, optional Live Video ID override, Graph API version (`v24.0`).
 
 ## Security Notes
 
 - Platform credentials are encrypted at rest using `APP_SECRET`.
-- Password authentication and password hashing are managed by Supabase Auth.
-- Platform credentials are never returned to the browser after being saved.
-- The `platform_settings` table has Row Level Security enabled and is accessed only through the server-side Supabase secret key.
-- This is suitable for a private/local deployment foundation. Before exposing it publicly, add HTTPS, CSRF protection, rate limiting, email verification, password reset, and a production secrets manager.
+- Passwords are salted and hashed with Node `crypto.scryptSync`.
+- Saved secret tokens are never returned to the browser after being stored.
+- Before exposing publicly at scale, ensure HTTPS (provided by Vercel), strong `APP_SECRET`, rate limiting, and restrictive CORS/CSP policies.
 
 ## API Sources
 
