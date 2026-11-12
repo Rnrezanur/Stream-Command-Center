@@ -686,9 +686,14 @@ async function handleApi(req, res, url) {
       "relay_refresh=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"
     ] });
   }
+  if (req.method === "GET" && url.pathname === "/api/me") {
+    const auth = cookies(req);
+    const current = auth.relay_access ? verifySession(auth.relay_access) : null;
+    if (current) res.setHeader("set-cookie", existingSessionCookies(auth));
+    return json(res, 200, { user: current || null });
+  }
   const user = await requireUser(req, res);
   if (!user) return;
-  if (req.method === "GET" && url.pathname === "/api/me") return json(res, 200, { user });
   const oauthStart = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/start$/);
   if (req.method === "GET" && oauthStart) {
     const platform = oauthStart[1];

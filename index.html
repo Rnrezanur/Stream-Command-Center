@@ -623,8 +623,13 @@
     <!-- ACCOUNT MODAL -->
     <div class="modal-backdrop" id="accountModal" aria-hidden="true">
       <form class="modal account-modal" id="accountForm">
-        <p class="eyebrow">Relay Account</p>
-        <h2 id="accountTitle">Account Profile</h2>
+        <div class="modal-header-row">
+          <div>
+            <p class="eyebrow">Relay Account</p>
+            <h2 id="accountTitle">Account Profile</h2>
+          </div>
+          <button type="button" id="cancelAccount" class="icon-button modal-close-btn" aria-label="Close account dialog" title="Close">&times;</button>
+        </div>
         <label class="field-label register-only">
           <span>Display name</span>
           <input id="accountName" type="text" autocomplete="name">

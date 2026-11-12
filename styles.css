@@ -593,6 +593,7 @@ svg {
 /* MAIN CONTENT CONTAINER */
 .main-content {
   flex: 1;
+  min-width: 0;
   margin-left: 76px;
   display: flex;
   flex-direction: column;
@@ -815,6 +816,7 @@ svg {
 }
 
 .workspace {
+  min-width: 0;
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -2100,12 +2102,60 @@ kbd {
   transform: translateX(-50%) translateY(0);
 }
 
+.modal-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-close-btn {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.modal-close-btn:hover {
+  color: #fff;
+}
+
 /* ========================================================
    RESPONSIVE DESIGN
    ======================================================== */
 @media (max-width: 1200px) {
+  .topbar {
+    height: auto;
+    min-height: 76px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+  }
+  .broadcast-status {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .telemetry-group {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-actions {
+    flex-wrap: wrap;
+  }
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  .workspace {
+    border-right: none;
+  }
+  .control-buttons {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .scene-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
   .chat-panel {
     height: 500px;
@@ -2133,6 +2183,55 @@ kbd {
   }
   .auth-features-grid {
     margin: 0 auto;
+  }
+  .sidebar {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 60px;
+    flex-direction: row;
+    padding: 0 16px;
+    border-right: none;
+    border-top: 1px solid var(--line);
+  }
+  .nav-list {
+    flex-direction: row;
+    margin-top: 0;
+    margin-left: 12px;
+    gap: 12px;
+  }
+  .sidebar .nav-item {
+    width: auto;
+    height: 42px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .nav-item.active::before {
+    display: none;
+  }
+  .profile {
+    margin-top: 0;
+    margin-left: auto;
+  }
+  .main-content {
+    margin-left: 0;
+    padding-bottom: 72px;
+  }
+  .topbar {
+    padding: 12px 16px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .workspace {
+    padding: 16px;
+  }
+  .platforms-header-controls,
+  .health-meta-row {
+    flex-wrap: wrap;
+  }
+  .stats-row {
+    grid-template-columns: 1fr;
   }
   .control-buttons {
     grid-template-columns: 1fr;

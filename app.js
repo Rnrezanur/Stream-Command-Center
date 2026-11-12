@@ -437,7 +437,8 @@ function setSignedInUser(user) {
 async function loadCurrentUser() {
   try {
     const { user } = await api("/api/me");
-    setSignedInUser(user);
+    setSignedInUser(user || null);
+    if (!user) return;
     await refreshDashboard();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
@@ -716,12 +717,18 @@ function populatePlatformForm(settings) {
   }
 }
 
+function setModalOpen(modal, isOpen) {
+  if (!modal) return;
+  modal.classList.toggle("open", isOpen);
+  modal.setAttribute("aria-hidden", String(!isOpen));
+}
+
 async function openPlatformSettings(platform = "youtube") {
   if (!signedInUser) return openAccountModal();
   selectSettingsTab(platform);
   $("#platformError").textContent = "";
   if ($("#facebookTestStatus")) $("#facebookTestStatus").textContent = "Save before testing.";
-  platformModal.classList.add("open");
+  setModalOpen(platformModal, true);
   try {
     const { settings } = await api("/api/settings");
     populatePlatformForm(settings || {});
@@ -739,8 +746,8 @@ $("#connectPlatformsButton")?.addEventListener("click", () => openPlatformSettin
 $("#platformSettingsButton")?.addEventListener("click", () => openPlatformSettings());
 $("#sidebarPlatformsBtn")?.addEventListener("click", () => openPlatformSettings());
 $("#sidebarSettingsBtn")?.addEventListener("click", () => openPlatformSettings());
-$("#cancelPlatformSettings")?.addEventListener("click", () => platformModal.classList.remove("open"));
-platformModal?.addEventListener("click", (e) => { if (e.target === platformModal) platformModal.classList.remove("open"); });
+$("#cancelPlatformSettings")?.addEventListener("click", () => setModalOpen(platformModal, false));
+platformModal?.addEventListener("click", (e) => { if (e.target === platformModal) setModalOpen(platformModal, false); });
 
 $(".settings-tabs")?.addEventListener("click", (e) => {
   const b = e.target.closest("[data-settings-tab]");
@@ -763,7 +770,7 @@ $("#platformForm")?.addEventListener("submit", async (e) => {
   }
   try {
     await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
-    platformModal.classList.remove("open");
+    setModalOpen(platformModal, false);
     showToast("✓ Platform settings saved securely");
     await refreshDashboard();
   } catch (error) {
@@ -784,16 +791,16 @@ $("#testFacebookConnection")?.addEventListener("click", async () => {
 
 // STOP STREAM CONFIRMATION MODAL
 const stopModal = $("#stopModal");
-$("#cancelStop")?.addEventListener("click", () => stopModal?.classList.remove("open"));
+$("#cancelStop")?.addEventListener("click", () => setModalOpen(stopModal, false));
 $("#confirmStop")?.addEventListener("click", () => {
-  stopModal?.classList.remove("open");
+  setModalOpen(stopModal, false);
   updateStream(false);
   showToast("Stream stopped");
   if (obs?.socket?.readyState === WebSocket.OPEN || location.protocol === "https:") {
     callOBS("StopStream").catch(() => {});
   }
 });
-stopModal?.addEventListener("click", (e) => { if (e.target === stopModal) stopModal.classList.remove("open"); });
+stopModal?.addEventListener("click", (e) => { if (e.target === stopModal) setModalOpen(stopModal, false); });
 
 // REMOTE OBS MODAL (HOSTED HTTPS)
 const remoteObsModal = $("#remoteObsModal");
@@ -815,8 +822,8 @@ async function refreshRemoteOBS() {
   } catch (_) {}
 }
 
-$("#cancelRemoteObs")?.addEventListener("click", () => remoteObsModal?.classList.remove("open"));
-remoteObsModal?.addEventListener("click", (e) => { if (e.target === remoteObsModal) remoteObsModal.classList.remove("open"); });
+$("#cancelRemoteObs")?.addEventListener("click", () => setModalOpen(remoteObsModal, false));
+remoteObsModal?.addEventListener("click", (e) => { if (e.target === remoteObsModal) setModalOpen(remoteObsModal, false); });
 
 $("#generatePairingCode")?.addEventListener("click", async () => {
   const errEl = $("#remoteObsError");
@@ -851,7 +858,7 @@ const connectionModal = $("#connectionModal");
 $("#connectionButton")?.addEventListener("click", () => {
   if (location.protocol === "https:") {
     if (!signedInUser) return openAccountModal();
-    remoteObsModal?.classList.add("open");
+    setModalOpen(remoteObsModal, true);
     return;
   }
   if (obs?.socket?.readyState === WebSocket.OPEN) {
@@ -861,10 +868,10 @@ $("#connectionButton")?.addEventListener("click", () => {
     showToast("OBS disconnected");
     return;
   }
-  connectionModal.classList.add("open");
+  setModalOpen(connectionModal, true);
 });
-$("#cancelConnection")?.addEventListener("click", () => connectionModal.classList.remove("open"));
-connectionModal?.addEventListener("click", (e) => { if (e.target === connectionModal) connectionModal.classList.remove("open"); });
+$("#cancelConnection")?.addEventListener("click", () => setModalOpen(connectionModal, false));
+connectionModal?.addEventListener("click", (e) => { if (e.target === connectionModal) setModalOpen(connectionModal, false); });
 
 $("#connectionForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -887,7 +894,7 @@ $("#connectionForm")?.addEventListener("submit", async (e) => {
     localStorage.setItem("obsAddress", address);
     localStorage.setItem("obsMicInput", micInputName);
     setConnectionState("connected");
-    connectionModal.classList.remove("open");
+    setModalOpen(connectionModal, false);
     statsTimer = setInterval(updateStats, 2000);
     showToast("✓ Connected to OBS Studio");
   } catch (error) {
@@ -922,12 +929,13 @@ function syncAccountModalMode() {
 
 function openAccountModal() {
   $("#accountError").textContent = "";
-  accountModal.classList.add("open");
+  setModalOpen(accountModal, true);
   syncAccountModalMode();
 }
 
 $("#accountButton")?.addEventListener("click", openAccountModal);
 $("#headerAccountButton")?.addEventListener("click", openAccountModal);
+$("#cancelAccount")?.addEventListener("click", () => setModalOpen(accountModal, false));
 $("#accountMode")?.addEventListener("click", () => {
   accountModalRegistering = !accountModalRegistering;
   $("#accountError").textContent = "";
@@ -948,7 +956,7 @@ $("#accountForm")?.addEventListener("submit", async (e) => {
       })
     });
     setSignedInUser(result.user);
-    accountModal.classList.remove("open");
+    setModalOpen(accountModal, false);
     await refreshDashboard();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
@@ -964,15 +972,15 @@ $("#logoutButton")?.addEventListener("click", async () => {
   clearInterval(dashboardTimer);
   clearInterval(remoteObsTimer);
   setSignedInUser(null);
-  accountModal.classList.remove("open");
+  setModalOpen(accountModal, false);
   showToast("Signed out");
 });
-accountModal?.addEventListener("click", (e) => { if (e.target === accountModal) accountModal.classList.remove("open"); });
+accountModal?.addEventListener("click", (e) => { if (e.target === accountModal) setModalOpen(accountModal, false); });
 
 // KEYBOARD SHORTCUTS
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    $$(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
+    $$(".modal-backdrop.open").forEach((m) => setModalOpen(m, false));
     return;
   }
   if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
