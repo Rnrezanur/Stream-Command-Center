@@ -1188,7 +1188,7 @@ async function handleApi(req, res, url) {
         client_id: fbAppId,
         redirect_uri: `${origin}${callbackPath}`,
         response_type: "code",
-        scope: "pages_show_list,pages_read_engagement,pages_manage_posts,public_profile",
+        scope: "public_profile,email",
         state
       });
       return redirect(res, `https://www.facebook.com/v24.0/dialog/oauth?${params}`);
@@ -1272,15 +1272,31 @@ async function handleApi(req, res, url) {
         settings.twitch.accountName = users.data?.[0]?.display_name || "Twitch";
         settings.twitch.avatar = users.data?.[0]?.profile_image_url || null;
       } else if (platform === "facebook") {
-        const pagesRes = await apiFetch(`https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,picture&access_token=${encodeURIComponent(token.access_token)}`);
-        const firstPage = pagesRes.data?.[0];
+        let me = null;
+        try {
+          me = await apiFetch(`https://graph.facebook.com/v24.0/me?fields=id,name,picture&access_token=${encodeURIComponent(token.access_token)}`);
+        } catch (_) {}
+
+        let firstPage = null;
+        try {
+          const pagesRes = await apiFetch(`https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,picture&access_token=${encodeURIComponent(token.access_token)}`);
+          firstPage = pagesRes.data?.[0];
+        } catch (_) {}
+
         if (firstPage) {
           settings.facebook.pageId = firstPage.id;
           settings.facebook.page = firstPage.name;
           settings.facebook.pageName = firstPage.name;
           settings.facebook.pageAccessToken = firstPage.access_token;
           settings.facebook.accountName = firstPage.name;
-          settings.facebook.avatar = firstPage.picture?.data?.url || null;
+          settings.facebook.avatar = firstPage.picture?.data?.url || (me?.picture?.data?.url || null);
+        } else if (me) {
+          settings.facebook.userId = me.id;
+          settings.facebook.pageId = me.id;
+          settings.facebook.page = me.name;
+          settings.facebook.pageName = me.name;
+          settings.facebook.accountName = me.name;
+          settings.facebook.avatar = me.picture?.data?.url || null;
         }
       }
 

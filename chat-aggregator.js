@@ -406,8 +406,8 @@ class ChatAggregatorEngine {
       chatroomId = channelSlug;
     }
 
-    // Connect to Kick's Pusher cluster (us2) with official public app key
-    const pusherAppKey = "eb1d5f283081a78b932c";
+    // Connect to Kick's Pusher cluster (us2) with verified public app key
+    const pusherAppKey = process.env.KICK_PUSHER_KEY || "34bf7a0ff419a2a775b9";
     const pusherWsUrl = `wss://ws-us2.pusher.com/app/${pusherAppKey}?protocol=7&client=js&version=8.4.0&flash=false`;
 
     let ws = null;
