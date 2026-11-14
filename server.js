@@ -1,5 +1,12 @@
 if (typeof process.loadEnvFile === "function") {
-  try { process.loadEnvFile(); } catch (_) {}
+  try {
+    const envPath = require("node:path").join(__dirname, ".env");
+    if (require("node:fs").existsSync(envPath)) {
+      process.loadEnvFile(envPath);
+    } else {
+      process.loadEnvFile();
+    }
+  } catch (_) {}
 }
 
 const http = require("node:http");
@@ -1148,7 +1155,11 @@ async function handleApi(req, res, url) {
 
     if (platform === "youtube") {
       if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) {
-        return redirect(res, `/?oauth=youtube&error=${encodeURIComponent("YouTube OAuth is not configured. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env")}`);
+        const isVercel = Boolean(process.env.VERCEL);
+        const msg = isVercel
+          ? "YouTube OAuth is not configured on Vercel. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in Vercel Project Settings > Environment Variables."
+          : "YouTube OAuth is not configured. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env";
+        return redirect(res, `/?oauth=youtube&error=${encodeURIComponent(msg)}`);
       }
       const params = new URLSearchParams({
         client_id: process.env.YOUTUBE_CLIENT_ID,
@@ -1182,7 +1193,11 @@ async function handleApi(req, res, url) {
       const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
       const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
       if (!fbAppId || !fbSecret) {
-        return redirect(res, `/?oauth=facebook&error=${encodeURIComponent("Facebook OAuth is not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env")}`);
+        const isVercel = Boolean(process.env.VERCEL);
+        const msg = isVercel
+          ? "Facebook OAuth is not configured on Vercel. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in Vercel Project Settings > Environment Variables."
+          : "Facebook OAuth is not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env";
+        return redirect(res, `/?oauth=facebook&error=${encodeURIComponent(msg)}`);
       }
       const params = new URLSearchParams({
         client_id: fbAppId,
