@@ -562,41 +562,50 @@ a {
   gap: 8px;
 }
 
+.plat-account.muted {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .plat-actions button {
-  flex: 1;
-  padding: 7px 10px;
+  width: 100%;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
   border: 1px solid var(--border);
+  cursor: pointer;
   transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .btn-plat-toggle {
-  background: var(--bg-subtle);
-  color: var(--text);
+  background: var(--card-elevated);
+  color: #fff;
+  border-color: var(--border);
 }
 
 .btn-plat-toggle:hover {
-  background: var(--card-hover);
-  border-color: var(--border-hover);
-}
-
-.btn-plat-toggle.active {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--accent);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.btn-plat-cfg {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.btn-plat-cfg:hover {
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
-  border-color: var(--border-hover);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.btn-plat-toggle.connected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-plat-toggle.connected:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
 }
 
 /* Stream Broadcast Info Box */

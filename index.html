@@ -185,7 +185,7 @@
               <div class="plat-icon youtube">▶</div>
               <div>
                 <div class="plat-name">YouTube Live</div>
-                <div class="plat-account" id="platHandle_youtube">YouTube Live</div>
+                <div class="plat-account muted" id="platHandle_youtube">Not Connected</div>
               </div>
             </div>
             <span class="status-badge disconnected" id="platBadge_youtube">○ Disconnected</span>
@@ -195,41 +195,18 @@
             <span class="plat-stat-val" id="platViewers_youtube">0</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="youtube">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="youtube">Configure</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="youtube">Connect with YouTube (OAuth 2.0)</button>
           </div>
         </div>
 
-        <!-- 2. Twitch -->
-        <div class="platform-card" data-platform="twitch">
-          <div class="plat-top">
-            <div class="plat-info">
-              <div class="plat-icon twitch">👾</div>
-              <div>
-                <div class="plat-name">Twitch</div>
-                <div class="plat-account" id="platHandle_twitch">rezanur_live</div>
-              </div>
-            </div>
-            <span class="status-badge disconnected" id="platBadge_twitch">○ Disconnected</span>
-          </div>
-          <div class="plat-stats-row">
-            <span class="plat-stat-label">Live Viewers</span>
-            <span class="plat-stat-val" id="platViewers_twitch">0</span>
-          </div>
-          <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="twitch">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="twitch">Configure</button>
-          </div>
-        </div>
-
-        <!-- 3. Facebook Live -->
+        <!-- 2. Facebook Live -->
         <div class="platform-card" data-platform="facebook">
           <div class="plat-top">
             <div class="plat-info">
               <div class="plat-icon facebook">f</div>
               <div>
                 <div class="plat-name">Facebook Live</div>
-                <div class="plat-account" id="platHandle_facebook">Rezanur Gaming</div>
+                <div class="plat-account muted" id="platHandle_facebook">Not Connected</div>
               </div>
             </div>
             <span class="status-badge disconnected" id="platBadge_facebook">○ Disconnected</span>
@@ -239,19 +216,60 @@
             <span class="plat-stat-val" id="platViewers_facebook">0</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="facebook">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="facebook">Configure</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="facebook">Connect with Facebook (OAuth 2.0)</button>
           </div>
         </div>
 
-        <!-- 4. TikTok -->
+        <!-- 3. Kick Live -->
+        <div class="platform-card" data-platform="kick">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon kick" style="background:#53fc18; color:#000; font-weight:800;">K</div>
+              <div>
+                <div class="plat-name">Kick</div>
+                <div class="plat-account muted" id="platHandle_kick">Not Connected</div>
+              </div>
+            </div>
+            <span class="status-badge disconnected" id="platBadge_kick">○ Disconnected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Live Viewers</span>
+            <span class="plat-stat-val" id="platViewers_kick">0</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="kick">Connect Kick Live Chat</button>
+          </div>
+        </div>
+
+        <!-- 4. Twitch -->
+        <div class="platform-card" data-platform="twitch">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon twitch">👾</div>
+              <div>
+                <div class="plat-name">Twitch</div>
+                <div class="plat-account muted" id="platHandle_twitch">Not Connected</div>
+              </div>
+            </div>
+            <span class="status-badge disconnected" id="platBadge_twitch">○ Disconnected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Live Viewers</span>
+            <span class="plat-stat-val" id="platViewers_twitch">0</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="twitch">Connect with Twitch (OAuth 2.0)</button>
+          </div>
+        </div>
+
+        <!-- 5. TikTok -->
         <div class="platform-card" data-platform="tiktok">
           <div class="plat-top">
             <div class="plat-info">
               <div class="plat-icon tiktok">♪</div>
               <div>
                 <div class="plat-name">TikTok</div>
-                <div class="plat-account" id="platHandle_tiktok">@rezanur_live</div>
+                <div class="plat-account muted" id="platHandle_tiktok">Not Connected</div>
               </div>
             </div>
             <span class="status-badge disconnected" id="platBadge_tiktok">○ Disconnected</span>
@@ -261,19 +279,18 @@
             <span class="plat-stat-val" id="platViewers_tiktok">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="tiktok">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="tiktok">Configure</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="tiktok">Connect TikTok Handle</button>
           </div>
         </div>
 
-        <!-- 5. Instagram -->
+        <!-- 6. Instagram -->
         <div class="platform-card" data-platform="instagram">
           <div class="plat-top">
             <div class="plat-info">
               <div class="plat-icon instagram">📸</div>
               <div>
                 <div class="plat-name">Instagram</div>
-                <div class="plat-account" id="platHandle_instagram">@rezanur.studio</div>
+                <div class="plat-account muted" id="platHandle_instagram">Not Connected</div>
               </div>
             </div>
             <span class="status-badge disconnected" id="platBadge_instagram">○ Disconnected</span>
@@ -283,19 +300,18 @@
             <span class="plat-stat-val" id="platViewers_instagram">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="instagram">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="instagram">Configure</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="instagram">Connect Instagram Handle</button>
           </div>
         </div>
 
-        <!-- 6. X (Twitter) -->
+        <!-- 7. X (Twitter) -->
         <div class="platform-card" data-platform="x">
           <div class="plat-top">
             <div class="plat-info">
               <div class="plat-icon x">𝕏</div>
               <div>
                 <div class="plat-name">X (Twitter)</div>
-                <div class="plat-account" id="platHandle_x">@rezanur_live</div>
+                <div class="plat-account muted" id="platHandle_x">Not Connected</div>
               </div>
             </div>
             <span class="status-badge disconnected" id="platBadge_x">○ Disconnected</span>
@@ -305,8 +321,7 @@
             <span class="plat-stat-val" id="platViewers_x">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="x">Connect</button>
-            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="x">Configure</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="x">Connect X (Twitter) Handle</button>
           </div>
         </div>
       </div>

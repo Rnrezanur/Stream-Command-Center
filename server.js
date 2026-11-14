@@ -242,13 +242,13 @@ async function requireUser(req, res) {
 
 function applyDefaultSettings(settings) {
   const defaults = {
-    youtube: { autoConnected: false, channel: "Rezanur Live", accountName: "Rezanur Live" },
-    twitch: { autoConnected: false, channel: "rezanur_live", accountName: "Rezanur" },
-    facebook: { autoConnected: false, page: "Rezanur Gaming", pageName: "Rezanur Gaming" },
-    tiktok: { autoConnected: false, handle: "@rezanur_live", accountName: "TikTok Creator" },
-    instagram: { autoConnected: false, handle: "@rezanur.studio", accountName: "Instagram Reels" },
-    x: { autoConnected: false, handle: "@rezanur_live", accountName: "X Video" },
-    kick: { autoConnected: false, channel: "streamer", accountName: "Kick Channel", handle: "@streamer" }
+    youtube: { autoConnected: false, channel: "", accountName: "", avatar: null },
+    twitch: { autoConnected: false, channel: "", accountName: "", avatar: null },
+    facebook: { autoConnected: false, page: "", pageName: "", accountName: "", avatar: null },
+    tiktok: { autoConnected: false, handle: "", accountName: "", avatar: null },
+    instagram: { autoConnected: false, handle: "", accountName: "", avatar: null },
+    x: { autoConnected: false, handle: "", accountName: "", avatar: null },
+    kick: { autoConnected: false, channel: "", accountName: "", handle: "", avatar: null }
   };
   const result = structuredClone(settings || {});
   for (const [platform, def] of Object.entries(defaults)) {
@@ -457,15 +457,18 @@ function getUserAlertsState(userId) {
 }
 
 async function getYouTube(settings) {
-  const connected = Boolean(settings.autoConnected);
-  if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) {
+  const hasAuth = Boolean(settings.accessToken || settings.refreshToken);
+  const connected = Boolean(settings.autoConnected && hasAuth);
+  if (!connected) {
     return {
-      connected,
+      connected: false,
       viewers: 0,
       comments: [],
-      status: connected ? "Connected - Ready to stream" : "Disconnected",
-      channel: settings.channel || "YouTube Live",
-      oauth: Boolean(settings.refreshToken)
+      status: "Disconnected",
+      channel: null,
+      accountName: null,
+      avatar: null,
+      oauth: false
     };
   }
   let live;
@@ -473,11 +476,13 @@ async function getYouTube(settings) {
     live = await getYouTubeLiveChatId(settings);
   } catch (error) {
     return {
-      connected,
+      connected: true,
       viewers: 0,
       comments: [],
-      status: connected ? "Connected - Ready to stream" : "Disconnected",
-      channel: settings.channel || settings.channelId || "YouTube Live",
+      status: "Connected - Ready to stream",
+      channel: settings.accountName || settings.channel || "YouTube Channel",
+      accountName: settings.accountName || settings.channel || "YouTube Channel",
+      avatar: settings.avatar || null,
       oauth: Boolean(settings.refreshToken)
     };
   }
@@ -508,27 +513,32 @@ async function getYouTube(settings) {
   }
   const viewers = Number(details.concurrentViewers || 0);
   return {
-    connected,
+    connected: true,
     viewers,
     comments,
     broadcastId: live.videoId,
-    channel: settings.channel || "YouTube Live",
-    status: viewers > 0 ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
+    channel: settings.accountName || settings.channel || "YouTube Channel",
+    accountName: settings.accountName || settings.channel || "YouTube Channel",
+    avatar: settings.avatar || null,
+    status: viewers > 0 ? "Live Broadcasting" : "Connected - Ready to stream",
     oauth: Boolean(settings.refreshToken)
   };
 }
 
 async function getTwitch(settings, userId) {
-  const connected = Boolean(settings.autoConnected);
+  const hasAuth = Boolean(settings.accessToken || settings.refreshToken);
+  const connected = Boolean(settings.autoConnected && hasAuth && settings.channel);
   const clientId = settings.clientId || process.env.TWITCH_CLIENT_ID;
-  if (!clientId || !settings.accessToken || !settings.channel) {
+  if (!connected || !clientId) {
     return {
-      connected,
+      connected: false,
       viewers: 0,
       comments: [],
-      status: connected ? "Connected - Ready to stream" : "Disconnected",
-      channel: settings.channel || "rezanur_live",
-      oauth: Boolean(settings.refreshToken)
+      status: "Disconnected",
+      channel: null,
+      accountName: null,
+      avatar: null,
+      oauth: false
     };
   }
   let viewers = 0;
@@ -545,11 +555,13 @@ async function getTwitch(settings, userId) {
   const comments = (twitchChats.get(userId)?.messages || []).slice(-100);
 
   return {
-    connected,
+    connected: true,
     viewers,
     comments,
-    channel: settings.channel,
-    status: isLive ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
+    channel: settings.accountName || settings.channel,
+    accountName: settings.accountName || settings.channel,
+    avatar: settings.avatar || null,
+    status: isLive ? "Live Broadcasting" : "Connected - Ready to stream",
     oauth: Boolean(settings.refreshToken)
   };
 }
@@ -579,15 +591,18 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
-  const connected = Boolean(settings.autoConnected);
-  if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) {
+  const hasAuth = Boolean(settings.accessToken || settings.pageAccessToken);
+  const connected = Boolean(settings.autoConnected && hasAuth);
+  if (!connected) {
     return {
-      connected,
+      connected: false,
       viewers: 0,
       comments: [],
-      status: connected ? "Connected - Ready to stream" : "Disconnected",
-      page: settings.page || "Rezanur Gaming",
-      oauth: Boolean(settings.accessToken)
+      status: "Disconnected",
+      page: null,
+      accountName: null,
+      avatar: null,
+      oauth: false
     };
   }
   const version = settings.graphVersion || "v24.0";
@@ -602,14 +617,18 @@ async function getFacebook(settings) {
     } catch (_) {}
   }
 
+  const fbName = settings.pageName || settings.page || settings.accountName || "Facebook Page";
+
   if (!liveVideoId) {
     return {
-      connected,
+      connected: true,
       viewers: 0,
       comments: [],
-      status: connected ? "Connected - Ready to stream" : "Disconnected",
-      page: settings.page || "Facebook Page",
-      oauth: Boolean(settings.accessToken)
+      status: "Connected - Ready to stream",
+      page: fbName,
+      accountName: fbName,
+      avatar: settings.avatar || null,
+      oauth: true
     };
   }
 
@@ -637,60 +656,66 @@ async function getFacebook(settings) {
   } catch (_) {}
 
   return {
-    connected,
+    connected: true,
     viewers,
     comments,
     broadcastId: liveVideoId,
-    page: settings.page || "Facebook Page",
-    status: viewers > 0 ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
-    oauth: Boolean(settings.accessToken)
+    page: fbName,
+    accountName: fbName,
+    avatar: settings.avatar || null,
+    status: viewers > 0 ? "Live Broadcasting" : "Connected - Ready to stream",
+    oauth: true
   };
 }
 
 function getTikTok(settings) {
-  const connected = Boolean(settings.autoConnected);
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.channel));
   return {
     connected,
     viewers: 0,
-    handle: settings.handle || "@rezanur_live",
-    accountName: settings.accountName || "TikTok Creator",
+    handle: connected ? settings.handle : null,
+    accountName: connected ? (settings.accountName || settings.handle) : null,
+    avatar: connected ? (settings.avatar || null) : null,
     status: connected ? "Connected - Video Syndication Active" : "Disconnected",
     eligibleForSyndication: true
   };
 }
 
 function getInstagram(settings) {
-  const connected = Boolean(settings.autoConnected);
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accessToken));
   return {
     connected,
     viewers: 0,
-    handle: settings.handle || "@rezanur.studio",
-    accountName: settings.accountName || "Instagram Reels",
+    handle: connected ? settings.handle : null,
+    accountName: connected ? (settings.accountName || settings.handle) : null,
+    avatar: connected ? (settings.avatar || null) : null,
     status: connected ? "Connected - Reels Syndication Active" : "Disconnected",
     eligibleForSyndication: true
   };
 }
 
 function getX(settings) {
-  const connected = Boolean(settings.autoConnected);
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accessToken));
   return {
     connected,
     viewers: 0,
-    handle: settings.handle || "@rezanur_live",
-    accountName: settings.accountName || "X Video",
+    handle: connected ? settings.handle : null,
+    accountName: connected ? (settings.accountName || settings.handle) : null,
+    avatar: connected ? (settings.avatar || null) : null,
     status: connected ? "Connected - X Broadcast Active" : "Disconnected",
     eligibleForSyndication: true
   };
 }
 
 function getKick(settings) {
-  const connected = Boolean(settings.autoConnected);
+  const connected = Boolean(settings.autoConnected && settings.channel);
   return {
     connected,
     viewers: 0,
-    channel: settings.channel || "streamer",
-    handle: settings.handle || (settings.channel ? `@${settings.channel}` : "@streamer"),
-    accountName: settings.accountName || settings.channel || "Kick Channel",
+    channel: connected ? settings.channel : null,
+    handle: connected ? (settings.handle || `@${settings.channel}`) : null,
+    accountName: connected ? (settings.accountName || settings.channel) : null,
+    avatar: connected ? (settings.avatar || null) : null,
     status: connected ? "Connected - Pusher Live Chat Active" : "Disconnected",
     eligibleForSyndication: true
   };
@@ -1439,48 +1464,24 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const target = body.platform || "all";
     const settings = await getSettings(user.id);
-    if (target === "all" || target === "youtube") {
-      settings.youtube = settings.youtube || {};
-      settings.youtube.autoConnected = true;
-      settings.youtube.channel = settings.youtube.channel || "Rezanur Live";
-      settings.youtube.accountName = settings.youtube.accountName || "Rezanur Live";
-    }
-    if (target === "all" || target === "twitch") {
-      settings.twitch = settings.twitch || {};
-      settings.twitch.autoConnected = true;
-      settings.twitch.channel = settings.twitch.channel || "rezanur_live";
-      settings.twitch.accountName = settings.twitch.accountName || "Rezanur";
-    }
-    if (target === "all" || target === "facebook") {
-      settings.facebook = settings.facebook || {};
-      settings.facebook.autoConnected = true;
-      settings.facebook.page = settings.facebook.page || "Rezanur Gaming";
-      settings.facebook.pageName = settings.facebook.pageName || "Rezanur Gaming";
-    }
-    if (target === "all" || target === "tiktok") {
-      settings.tiktok = settings.tiktok || {};
-      settings.tiktok.autoConnected = true;
-      settings.tiktok.handle = settings.tiktok.handle || "@rezanur_live";
-      settings.tiktok.accountName = settings.tiktok.accountName || "TikTok Creator";
-    }
-    if (target === "all" || target === "instagram") {
-      settings.instagram = settings.instagram || {};
-      settings.instagram.autoConnected = true;
-      settings.instagram.handle = settings.instagram.handle || "@rezanur.studio";
-      settings.instagram.accountName = settings.instagram.accountName || "Instagram Reels";
-    }
-    if (target === "all" || target === "x") {
-      settings.x = settings.x || {};
-      settings.x.autoConnected = true;
-      settings.x.handle = settings.x.handle || "@rezanur_live";
-      settings.x.accountName = settings.x.accountName || "X Video";
-    }
-    if (target === "all" || target === "kick") {
-      settings.kick = settings.kick || {};
-      settings.kick.autoConnected = true;
-      settings.kick.channel = settings.kick.channel || "streamer";
-      settings.kick.handle = settings.kick.handle || `@${settings.kick.channel}`;
-      settings.kick.accountName = settings.kick.accountName || settings.kick.channel;
+    const canConnect = (p) => {
+      if (p === "youtube" || p === "twitch") return Boolean(settings[p]?.accessToken || settings[p]?.refreshToken);
+      if (p === "facebook") return Boolean(settings[p]?.accessToken || settings[p]?.pageAccessToken);
+      if (p === "kick") return Boolean(settings[p]?.channel);
+      return Boolean(settings[p]?.handle || settings[p]?.accessToken);
+    };
+    if (target === "all") {
+      let any = false;
+      for (const p of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
+        if (canConnect(p)) { settings[p].autoConnected = true; any = true; }
+      }
+      if (!any) {
+        return json(res, 400, { error: "No accounts authorized yet. Click Connect on each platform to link your accounts." });
+      }
+    } else if (canConnect(target)) {
+      settings[target].autoConnected = true;
+    } else {
+      return json(res, 400, { error: `Account authorization required for ${target}. Please click Connect to link your account.` });
     }
     await saveSettings(user.id, settings);
     chatAggregator.syncUserPlatforms(user.id, settings);
@@ -1490,12 +1491,21 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const target = body.platform || "all";
     const settings = await getSettings(user.id);
-    if (target === "all") {
-      for (const p of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
-        if (settings[p]) settings[p].autoConnected = false;
+    const targets = target === "all" ? ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"] : [target];
+    for (const p of targets) {
+      if (settings[p]) {
+        settings[p].autoConnected = false;
+        settings[p].accessToken = "";
+        settings[p].refreshToken = "";
+        settings[p].pageAccessToken = "";
+        settings[p].channel = "";
+        settings[p].accountName = "";
+        settings[p].page = "";
+        settings[p].pageName = "";
+        settings[p].handle = "";
+        settings[p].avatar = null;
       }
-    } else if (settings[target]) {
-      settings[target].autoConnected = false;
+      chatAggregator.stopWorker(user.id, p);
     }
     await saveSettings(user.id, settings);
     chatAggregator.syncUserPlatforms(user.id, settings);

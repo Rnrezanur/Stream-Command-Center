@@ -283,7 +283,7 @@ async function refreshDashboard() {
 
 function renderDashboard(data) {
   const platforms = data.platforms || {};
-  const platformKeys = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+  const platformKeys = ["youtube", "facebook", "kick", "twitch", "tiktok", "instagram", "x"];
 
   // 1. Total Audience & Connected Count
   const totalAudience = Number(data.totalViewers || 0);
@@ -292,63 +292,86 @@ function renderDashboard(data) {
 
   const connectedList = platformKeys.filter((k) => platforms[k]?.connected);
   const connCountEl = $("#connectedPlatformsCount");
-  if (connCountEl) connCountEl.textContent = `${connectedList.length} / 6`;
+  if (connCountEl) connCountEl.textContent = `${connectedList.length} / ${platformKeys.length}`;
 
   const connSubEl = $("#connectedPlatformsSub");
   if (connSubEl) {
-    if (connectedList.length === 6) {
-      connSubEl.textContent = "All channels ready";
+    if (connectedList.length === platformKeys.length) {
+      connSubEl.textContent = "All channels connected & active";
       connSubEl.className = "metric-sub good";
     } else if (connectedList.length > 0) {
-      connSubEl.textContent = `${connectedList.length} of 6 active`;
+      connSubEl.textContent = `${connectedList.length} of ${platformKeys.length} channels connected`;
       connSubEl.className = "metric-sub good";
     } else {
-      connSubEl.textContent = "No platforms connected";
+      connSubEl.textContent = "No channels connected";
       connSubEl.className = "metric-sub";
     }
   }
 
-  // Update top "Connect All" / "Disconnect All" button
-  const allConnected = connectedList.length === platformKeys.length;
+  // Update top "Disconnect All" button if any connected
   const autoConnBtn = $("#btnAutoConnectAll");
   if (autoConnBtn) {
-    autoConnBtn.innerHTML = allConnected
+    autoConnBtn.innerHTML = connectedList.length > 0
       ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disconnect All`
-      : `⚡ Connect All Platforms`;
+      : `🔗 Connect Platforms`;
   }
 
   // 2. Render each platform card
   platformKeys.forEach((key) => {
     const p = platforms[key] || { connected: false, viewers: 0 };
+    const isConn = Boolean(p.connected);
 
     // Badge
     const badge = $(`#platBadge_${key}`);
     if (badge) {
-      badge.className = `status-badge ${p.connected ? "connected" : "disconnected"}`;
-      badge.textContent = p.connected ? "● Connected" : "○ Disconnected";
+      badge.className = `status-badge ${isConn ? "connected" : "disconnected"}`;
+      badge.textContent = isConn ? "● Connected" : "○ Disconnected";
     }
 
     // Handle / Account Name
     const handleEl = $(`#platHandle_${key}`);
     if (handleEl) {
-      handleEl.textContent = p.handle || p.channel || p.page || p.accountName || "Channel";
+      if (isConn) {
+        handleEl.classList.remove("muted");
+        const name = p.accountName || p.page || p.channel || p.handle || "Connected Account";
+        handleEl.innerHTML = p.avatar
+          ? `<span style="display:inline-flex; align-items:center; gap:6px;"><img src="${escapeHtml(p.avatar)}" style="width:16px; height:16px; border-radius:50%; object-fit:cover;"> ${escapeHtml(name)}</span>`
+          : escapeHtml(name);
+      } else {
+        handleEl.classList.add("muted");
+        handleEl.textContent = "Not Connected";
+      }
     }
 
     // Viewers / Status Value
     const viewersEl = $(`#platViewers_${key}`);
     if (viewersEl) {
       if (["tiktok", "instagram", "x"].includes(key)) {
-        viewersEl.textContent = p.connected ? "Active" : "Disconnected";
+        viewersEl.textContent = isConn ? "Active" : "Disconnected";
       } else {
-        viewersEl.textContent = p.connected ? Number(p.viewers || 0).toLocaleString() : "0";
+        viewersEl.textContent = isConn ? Number(p.viewers || 0).toLocaleString() : "0";
       }
     }
 
-    // Toggle Button
+    // Action Button (Connect or Disconnect)
     const toggleBtn = $(`.btn-plat-toggle[data-platform="${key}"]`);
     if (toggleBtn) {
-      toggleBtn.classList.toggle("active", Boolean(p.connected));
-      toggleBtn.textContent = p.connected ? "Connected" : "Connect";
+      toggleBtn.classList.toggle("connected", isConn);
+      if (isConn) {
+        toggleBtn.textContent = "Disconnect";
+        toggleBtn.title = `Disconnect ${key}`;
+      } else {
+        const labels = {
+          youtube: "Connect with YouTube (OAuth 2.0)",
+          facebook: "Connect with Facebook (OAuth 2.0)",
+          kick: "Connect Kick Live Chat",
+          twitch: "Connect with Twitch (OAuth 2.0)",
+          tiktok: "Connect TikTok Handle",
+          instagram: "Connect Instagram Handle",
+          x: "Connect X (Twitter) Handle"
+        };
+        toggleBtn.textContent = labels[key] || "Connect";
+      }
     }
   });
 
@@ -360,32 +383,77 @@ function renderDashboard(data) {
   renderAlertsFeed(data.alerts || []);
 }
 
-// Auto-Connect / Disconnect All Button
+// Disconnect All Button
 $("#btnAutoConnectAll")?.addEventListener("click", async () => {
   const platforms = state.dashboard?.platforms || {};
-  const platformKeys = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
-  const allConnected = platformKeys.every((k) => platforms[k]?.connected);
-  const action = allConnected ? "disconnect" : "auto-connect";
-  showToast(allConnected ? "Disconnecting all platforms..." : "⚡ Connecting all 6 live platforms...");
+  const platformKeys = ["youtube", "facebook", "kick", "twitch", "tiktok", "instagram", "x"];
+  const connectedList = platformKeys.filter((k) => platforms[k]?.connected);
+
+  if (connectedList.length === 0) {
+    showToast("Click 'Connect' on any platform card below to link your accounts!");
+    return;
+  }
+
+  showToast("Disconnecting all platforms...");
   try {
-    await api(`/api/platforms/${action}`, { method: "POST", body: JSON.stringify({ platform: "all" }) });
-    showToast(allConnected ? "All platforms disconnected." : "✓ All 6 platforms connected & synchronized!");
+    await api("/api/platforms/disconnect", { method: "POST", body: JSON.stringify({ platform: "all" }) });
+    showToast("✓ All platforms disconnected.");
     refreshDashboard();
   } catch (err) {
     showToast(err.message);
   }
 });
 
-// Platform Connect / Disconnect Toggle
+// Platform Connect / Disconnect Action Handler
 document.addEventListener("click", async (e) => {
   const toggleBtn = e.target.closest('[data-action="toggle-connect"]');
-  if (toggleBtn) {
-    const platform = toggleBtn.dataset.platform;
-    const isConn = toggleBtn.classList.contains("active");
-    const endpoint = isConn ? "/api/platforms/disconnect" : "/api/platforms/auto-connect";
+  if (!toggleBtn) return;
+  const platform = toggleBtn.dataset.platform;
+  const isConn = toggleBtn.classList.contains("connected");
+
+  if (isConn) {
     try {
-      await api(endpoint, { method: "POST", body: JSON.stringify({ platform }) });
-      showToast(`${isConn ? "Disconnected" : "Connected"} ${platform}`);
+      await api("/api/platforms/disconnect", { method: "POST", body: JSON.stringify({ platform }) });
+      showToast(`✓ Disconnected ${capitalize(platform)}`);
+      refreshDashboard();
+    } catch (err) {
+      showToast(err.message);
+    }
+    return;
+  }
+
+  // Trigger Real Connection Flow
+  if (platform === "youtube") {
+    showToast("Redirecting to Google OAuth...");
+    window.location.href = "/auth/youtube";
+  } else if (platform === "facebook") {
+    showToast("Redirecting to Facebook OAuth...");
+    window.location.href = "/auth/facebook";
+  } else if (platform === "twitch") {
+    showToast("Redirecting to Twitch OAuth...");
+    window.location.href = "/auth/twitch";
+  } else if (platform === "kick") {
+    const ch = prompt("Enter your Kick channel username (e.g. xqc, ninja, or your channel):");
+    if (!ch || !ch.trim()) return;
+    try {
+      await api("/api/kick/connect", { method: "POST", body: JSON.stringify({ channel: ch.trim() }) });
+      showToast(`✓ Connected Kick channel @${ch.trim()}`);
+      refreshDashboard();
+    } catch (err) {
+      showToast(err.message);
+    }
+  } else if (["tiktok", "instagram", "x"].includes(platform)) {
+    const handle = prompt(`Enter your ${capitalize(platform)} username / handle (e.g. @yourname):`);
+    if (!handle || !handle.trim()) return;
+    try {
+      const res = await api("/api/settings");
+      const current = res.settings || {};
+      current[platform] = current[platform] || {};
+      current[platform].handle = handle.trim();
+      current[platform].accountName = handle.trim();
+      current[platform].autoConnected = true;
+      await api("/api/settings", { method: "PUT", body: JSON.stringify(current) });
+      showToast(`✓ Connected ${capitalize(platform)} as ${handle.trim()}`);
       refreshDashboard();
     } catch (err) {
       showToast(err.message);
