@@ -107,9 +107,6 @@ function setSignedIn(user) {
   const urlEl = $("#alertOverlayUrl");
   if (urlEl) urlEl.textContent = overlayUrl;
 
-  // Auto-connect all 6 platforms on startup
-  api("/api/platforms/auto-connect", { method: "POST", body: JSON.stringify({ platform: "all" }) }).catch(() => {});
-
   // Start polling dashboard & OBS state
   refreshDashboard();
   clearInterval(state.pollTimer);
@@ -259,6 +256,29 @@ function renderDashboard(data) {
   const connCountEl = $("#connectedPlatformsCount");
   if (connCountEl) connCountEl.textContent = `${connectedList.length} / 6`;
 
+  const connSubEl = $("#connectedPlatformsSub");
+  if (connSubEl) {
+    if (connectedList.length === 6) {
+      connSubEl.textContent = "All channels ready";
+      connSubEl.className = "metric-sub good";
+    } else if (connectedList.length > 0) {
+      connSubEl.textContent = `${connectedList.length} of 6 active`;
+      connSubEl.className = "metric-sub good";
+    } else {
+      connSubEl.textContent = "No platforms connected";
+      connSubEl.className = "metric-sub";
+    }
+  }
+
+  // Update top "Connect All" / "Disconnect All" button
+  const allConnected = connectedList.length === platformKeys.length;
+  const autoConnBtn = $("#btnAutoConnectAll");
+  if (autoConnBtn) {
+    autoConnBtn.innerHTML = allConnected
+      ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disconnect All`
+      : `⚡ Connect All Platforms`;
+  }
+
   // 2. Render each platform card
   platformKeys.forEach((key) => {
     const p = platforms[key] || { connected: false, viewers: 0 };
@@ -280,9 +300,9 @@ function renderDashboard(data) {
     const viewersEl = $(`#platViewers_${key}`);
     if (viewersEl) {
       if (["tiktok", "instagram", "x"].includes(key)) {
-        viewersEl.textContent = p.connected ? "Active" : "Ready";
+        viewersEl.textContent = p.connected ? "Active" : "Disconnected";
       } else {
-        viewersEl.textContent = Number(p.viewers || 0).toLocaleString();
+        viewersEl.textContent = p.connected ? Number(p.viewers || 0).toLocaleString() : "0";
       }
     }
 
@@ -302,12 +322,16 @@ function renderDashboard(data) {
   renderAlertsFeed(data.alerts || []);
 }
 
-// Auto-Connect All Button
+// Auto-Connect / Disconnect All Button
 $("#btnAutoConnectAll")?.addEventListener("click", async () => {
-  showToast("⚡ Re-synchronizing all 6 live platforms...");
+  const platforms = state.dashboard?.platforms || {};
+  const platformKeys = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+  const allConnected = platformKeys.every((k) => platforms[k]?.connected);
+  const action = allConnected ? "disconnect" : "auto-connect";
+  showToast(allConnected ? "Disconnecting all platforms..." : "⚡ Connecting all 6 live platforms...");
   try {
-    await api("/api/platforms/auto-connect", { method: "POST", body: JSON.stringify({ platform: "all" }) });
-    showToast("✓ All 6 platforms connected & synchronized!");
+    await api(`/api/platforms/${action}`, { method: "POST", body: JSON.stringify({ platform: "all" }) });
+    showToast(allConnected ? "All platforms disconnected." : "✓ All 6 platforms connected & synchronized!");
     refreshDashboard();
   } catch (err) {
     showToast(err.message);

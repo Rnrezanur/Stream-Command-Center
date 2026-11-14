@@ -233,18 +233,18 @@ async function requireUser(req, res) {
 
 function applyDefaultSettings(settings) {
   const defaults = {
-    youtube: { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live" },
-    twitch: { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur" },
-    facebook: { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming" },
-    tiktok: { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator" },
-    instagram: { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels" },
-    x: { autoConnected: true, handle: "@rezanur_live", accountName: "X Video" }
+    youtube: { autoConnected: false, channel: "Rezanur Live", accountName: "Rezanur Live" },
+    twitch: { autoConnected: false, channel: "rezanur_live", accountName: "Rezanur" },
+    facebook: { autoConnected: false, page: "Rezanur Gaming", pageName: "Rezanur Gaming" },
+    tiktok: { autoConnected: false, handle: "@rezanur_live", accountName: "TikTok Creator" },
+    instagram: { autoConnected: false, handle: "@rezanur.studio", accountName: "Instagram Reels" },
+    x: { autoConnected: false, handle: "@rezanur_live", accountName: "X Video" }
   };
   const result = structuredClone(settings || {});
   for (const [platform, def] of Object.entries(defaults)) {
     result[platform] = { ...def, ...(result[platform] || {}) };
     if (result[platform].autoConnected === undefined) {
-      result[platform].autoConnected = true;
+      result[platform].autoConnected = false;
     }
   }
   return result;
@@ -429,7 +429,7 @@ function getUserAlertsState(userId) {
 }
 
 async function getYouTube(settings) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) {
     return {
       connected,
@@ -491,7 +491,7 @@ async function getYouTube(settings) {
 }
 
 async function getTwitch(settings, userId) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   const clientId = settings.clientId || process.env.TWITCH_CLIENT_ID;
   if (!clientId || !settings.accessToken || !settings.channel) {
     return {
@@ -551,7 +551,7 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) {
     return {
       connected,
@@ -620,7 +620,7 @@ async function getFacebook(settings) {
 }
 
 function getTikTok(settings) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   return {
     connected,
     viewers: 0,
@@ -632,7 +632,7 @@ function getTikTok(settings) {
 }
 
 function getInstagram(settings) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   return {
     connected,
     viewers: 0,
@@ -644,7 +644,7 @@ function getInstagram(settings) {
 }
 
 function getX(settings) {
-  const connected = settings.autoConnected !== false;
+  const connected = Boolean(settings.autoConnected);
   return {
     connected,
     viewers: 0,
@@ -838,14 +838,14 @@ async function handleApi(req, res, url) {
       if (existing) return json(res, 409, { error: "An account with this email already exists" });
       await db.collection("users").insertOne(user);
     }
-    // Auto-initialize platform settings for instant multi-stream connectivity
+    // Initialize platform settings (disconnected by default until explicitly connected)
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
-    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
-    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
-    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
-    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
-    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
+    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -872,14 +872,14 @@ async function handleApi(req, res, url) {
     } else if (body.password && !verifyPassword(body.password, user.password_hash)) {
       return json(res, 401, { error: "Invalid password for this account" });
     }
-    // Auto-initialize platform settings for instant multi-stream connectivity
+    // Initialize platform settings (disconnected by default until explicitly connected)
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
-    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
-    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
-    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
-    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
-    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
+    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -910,12 +910,12 @@ async function handleApi(req, res, url) {
       }
     }
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
-    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
-    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
-    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
-    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
-    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
+    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -1128,6 +1128,7 @@ async function handleApi(req, res, url) {
       const token = await apiFetch(endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params });
       const settings = await getSettings(user.id);
       settings[platform] ||= {};
+      settings[platform].autoConnected = true;
       Object.assign(settings[platform], {
         accessToken: token.access_token, refreshToken: token.refresh_token || settings[platform].refreshToken,
         tokenExpiresAt: Date.now() + Number(token.expires_in || 3600) * 1000

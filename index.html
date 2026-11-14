@@ -144,7 +144,7 @@
         </div>
         <div class="section-actions">
           <button type="button" class="btn-secondary" id="btnAutoConnectAll">
-            <span>⚡ Re-Sync All 6 Platforms</span>
+            <span>⚡ Connect All Platforms</span>
           </button>
           <button type="button" class="btn-primary" data-tab-link="obs">
             <span>OBS Controls</span>
@@ -161,8 +161,8 @@
         </div>
         <div class="metric-card">
           <span class="metric-label">Connected Platforms</span>
-          <strong class="metric-value" id="connectedPlatformsCount">6 / 6</strong>
-          <span class="metric-sub good">All channels ready</span>
+          <strong class="metric-value" id="connectedPlatformsCount">0 / 6</strong>
+          <span class="metric-sub" id="connectedPlatformsSub">No platforms connected</span>
         </div>
         <div class="metric-card">
           <span class="metric-label">RTMP Pipeline</span>
@@ -188,14 +188,14 @@
                 <div class="plat-account" id="platHandle_youtube">YouTube Live</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_youtube">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_youtube">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Live Viewers</span>
             <span class="plat-stat-val" id="platViewers_youtube">0</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="youtube">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="youtube">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="youtube">Configure</button>
           </div>
         </div>
@@ -210,14 +210,14 @@
                 <div class="plat-account" id="platHandle_twitch">rezanur_live</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_twitch">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_twitch">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Live Viewers</span>
             <span class="plat-stat-val" id="platViewers_twitch">0</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="twitch">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="twitch">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="twitch">Configure</button>
           </div>
         </div>
@@ -232,14 +232,14 @@
                 <div class="plat-account" id="platHandle_facebook">Rezanur Gaming</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_facebook">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_facebook">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Live Viewers</span>
             <span class="plat-stat-val" id="platViewers_facebook">0</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="facebook">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="facebook">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="facebook">Configure</button>
           </div>
         </div>
@@ -254,14 +254,14 @@
                 <div class="plat-account" id="platHandle_tiktok">@rezanur_live</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_tiktok">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_tiktok">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Syndication</span>
-            <span class="plat-stat-val" id="platViewers_tiktok">Active</span>
+            <span class="plat-stat-val" id="platViewers_tiktok">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="tiktok">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="tiktok">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="tiktok">Configure</button>
           </div>
         </div>
@@ -276,14 +276,14 @@
                 <div class="plat-account" id="platHandle_instagram">@rezanur.studio</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_instagram">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_instagram">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Syndication</span>
-            <span class="plat-stat-val" id="platViewers_instagram">Active</span>
+            <span class="plat-stat-val" id="platViewers_instagram">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="instagram">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="instagram">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="instagram">Configure</button>
           </div>
         </div>
@@ -298,14 +298,14 @@
                 <div class="plat-account" id="platHandle_x">@rezanur_live</div>
               </div>
             </div>
-            <span class="status-badge connected" id="platBadge_x">● Connected</span>
+            <span class="status-badge disconnected" id="platBadge_x">○ Disconnected</span>
           </div>
           <div class="plat-stats-row">
             <span class="plat-stat-label">Syndication</span>
-            <span class="plat-stat-val" id="platViewers_x">Active</span>
+            <span class="plat-stat-val" id="platViewers_x">Disconnected</span>
           </div>
           <div class="plat-actions">
-            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="x">Connected</button>
+            <button type="button" class="btn-plat-toggle" data-action="toggle-connect" data-platform="x">Connect</button>
             <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="x">Configure</button>
           </div>
         </div>
