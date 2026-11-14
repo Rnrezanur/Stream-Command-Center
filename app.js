@@ -332,10 +332,10 @@ async function callOBS(requestType, requestData = {}) {
 
 // AUTO-CONNECT PLATFORMS
 async function autoConnectPlatforms(platform = "all") {
-  showToast(`⚡ Auto-connecting ${platform === "all" ? "all channels" : platform}...`);
+  showToast(`⚡ Auto-connecting ${platform === "all" ? "all 6 channels" : platform}...`);
   try {
     const res = await api("/api/platforms/auto-connect", { method: "POST", body: JSON.stringify({ platform }) });
-    showToast(`✓ ${platform === "all" ? "YouTube, Twitch & Facebook" : platform} connected live!`);
+    showToast(`✓ ${platform === "all" ? "All 6 Platforms (YouTube, Twitch, Facebook, TikTok, Instagram, X)" : platform} connected live!`);
     await refreshDashboard();
   } catch (error) {
     showToast(error.message);
@@ -427,8 +427,33 @@ function renderDashboard(data) {
       if (gNum) gNum.textContent = vFormatted;
       const gH = $("#glanceFbHandle");
       if (gH && platform.page) gH.textContent = platform.page;
+    } else if (name === "tiktok") {
+      const gNum = $("#glanceTiktokViewers");
+      if (gNum) gNum.textContent = platform.connected ? "Active" : "Offline";
+      const gH = $("#glanceTiktokHandle");
+      if (gH && platform.handle) gH.textContent = platform.handle;
+    } else if (name === "instagram") {
+      const gNum = $("#glanceIgViewers");
+      if (gNum) gNum.textContent = platform.connected ? "Active" : "Offline";
+      const gH = $("#glanceIgHandle");
+      if (gH && platform.handle) gH.textContent = platform.handle;
+    } else if (name === "x") {
+      const gNum = $("#glanceXViewers");
+      if (gNum) gNum.textContent = platform.connected ? "Active" : "Offline";
+      const gH = $("#glanceXHandle");
+      if (gH && platform.handle) gH.textContent = platform.handle;
     }
   }
+
+  // Update telemetry and multi-cast indicators
+  const connectedPlatforms = Object.values(data.platforms || {}).filter(p => p.connected);
+  const connectedCount = connectedPlatforms.length;
+  const rtmpRelayCount = $("#rtmpRelayCount");
+  if (rtmpRelayCount) rtmpRelayCount.textContent = `${connectedCount} / 6`;
+  const rtmpRelaySub = $("#rtmpRelaySubtitle");
+  if (rtmpRelaySub) rtmpRelaySub.textContent = connectedCount === 6 ? "Active (All 6 Synchronized)" : `${connectedCount} Channels Active`;
+  const glanceSynced = $("#glanceSyncedSubtitle");
+  if (glanceSynced) glanceSynced.textContent = `● Synced Across ${connectedCount} Platforms`;
 
   // Update chat
   const comments = data.comments || [];

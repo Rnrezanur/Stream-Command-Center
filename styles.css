@@ -1072,7 +1072,7 @@ svg {
 
 .glance-stats-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 
@@ -1132,6 +1132,9 @@ svg {
 .glance-plat-card.yt::before { background: var(--youtube); }
 .glance-plat-card.tw::before { background: var(--twitch); }
 .glance-plat-card.fb::before { background: var(--facebook); }
+.glance-plat-card.tiktok::before { background: #00f2fe; }
+.glance-plat-card.ig::before { background: linear-gradient(90deg, #fd1d1d, #833ab4); }
+.glance-plat-card.x::before { background: #e7e9ea; }
 
 .glance-plat-name {
   font-size: 11px;
@@ -1919,7 +1922,8 @@ kbd {
 
 .chat-filters {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   padding: 0 22px 14px;
   border-bottom: 1px solid var(--line);
 }
@@ -1933,6 +1937,12 @@ kbd {
   font-weight: 700;
   color: var(--muted);
   transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.chat-filters button:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .chat-filters button.active {

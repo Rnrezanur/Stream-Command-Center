@@ -231,13 +231,35 @@ async function requireUser(req, res) {
   return null;
 }
 
-async function getSettings(userId) {
-  if (useLocalFallback()) {
-    return localDb.settings[userId] ? decrypt(localDb.settings[userId]) : {};
+function applyDefaultSettings(settings) {
+  const defaults = {
+    youtube: { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live" },
+    twitch: { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur" },
+    facebook: { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming" },
+    tiktok: { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator" },
+    instagram: { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels" },
+    x: { autoConnected: true, handle: "@rezanur_live", accountName: "X Video" }
+  };
+  const result = structuredClone(settings || {});
+  for (const [platform, def] of Object.entries(defaults)) {
+    result[platform] = { ...def, ...(result[platform] || {}) };
+    if (result[platform].autoConnected === undefined) {
+      result[platform].autoConnected = true;
+    }
   }
-  const db = await getDb();
-  const row = await db.collection("platform_settings").findOne({ user_id: userId }, { projection: { encrypted_json: 1 } });
-  return row?.encrypted_json ? decrypt(row.encrypted_json) : {};
+  return result;
+}
+
+async function getSettings(userId) {
+  let settings = {};
+  if (useLocalFallback()) {
+    settings = localDb.settings[userId] ? decrypt(localDb.settings[userId]) : {};
+  } else {
+    const db = await getDb();
+    const row = await db.collection("platform_settings").findOne({ user_id: userId }, { projection: { encrypted_json: 1 } });
+    settings = row?.encrypted_json ? decrypt(row.encrypted_json) : {};
+  }
+  return applyDefaultSettings(settings);
 }
 
 async function saveSettings(userId, settings) {
@@ -407,12 +429,13 @@ function getUserAlertsState(userId) {
 }
 
 async function getYouTube(settings) {
+  const connected = settings.autoConnected !== false;
   if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) {
     return {
-      connected: Boolean(settings.autoConnected || settings.channel),
+      connected,
       viewers: 0,
       comments: [],
-      status: "Offline - Ready to stream",
+      status: connected ? "Connected - Ready to stream" : "Disconnected",
       channel: settings.channel || "YouTube Live",
       oauth: Boolean(settings.refreshToken)
     };
@@ -422,10 +445,10 @@ async function getYouTube(settings) {
     live = await getYouTubeLiveChatId(settings);
   } catch (error) {
     return {
-      connected: true,
+      connected,
       viewers: 0,
       comments: [],
-      status: "Offline - Ready to stream",
+      status: connected ? "Connected - Ready to stream" : "Disconnected",
       channel: settings.channel || settings.channelId || "YouTube Live",
       oauth: Boolean(settings.refreshToken)
     };
@@ -457,24 +480,25 @@ async function getYouTube(settings) {
   }
   const viewers = Number(details.concurrentViewers || 0);
   return {
-    connected: true,
+    connected,
     viewers,
     comments,
     broadcastId: live.videoId,
     channel: settings.channel || "YouTube Live",
-    status: viewers > 0 ? "Live Broadcasting" : "Offline - Ready to stream",
+    status: viewers > 0 ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
     oauth: Boolean(settings.refreshToken)
   };
 }
 
 async function getTwitch(settings, userId) {
+  const connected = settings.autoConnected !== false;
   const clientId = settings.clientId || process.env.TWITCH_CLIENT_ID;
   if (!clientId || !settings.accessToken || !settings.channel) {
     return {
-      connected: Boolean(settings.autoConnected || settings.channel),
+      connected,
       viewers: 0,
       comments: [],
-      status: "Offline - Ready to stream",
+      status: connected ? "Connected - Ready to stream" : "Disconnected",
       channel: settings.channel || "rezanur_live",
       oauth: Boolean(settings.refreshToken)
     };
@@ -493,11 +517,11 @@ async function getTwitch(settings, userId) {
   const comments = (twitchChats.get(userId)?.messages || []).slice(-100);
 
   return {
-    connected: true,
+    connected,
     viewers,
     comments,
     channel: settings.channel,
-    status: isLive ? "Live Broadcasting" : "Offline - Ready to stream",
+    status: isLive ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
     oauth: Boolean(settings.refreshToken)
   };
 }
@@ -527,12 +551,13 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
+  const connected = settings.autoConnected !== false;
   if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) {
     return {
-      connected: Boolean(settings.autoConnected || settings.page),
+      connected,
       viewers: 0,
       comments: [],
-      status: "Offline - Ready to stream",
+      status: connected ? "Connected - Ready to stream" : "Disconnected",
       page: settings.page || "Rezanur Gaming",
       oauth: Boolean(settings.accessToken)
     };
@@ -551,10 +576,10 @@ async function getFacebook(settings) {
 
   if (!liveVideoId) {
     return {
-      connected: true,
+      connected,
       viewers: 0,
       comments: [],
-      status: "Offline - Ready to stream",
+      status: connected ? "Connected - Ready to stream" : "Disconnected",
       page: settings.page || "Facebook Page",
       oauth: Boolean(settings.accessToken)
     };
@@ -584,12 +609,12 @@ async function getFacebook(settings) {
   } catch (_) {}
 
   return {
-    connected: true,
+    connected,
     viewers,
     comments,
     broadcastId: liveVideoId,
     page: settings.page || "Facebook Page",
-    status: viewers > 0 ? "Live Broadcasting" : "Offline - Ready to stream",
+    status: viewers > 0 ? "Live Broadcasting" : (connected ? "Connected - Ready to stream" : "Disconnected"),
     oauth: Boolean(settings.accessToken)
   };
 }

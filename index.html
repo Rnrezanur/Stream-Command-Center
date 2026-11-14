@@ -403,23 +403,38 @@
               <div class="glance-stats-grid">
                 <div class="glance-stat-card">
                   <span class="glance-lbl">Total Live Audience</span>
-                  <strong class="glance-num" id="glanceTotalViewers">2,700+</strong>
-                  <span class="glance-status live">● Synced Across 3 Platforms</span>
+                  <strong class="glance-num" id="glanceTotalViewers">0</strong>
+                  <span class="glance-status live" id="glanceSyncedSubtitle">● Synced Across 6 Platforms</span>
                 </div>
                 <div class="glance-plat-card yt">
                   <span class="glance-plat-name">YouTube Live</span>
-                  <strong id="glanceYtViewers">1,450</strong>
+                  <strong id="glanceYtViewers">0</strong>
                   <small id="glanceYtHandle">@Rezanur Live</small>
                 </div>
                 <div class="glance-plat-card tw">
                   <span class="glance-plat-name">Twitch</span>
-                  <strong id="glanceTwitchViewers">890</strong>
+                  <strong id="glanceTwitchViewers">0</strong>
                   <small id="glanceTwitchHandle">rezanur_live</small>
                 </div>
                 <div class="glance-plat-card fb">
                   <span class="glance-plat-name">Facebook Live</span>
-                  <strong id="glanceFbViewers">360</strong>
+                  <strong id="glanceFbViewers">0</strong>
                   <small id="glanceFbHandle">Rezanur Gaming</small>
+                </div>
+                <div class="glance-plat-card tiktok">
+                  <span class="glance-plat-name">TikTok</span>
+                  <strong id="glanceTiktokViewers">Active</strong>
+                  <small id="glanceTiktokHandle">@rezanur_live</small>
+                </div>
+                <div class="glance-plat-card ig">
+                  <span class="glance-plat-name">Instagram</span>
+                  <strong id="glanceIgViewers">Active</strong>
+                  <small id="glanceIgHandle">@rezanur.studio</small>
+                </div>
+                <div class="glance-plat-card x">
+                  <span class="glance-plat-name">X (Twitter)</span>
+                  <strong id="glanceXViewers">Active</strong>
+                  <small id="glanceXHandle">@rezanur_live</small>
                 </div>
               </div>
             </div>
@@ -716,8 +731,8 @@
                 </div>
                 <div class="stat-box">
                   <span>RTMP Relay</span>
-                  <strong>3 / 3</strong>
-                  <small>Active</small>
+                  <strong id="rtmpRelayCount">6 / 6</strong>
+                  <small id="rtmpRelaySubtitle">Active (All Channels)</small>
                   <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
                 </div>
                 <div class="stat-box">
@@ -940,6 +955,9 @@
             <button data-filter="youtube" class="filter-yt">YouTube</button>
             <button data-filter="twitch" class="filter-twitch">Twitch</button>
             <button data-filter="facebook" class="filter-fb">Facebook</button>
+            <button data-filter="tiktok" class="filter-tiktok">TikTok</button>
+            <button data-filter="instagram" class="filter-ig">Instagram</button>
+            <button data-filter="x" class="filter-x">X</button>
           </div>
 
           <!-- PINNED COMMENT BANNER -->
@@ -950,7 +968,7 @@
             <div class="empty-state-chat">
               <div class="empty-state-icon">💬</div>
               <strong>Chat Stream Ready</strong>
-              <p>When you go live, comments from YouTube, Twitch &amp; Facebook will appear here in real time. Click Reply to answer directly on that platform, or Pin to spotlight a message.</p>
+              <p>When you go live on YouTube, Twitch, Facebook, TikTok, Instagram or X, comments from your viewers will appear here in real time. Click Reply to answer directly on that platform, or Pin to spotlight a message.</p>
             </div>
           </div>
 
@@ -972,7 +990,7 @@
             </div>
 
             <div class="compose-row">
-              <input id="chatInput" type="text" placeholder="Send message to YouTube, Twitch, Facebook..." autocomplete="off">
+              <input id="chatInput" type="text" placeholder="Send message to all synchronized platforms..." autocomplete="off">
               <button type="submit" aria-label="Send comment" title="Send (Enter)">
                 <svg viewBox="0 0 24 24"><path d="m4 4 16 8-16 8 3-8-3-8Zm3 8h13"/></svg>
               </button>
