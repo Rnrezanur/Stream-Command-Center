@@ -1,1503 +1,677 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0a0d12">
-  <title>Relay // Stream Command Center Pro</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261109-pro2">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stream Command Center &bull; Multi-Platform Broadcast Deck</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- AUTH / LANDING SCREEN -->
-  <section class="auth-screen" id="authScreen">
-    <div class="auth-background-effects">
-      <div class="glow-orb orb-1"></div>
-      <div class="glow-orb orb-2"></div>
-      <div class="glow-orb orb-3"></div>
-      <div class="grid-overlay"></div>
-    </div>
 
-    <header class="auth-nav">
-      <div class="auth-brand">
-        <span class="brand-mark">
-          <span></span><span></span><span></span>
-        </span>
-        <span class="brand-text">RELAY<span class="brand-tag">PRO</span></span>
+  <!-- =========================================================================
+       STICKY APP HEADER
+       ========================================================================= -->
+  <header class="app-header">
+    <div class="header-container">
+      
+      <!-- Brand Logo -->
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11a9 9 0 0 1 9 9"></path>
+            <path d="M4 4a16 16 0 0 1 16 16"></path>
+            <circle cx="5" cy="19" r="1"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Stream Command</span>
+          <span class="brand-status"><span class="status-dot-pulse"></span> Synchronized</span>
+        </div>
       </div>
-      <div class="auth-badge">
-        <span class="pulse-dot"></span>
-        <span>STREAM COMMAND CENTER 2.0</span>
-      </div>
-    </header>
 
-    <div class="auth-container-centered">
-      <div class="auth-card-glow"></div>
-      <form class="auth-card auth-card-centered" id="authPageForm">
-        <div class="auth-card-emblem">
-          <span class="brand-mark large">
-            <span></span><span></span><span></span>
-          </span>
-        </div>
-        
-        <div class="auth-card-header centered">
-          <div class="status-pill-subtle">
-            <span class="live-dot-mini"></span>
-            <span>Zero-Latency Broadcast Cockpit</span>
-          </div>
-          <h1 id="authPageTitle">Stream Command Center</h1>
-          <p class="auth-copy" id="authPageCopy">Launch your control station instantly or sign in. All platforms auto-connect on login.</p>
-        </div>
-
-        <!-- PRIMARY INSTANT ACCESS BUTTON -->
-        <button type="button" class="auth-quick-connect primary-action-btn" id="authQuickConnect">
-          <span class="btn-shine"></span>
-          <span class="btn-icon">⚡</span>
-          <span>Launch Command Center (1-Click Auto-Connect)</span>
+      <!-- Center Navigation Tabs (Visible when logged in) -->
+      <nav class="nav-tabs" id="mainNavTabs" style="display: none;">
+        <button type="button" class="nav-tab-btn active" data-tab="overview">
+          <span>Overview</span>
         </button>
-
-        <div class="auth-divider">
-          <span>or sign in with email</span>
-        </div>
-
-        <label class="field-label auth-register-only">
-          <span>Display name</span>
-          <input id="authPageName" type="text" autocomplete="name" placeholder="Rezanur">
-        </label>
-        <label class="field-label">
-          <span>Email address</span>
-          <input id="authPageEmail" type="email" autocomplete="email" value="admin@stream.local" placeholder="admin@stream.local" required>
-        </label>
-        <label class="field-label">
-          <span>Password</span>
-          <input id="authPagePassword" type="password" autocomplete="current-password" value="password123" placeholder="••••••••" minlength="6" required>
-        </label>
-        
-        <p class="connection-error" id="authPageError"></p>
-        
-        <button type="submit" class="auth-submit" id="authPageSubmit">Sign in to Studio</button>
-        <button type="button" class="auth-switch" id="authPageMode">New to Relay? Create an account</button>
-
-        <!-- TRUST BADGES -->
-        <div class="auth-guarantee-row">
-          <span class="guar-item">⚡ Auto-Connects Platforms</span>
-          <span class="guar-item">🎛️ Zero-Lag OBS Deck</span>
-          <span class="guar-item">📹 OmniPublish</span>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- DASHBOARD APP -->
-  <div id="dashboardApp" hidden>
-    <!-- LEFT EXPANDED SIDEBAR -->
-    <aside class="sidebar">
-      <a class="brand" href="#" aria-label="Relay dashboard">
-        <span class="brand-mark">
-          <span></span><span></span><span></span>
-        </span>
-      </a>
-
-      <nav class="nav-list" aria-label="Primary navigation">
-        <button class="nav-item active" id="sidebarConsoleBtn" aria-label="Command center" title="Command Center" data-nav-view="deck">
-          <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>
-          <span class="nav-tooltip">Deck</span>
+        <button type="button" class="nav-tab-btn" data-tab="chat">
+          <span>Live Chat</span>
+          <span class="tab-badge" id="chatCountBadge">0</span>
         </button>
-        <button class="nav-item" id="sidebarPlatformsBtn" aria-label="Platforms" title="Platforms" data-nav-view="platforms">
-          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Z"/><path d="M12 6v6l4 2"/></svg>
-          <span class="nav-tooltip">Platforms</span>
+        <button type="button" class="nav-tab-btn" data-tab="publish">
+          <span>Publish Video</span>
         </button>
-        <button class="nav-item" id="sidebarUploadBtn" aria-label="Upload Video" title="Upload Video to All Platforms" data-nav-view="syndicate">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2 5 5h-5V4Zm-1 9v4h-2v-4H8l4-4 4 4h-2Z"/></svg>
-          <span class="nav-tooltip">Upload</span>
+        <button type="button" class="nav-tab-btn" data-tab="alerts">
+          <span>Alert Box</span>
         </button>
-        <button class="nav-item" id="sidebarAlertsBtn" aria-label="Alert Box" title="Alert Box &amp; OBS Overlay" data-nav-view="alerts">
-          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="nav-tooltip">Alerts</span>
-        </button>
-        <button class="nav-item" id="sidebarSettingsBtn" aria-label="Settings" title="Settings">
-          <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12h2M3 12h2m7-9v2m0 14v2m6.36-15.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/></svg>
-          <span class="nav-tooltip">Settings</span>
+        <button type="button" class="nav-tab-btn" data-tab="obs">
+          <span>OBS Studio</span>
         </button>
       </nav>
 
-      <button class="profile" id="accountButton" aria-label="Account" title="Account Profile &amp; Picture">
-        <div class="avatar" id="accountInitials">
-          <span id="accountInitialsText">RZ</span>
-          <img id="accountInitialsImg" src="" alt="Avatar" style="display:none;">
+      <!-- Right Header Actions -->
+      <div class="header-actions" id="headerActions" style="display: none;">
+        <div class="obs-status-pill" id="headerObsPill" title="OBS Studio WebSocket Status">
+          <span class="status-dot-pulse" style="background:#64748b; box-shadow:none;"></span>
+          <span id="headerObsText">OBS Ready</span>
         </div>
-        <span class="online-dot"></span>
+
+        <button type="button" class="user-profile-btn" id="headerProfileBtn" title="Account & Profile Settings">
+          <div class="user-avatar" id="headerUserAvatar">R</div>
+          <span class="user-name" id="headerUserName">Rezanur</span>
+        </button>
+
+        <button type="button" class="btn-icon-subtle" id="headerLogoutBtn" title="Sign Out">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       VIEW A: AUTHENTICATION SCREEN (When logged out)
+       ========================================================================= -->
+  <div class="auth-wrapper" id="authView">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="brand-icon" style="width:44px; height:44px; margin:0 auto;">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11a9 9 0 0 1 9 9"></path>
+            <path d="M4 4a16 16 0 0 1 16 16"></path>
+            <circle cx="5" cy="19" r="1"></circle>
+          </svg>
+        </div>
+        <h1>Stream Command Center</h1>
+        <p>Broadcast simultaneously to YouTube, Twitch, Facebook, TikTok, Instagram &amp; X.</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="authTabLogin">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="authTabRegister">Register</button>
+      </div>
+
+      <form id="authForm" style="display:flex; flex-direction:column; gap:14px;">
+        <div class="form-group" id="authNameGroup" style="display:none;">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="authInputName" placeholder="Your Name or Studio Name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="authInputEmail" placeholder="streamer@command.io" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="authInputPassword" placeholder="••••••••" required>
+        </div>
+
+        <div id="authErrorMsg" style="color:var(--danger); font-size:12px; display:none;"></div>
+
+        <button type="submit" class="btn-primary" id="btnAuthSubmit" style="justify-content:center; padding:10px;">
+          <span>Sign In to Studio</span>
+        </button>
+      </form>
+
+      <div style="text-align:center; position:relative; margin:6px 0;">
+        <span style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; background:var(--card); padding:0 8px; position:relative; z-index:1;">or</span>
+        <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border);"></div>
+      </div>
+
+      <button type="button" class="btn-instant-demo" id="btnInstantDemo">
+        <span>⚡ 1-Click Instant Access (Demo Mode)</span>
       </button>
-    </aside>
-
-    <main class="main-content">
-      <!-- TOP STATUS & TELEMETRY BAR -->
-      <header class="topbar">
-        <div class="topbar-identity">
-          <div class="topbar-title-wrap">
-            <span class="studio-badge">STUDIO A</span>
-            <h1>Command Center</h1>
-          </div>
-          <div class="topbar-sub-row">
-            <span class="topbar-sub">Master Production Deck</span>
-            <span class="live-pill-wrap">
-              <span class="status-light" id="statusLightIndicator" title="Stream status"></span>
-              <span class="live-label" id="liveTextBadge">OFFLINE</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- CENTER SEGMENTED VIEW SWITCHER -->
-        <nav class="topbar-view-tabs" id="viewSwitcherTabs" aria-label="Workspace Views">
-          <button type="button" class="view-tab-btn active" data-view="deck">
-            <span class="tab-icon">🎛️</span>
-            <span>Broadcast Deck</span>
-          </button>
-          <button type="button" class="view-tab-btn" data-view="platforms">
-            <span class="tab-icon">🌐</span>
-            <span>Live Platforms</span>
-            <span class="tab-counter" id="topbarAudienceCount">0</span>
-          </button>
-          <button type="button" class="view-tab-btn" data-view="syndicate">
-            <span class="tab-icon">📹</span>
-            <span>OmniPublish</span>
-          </button>
-          <button type="button" class="view-tab-btn" data-view="alerts">
-            <span class="tab-icon">🔔</span>
-            <span>Alert Box</span>
-            <span class="tab-counter" id="topbarAlertsCount">4</span>
-          </button>
-        </nav>
-
-        <!-- RIGHT HEADER TELEMETRY & ACTIONS -->
-        <div class="header-actions">
-          <div class="telemetry-compact-pill" title="Signal Telemetry">
-            <span class="monitor-item signal-stat">
-              <b class="monitor-icon signal-icon"></b>
-              <strong id="monitorFps">60.0 FPS</strong>
-            </span>
-            <span class="telemetry-separator">&bull;</span>
-            <span class="monitor-item cpu-stat">
-              <span class="mon-lbl">CPU:</span>
-              <strong id="monitorCpu">11.4%</strong>
-            </span>
-            <span id="liveTimer" class="timer" style="display:none;">00:00:00</span>
-            <span id="recordTimer" class="timer" style="display:none;">00:00:00</span>
-          </div>
-
-          <button class="connection-pill connected" id="connectionButton" title="OBS Studio Connection">
-            <span></span>
-            <b id="connectionLabel">Virtual Deck</b>
-          </button>
-
-          <button class="connection-pill account-pill" id="headerAccountButton" title="Your Account Profile">
-            <span class="account-dot" id="headerAccountDot"></span>
-            <div class="header-avatar-thumb" id="headerAvatarThumb" style="display:none;">
-              <img id="headerAvatarImg" src="" alt="Avatar">
-            </div>
-            <b id="headerAccountLabel">Rezanur</b>
-          </button>
-
-          <!-- Hidden anchors for compatibility -->
-          <div style="display: none;">
-            <button id="headerUploadBtn"></button>
-            <button id="headerAutoConnectBtn"></button>
-            <button id="connectPlatformsButton"></button>
-            <span id="obsConnectionLabelText">Ready</span>
-          </div>
-        </div>
-      </header>
-
-      <!-- MAIN DASHBOARD WORKSPACE -->
-      <div class="dashboard-grid">
-        <section class="workspace">
-          <!-- VIEW 1: BROADCAST DECK -->
-          <div class="workspace-view active" id="viewDeck">
-            <!-- QUICK ACTION CONTROLS -->
-            <div class="control-strip panel">
-              <div class="strip-heading">
-                <div class="heading-with-icon">
-                  <span class="heading-glow-dot"></span>
-                  <p class="eyebrow">Quick Controls // Fast Deck</p>
-                </div>
-                <span class="keyboard-hint">⌘S: Stream &bull; ⌘R: Record &bull; M: Mute &bull; 1-4: Scenes</span>
-              </div>
-
-              <div class="control-buttons">
-                <!-- STREAM BUTTON -->
-                <button id="streamButton" class="control-button stream-toggle" data-active="false">
-                  <div class="btn-glow-layer"></div>
-                  <span class="control-icon">
-                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z"/></svg>
-                  </span>
-                  <span class="control-labels">
-                    <strong id="streamButtonLabel">Start stream</strong>
-                    <small id="streamSub">Click to go live instantly</small>
-                  </span>
-                  <kbd>⌘ S</kbd>
-                </button>
-
-                <!-- RECORD BUTTON -->
-                <button id="recordButton" class="control-button record-toggle" data-active="false">
-                  <div class="btn-glow-layer"></div>
-                  <span class="control-icon">
-                    <span class="record-square"></span>
-                  </span>
-                  <span class="control-labels">
-                    <strong id="recordLabel">Start recording</strong>
-                    <small id="recordSub">Capture local master</small>
-                  </span>
-                  <kbd>⌘ R</kbd>
-                </button>
-
-                <!-- MUTE BUTTON -->
-                <button id="muteButton" class="control-button mute-toggle" data-muted="false">
-                  <div class="btn-glow-layer"></div>
-                  <span class="control-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2m7 9v3m-4 0h8"/></svg>
-                  </span>
-                  <span class="control-labels">
-                    <strong id="muteLabel">Mute microphone</strong>
-                    <small id="micName">Mic/Aux</small>
-                  </span>
-                  <!-- LIVE AUDIO VU METER ANIMATION -->
-                  <div class="vu-meter-bar" title="Microphone peak level">
-                    <span class="vu-led"></span>
-                    <span class="vu-led"></span>
-                    <span class="vu-led"></span>
-                    <span class="vu-led"></span>
-                    <span class="vu-led"></span>
-                  </div>
-                  <kbd>M</kbd>
-                </button>
-              </div>
-            </div>
-
-            <!-- SCENES & PRODUCTION DECK -->
-            <div class="content-grid">
-              <section class="panel scenes-panel">
-                <div class="section-title">
-                  <div>
-                    <p class="eyebrow">Production Switcher</p>
-                    <h2>Studio Scenes</h2>
-                  </div>
-                  <button class="text-button" id="addScene">+ Quick scene</button>
-                </div>
-
-                <div class="scene-grid" id="sceneGrid">
-                  <button class="scene-card active" data-scene="Main Camera">
-                    <span class="preview main-preview">
-                      <span class="camera-lens-ring"></span>
-                      <span class="preview-tag">CAM 01</span>
-                      <span class="preview-person"></span>
-                      <span class="preview-desk"></span>
-                    </span>
-                    <span class="scene-meta">
-                      <strong>Main Camera</strong>
-                      <small>LIVE</small>
-                    </span>
-                  </button>
-
-                  <button class="scene-card" data-scene="Screen Share">
-                    <span class="preview screen-preview">
-                      <span class="preview-tag">DISP 01</span>
-                      <span class="code-line"></span>
-                      <span class="code-line short"></span>
-                      <span class="code-block"></span>
-                    </span>
-                    <span class="scene-meta">
-                      <strong>Screen Share</strong>
-                      <small>⌘ 2</small>
-                    </span>
-                  </button>
-
-                  <button class="scene-card" data-scene="Be Right Back">
-                    <span class="preview brb-preview">
-                      <span class="preview-tag">INTERMISSION</span>
-                      <b>BRB</b>
-                      <span class="ambient-glow"></span>
-                    </span>
-                    <span class="scene-meta">
-                      <strong>Be Right Back</strong>
-                      <small>⌘ 3</small>
-                    </span>
-                  </button>
-
-                  <button class="scene-card" data-scene="Starting Soon">
-                    <span class="preview starting-preview">
-                      <span class="preview-tag">PRE-SHOW</span>
-                      <b>STARTING<br>SOON</b>
-                      <span class="radial-ring"></span>
-                    </span>
-                    <span class="scene-meta">
-                      <strong>Starting Soon</strong>
-                      <small>⌘ 4</small>
-                    </span>
-                  </button>
-                </div>
-              </section>
-
-              <!-- SIGNAL & ENCODER HEALTH -->
-              <section class="panel health-panel">
-                <div class="section-title">
-                  <div>
-                    <p class="eyebrow">Telemetry</p>
-                    <h2>Stream Signal</h2>
-                  </div>
-                  <span class="signal-good"><span></span> Excellent</span>
-                </div>
-
-                <div class="stats-row">
-                  <div class="stat-box">
-                    <span>Bitrate</span>
-                    <strong>6,284</strong>
-                    <small>kbps</small>
-                    <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 85%;"></div></div>
-                  </div>
-                  <div class="stat-box">
-                    <span>Dropped</span>
-                    <strong>0.00</strong>
-                    <small>%</small>
-                    <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
-                  </div>
-                  <div class="stat-box">
-                    <span>Encoder CPU</span>
-                    <strong>11.4</strong>
-                    <small>%</small>
-                    <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 25%;"></div></div>
-                  </div>
-                </div>
-
-                <div class="health-meta-row">
-                  <div class="health-meta-pill">
-                    <small>Resolution</small>
-                    <strong>1080p 60fps</strong>
-                  </div>
-                  <div class="health-meta-pill">
-                    <small>Audio Bitrate</small>
-                    <strong>320 kbps AAC</strong>
-                  </div>
-                  <div class="health-meta-pill">
-                    <small>Latency</small>
-                    <strong>Ultra Low (&lt;1.2s)</strong>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <!-- AUDIENCE AT A GLANCE (QUICK PULSE) -->
-            <div class="panel audience-glance-panel">
-              <div class="glance-header">
-                <div class="heading-with-icon">
-                  <span class="live-pulse-green"></span>
-                  <p class="eyebrow">Multi-Stream Distribution Pulse</p>
-                </div>
-                <button type="button" class="btn-switch-view-link" data-switch-view="platforms">
-                  <span>Open Platforms Console</span>
-                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-                </button>
-              </div>
-              <div class="glance-stats-grid">
-                <div class="glance-stat-card">
-                  <span class="glance-lbl">Total Live Audience</span>
-                  <strong class="glance-num" id="glanceTotalViewers">0</strong>
-                  <span class="glance-status live" id="glanceSyncedSubtitle">● Synced Across 6 Platforms</span>
-                </div>
-                <div class="glance-plat-card yt">
-                  <span class="glance-plat-name">YouTube Live</span>
-                  <strong id="glanceYtViewers">0</strong>
-                  <small id="glanceYtHandle">@Rezanur Live</small>
-                </div>
-                <div class="glance-plat-card tw">
-                  <span class="glance-plat-name">Twitch</span>
-                  <strong id="glanceTwitchViewers">0</strong>
-                  <small id="glanceTwitchHandle">rezanur_live</small>
-                </div>
-                <div class="glance-plat-card fb">
-                  <span class="glance-plat-name">Facebook Live</span>
-                  <strong id="glanceFbViewers">0</strong>
-                  <small id="glanceFbHandle">Rezanur Gaming</small>
-                </div>
-                <div class="glance-plat-card tiktok">
-                  <span class="glance-plat-name">TikTok</span>
-                  <strong id="glanceTiktokViewers">Active</strong>
-                  <small id="glanceTiktokHandle">@rezanur_live</small>
-                </div>
-                <div class="glance-plat-card ig">
-                  <span class="glance-plat-name">Instagram</span>
-                  <strong id="glanceIgViewers">Active</strong>
-                  <small id="glanceIgHandle">@rezanur.studio</small>
-                </div>
-                <div class="glance-plat-card x">
-                  <span class="glance-plat-name">X (Twitter)</span>
-                  <strong id="glanceXViewers">Active</strong>
-                  <small id="glanceXHandle">@rezanur_live</small>
-                </div>
-              </div>
-            </div>
-
-            <!-- LIVE ALERT BOX QUICK BAR & TICKER -->
-            <div class="panel alert-glance-panel">
-              <div class="glance-header">
-                <div class="heading-with-icon">
-                  <span class="live-pulse-purple"></span>
-                  <p class="eyebrow">Live Alert Box // Stream Overlay</p>
-                </div>
-                <div class="alert-glance-actions">
-                  <button type="button" class="btn-deck-alert-test" data-test-type="subscribe" title="Test Subscriber Alert">
-                    <span>💎 Test Sub</span>
-                  </button>
-                  <button type="button" class="btn-deck-alert-test" data-test-type="like" title="Test Like Alert">
-                    <span>❤️ Test Like</span>
-                  </button>
-                  <button type="button" class="btn-deck-alert-test" data-test-type="follow" title="Test Follow Alert">
-                    <span>🚀 Test Follow</span>
-                  </button>
-                  <button type="button" class="btn-switch-view-link" data-switch-view="alerts">
-                    <span>Alert Box Console</span>
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-                  </button>
-                </div>
-              </div>
-              <div class="deck-alert-strip" id="deckAlertStrip">
-                <div class="deck-alert-icon-box" id="deckAlertIconBox">💎</div>
-                <div class="deck-alert-content">
-                  <div class="deck-alert-meta">
-                    <span class="deck-alert-badge" id="deckAlertBadge">LATEST ALERT</span>
-                    <span class="deck-alert-plat" id="deckAlertPlatform">YouTube</span>
-                    <time id="deckAlertTime">2m ago</time>
-                  </div>
-                  <strong class="deck-alert-msg" id="deckAlertMessage">Sarah Chen subscribed on YouTube!</strong>
-                </div>
-                <button type="button" class="btn-replay-deck-alert" id="btnReplayDeckAlert" title="Trigger on OBS Overlay Screen">
-                  <span>Replay on Stream</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- VIEW 2: MULTI-PLATFORM DISTRIBUTION -->
-          <div class="workspace-view" id="viewPlatforms" style="display: none;">
-            <!-- MULTI-PLATFORM REACH -->
-            <section class="panel platforms-panel">
-              <div class="section-title">
-                <div>
-                  <p class="eyebrow">Multi-Stream Distribution</p>
-                  <h2>Broadcast Platforms</h2>
-                </div>
-                <div class="platforms-header-controls">
-                  <button type="button" class="btn-auto-connect-all" id="btnAutoConnectAll">
-                    <span class="btn-spark">⚡</span> Auto-Connect All
-                  </button>
-                  <div class="total-viewers">
-                    <span>Live Audience:</span>
-                    <strong id="totalViewers">0</strong>
-                    <span class="trend">● Real-Time</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="platform-cards-grid">
-                <!-- YOUTUBE CARD -->
-                <article class="platform-card" data-platform="youtube">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon youtube">
-                        <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
-                      </div>
-                      <div>
-                        <h3>YouTube Live</h3>
-                        <span class="platform-handle" id="ytHandle">@Rezanur Live</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="ytStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num" id="ytViewerNum">0</span>
-                      <span class="metric-lbl">Viewers</span>
-                    </div>
-                    <div class="sparkline red">
-                      <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3"/><path class="fill" d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="youtube">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="youtube">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-
-                <!-- TWITCH CARD -->
-                <article class="platform-card" data-platform="twitch">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon twitch">
-                        <svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg>
-                      </div>
-                      <div>
-                        <h3>Twitch</h3>
-                        <span class="platform-handle" id="twitchHandle">rezanur_live</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="twitchStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num" id="twitchViewerNum">0</span>
-                      <span class="metric-lbl">Viewers</span>
-                    </div>
-                    <div class="sparkline purple">
-                      <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8"/><path class="fill" d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="twitch">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="twitch">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-
-                <!-- FACEBOOK CARD -->
-                <article class="platform-card" data-platform="facebook">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon facebook">
-                        <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-                      </div>
-                      <div>
-                        <h3>Facebook Live</h3>
-                        <span class="platform-handle" id="fbHandle">Rezanur Gaming</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="fbStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num" id="fbViewerNum">0</span>
-                      <span class="metric-lbl">Viewers</span>
-                    </div>
-                    <div class="sparkline blue">
-                      <svg viewBox="0 0 120 34"><path d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13"/><path class="fill" d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="facebook">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="facebook">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-
-                <!-- TIKTOK CARD -->
-                <article class="platform-card" data-platform="tiktok">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon tiktok">
-                        <svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-                      </div>
-                      <div>
-                        <h3>TikTok</h3>
-                        <span class="platform-handle" id="tiktokHandle">@rezanur_live</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="tiktokStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num">Syndication</span>
-                      <span class="metric-lbl">Active</span>
-                    </div>
-                    <div class="sparkline cyan">
-                      <svg viewBox="0 0 120 34"><path d="M2 28 16 24 28 26 40 19 52 20 65 15 77 16 90 9 104 12 118 4"/><path class="fill" d="M2 28 16 24 28 26 40 19 52 20 65 15 77 16 90 9 104 12 118 4V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="tiktok">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="tiktok">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-
-                <!-- INSTAGRAM CARD -->
-                <article class="platform-card" data-platform="instagram">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon insta">
-                        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg>
-                      </div>
-                      <div>
-                        <h3>Instagram</h3>
-                        <span class="platform-handle" id="instagramHandle">@rezanur.studio</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="instagramStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num">Reels</span>
-                      <span class="metric-lbl">Active</span>
-                    </div>
-                    <div class="sparkline pink">
-                      <svg viewBox="0 0 120 34"><path d="M2 26 16 27 28 20 40 22 52 16 65 18 77 12 90 15 104 8 118 10"/><path class="fill" d="M2 26 16 27 28 20 40 22 52 16 65 18 77 12 90 15 104 8 118 10V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="instagram">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="instagram">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-
-                <!-- X (TWITTER) CARD -->
-                <article class="platform-card" data-platform="x">
-                  <div class="platform-card-header">
-                    <div class="platform-badge-group">
-                      <div class="platform-icon x-corp">
-                        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                      </div>
-                      <div>
-                        <h3>X (Twitter)</h3>
-                        <span class="platform-handle" id="xHandle">@rezanur_live</span>
-                      </div>
-                    </div>
-                    <span class="platform-status-dot connected" id="xStatusDot"></span>
-                  </div>
-
-                  <div class="platform-card-body">
-                    <div class="viewer-metric-group">
-                      <span class="metric-num">Broadcast</span>
-                      <span class="metric-lbl">Active</span>
-                    </div>
-                    <div class="sparkline white">
-                      <svg viewBox="0 0 120 34"><path d="M2 29 16 25 28 24 40 18 52 19 65 13 77 15 90 7 104 10 118 5"/><path class="fill" d="M2 29 16 25 28 24 40 18 52 19 65 13 77 15 90 7 104 10 118 5V34H2Z"/></svg>
-                    </div>
-                  </div>
-
-                  <div class="platform-card-footer">
-                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="x">
-                      ✓ Connected
-                    </button>
-                    <button type="button" class="btn-card-config row-menu" data-platform="x">
-                      Configure
-                    </button>
-                  </div>
-                </article>
-              </div>
-            </section>
-
-            <!-- MULTI-STREAM SYNC TELEMETRY -->
-            <section class="panel health-panel" style="margin-top: 16px;">
-              <div class="section-title">
-                <div>
-                  <p class="eyebrow">Distribution Telemetry</p>
-                  <h2>Multi-Cast Pipeline Health</h2>
-                </div>
-                <span class="signal-good"><span></span> All Channels Synchronized</span>
-              </div>
-              <div class="stats-row">
-                <div class="stat-box">
-                  <span>Chat Sync Delay</span>
-                  <strong>&lt; 95</strong>
-                  <small>ms</small>
-                  <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 95%;"></div></div>
-                </div>
-                <div class="stat-box">
-                  <span>RTMP Relay</span>
-                  <strong id="rtmpRelayCount">6 / 6</strong>
-                  <small id="rtmpRelaySubtitle">Active (All Channels)</small>
-                  <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
-                </div>
-                <div class="stat-box">
-                  <span>Packet Health</span>
-                  <strong>100</strong>
-                  <small>%</small>
-                  <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <!-- VIEW 3: OMNIPUBLISH VIDEO SYNDICATION -->
-          <div class="workspace-view" id="viewSyndicate" style="display: none;">
-            <section class="panel syndication-panel">
-              <div class="section-title">
-                <div>
-                  <p class="eyebrow">OmniPublish // Multi-Platform Video Syndication</p>
-                  <h2>One-Click Multi-Channel Upload</h2>
-                </div>
-                <button type="button" class="btn-open-upload" id="workspaceUploadBtn">
-                  <span class="btn-spark">📹</span> Upload Video Everywhere
-                </button>
-              </div>
-              <div class="syndication-banner">
-                <div class="syndication-intro">
-                  <div class="syndication-icon-glow">
-                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
-                  </div>
-                  <div>
-                    <strong>Upload once, publish across all platforms</strong>
-                    <p>Syndicate your stream clips, recordings, or videos to YouTube, Facebook, Twitch, TikTok, Instagram &amp; X simultaneously.</p>
-                  </div>
-                </div>
-                <div class="syndication-pills">
-                  <span class="syn-badge yt">▶ YouTube</span>
-                  <span class="syn-badge fb">f Facebook</span>
-                  <span class="syn-badge tw">◈ Twitch</span>
-                  <span class="syn-badge tt">♪ TikTok</span>
-                  <span class="syn-badge ig">📷 Instagram</span>
-                  <span class="syn-badge x">𝕏 Post</span>
-                </div>
-              </div>
-              <!-- RECENT PUBLISHED VIDEOS PREVIEW -->
-              <div class="recent-uploads-bar" id="workspaceRecentUploads">
-                <span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>
-              </div>
-            </section>
-          </div>
-
-          <!-- VIEW 4: ALERT BOX & OBS OVERLAY -->
-          <div class="workspace-view" id="viewAlerts" style="display: none;">
-            <section class="panel alerts-console-panel">
-              <div class="section-title">
-                <div>
-                  <p class="eyebrow">Interactive Stream Overlay // Streamlabs &amp; OBS Compatible</p>
-                  <h2>Alert Box Studio</h2>
-                </div>
-                <div class="alerts-header-actions">
-                  <button type="button" class="btn-open-overlay-link" id="btnOpenOverlayWindow" title="Open overlay in standalone browser window">
-                    <span>🖥️ Open Overlay Window</span>
-                  </button>
-                  <button type="button" class="btn-copy-overlay-url" id="btnCopyOverlayUrl" title="Copy URL for OBS Studio Browser Source">
-                    <span>📋 Copy OBS Overlay URL</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- PREVIEW & QUICK TEST GRID -->
-              <div class="alert-studio-grid">
-                <!-- LIVE PREVIEW BOX -->
-                <div class="alert-preview-card">
-                  <div class="preview-header-bar">
-                    <div class="preview-title-wrap">
-                      <span class="preview-pulse-dot"></span>
-                      <strong>OBS Overlay Screen Preview</strong>
-                    </div>
-                    <span class="preview-res-badge">Transparent &bull; 800 × 600</span>
-                  </div>
-                  <div class="alert-preview-stage" id="alertPreviewStage">
-                    <!-- Live animated alert card preview -->
-                    <div class="preview-alert-card subscribe" id="previewAlertCard">
-                      <div class="preview-icon-wrap" id="previewAlertIcon">💎</div>
-                      <div class="preview-text-body">
-                        <span class="preview-tag-banner" id="previewAlertTag">NEW SUBSCRIBER!</span>
-                        <h3 class="preview-hero-user" id="previewAlertName">Sarah Chen</h3>
-                        <p class="preview-detail-text">
-                          <span id="previewAlertDesc">Subscribed on YouTube!</span>
-                          <span class="preview-plat-badge" id="previewAlertPlatBadge">YouTube</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="preview-controls-row">
-                    <span class="test-title">Simulate Real Stream Event:</span>
-                    <div class="test-buttons-group">
-                      <button type="button" class="btn-test-alert like" data-test="like">
-                        <span>❤️ Test Like</span>
-                      </button>
-                      <button type="button" class="btn-test-alert subscribe" data-test="subscribe">
-                        <span>💎 Test Subscribe</span>
-                      </button>
-                      <button type="button" class="btn-test-alert follow" data-test="follow">
-                        <span>🚀 Test Follow</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- OBS BROWSER SOURCE INTEGRATION CARD -->
-                <div class="alert-config-card">
-                  <div class="card-title-row">
-                    <div class="heading-with-icon">
-                      <span class="obs-icon-badge">OBS</span>
-                      <h3>OBS Studio Browser Source Setup</h3>
-                    </div>
-                  </div>
-                  <p class="obs-guide-text">Add this transparent overlay directly to your OBS Studio scene so your viewers see when someone likes, subscribes, or follows:</p>
-
-                  <div class="obs-url-box">
-                    <input type="text" id="obsOverlayUrlInput" readonly value="http://localhost:4173/alerts.html">
-                    <button type="button" class="btn-copy-code" id="btnCopyOverlayInput">Copy</button>
-                  </div>
-
-                  <div class="obs-steps-list">
-                    <div class="obs-step-item">
-                      <b>1</b>
-                      <div>
-                        <strong>Add Browser Source in OBS</strong>
-                        <small>In OBS Studio &gt; Sources &gt; Click <b>+</b> &gt; Select <b>Browser</b>.</small>
-                      </div>
-                    </div>
-                    <div class="obs-step-item">
-                      <b>2</b>
-                      <div>
-                        <strong>Paste the Overlay URL</strong>
-                        <small>Set Width: <code>800</code>, Height: <code>600</code> (or <code>1920x1080</code>).</small>
-                      </div>
-                    </div>
-                    <div class="obs-step-item">
-                      <b>3</b>
-                      <div>
-                        <strong>Test Your Alert</strong>
-                        <small>Click "Test Subscribe" or "Test Follow" below to see it pop up live on your OBS stream!</small>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- ALERT SETTINGS / OPTIONS -->
-                  <div class="alert-options-form">
-                    <h4>Alert Box Settings</h4>
-                    <div class="options-toggle-grid">
-                      <label class="toggle-option">
-                        <input type="checkbox" id="cfgShowLikes" checked>
-                        <span>Likes &amp; Reactions</span>
-                      </label>
-                      <label class="toggle-option">
-                        <input type="checkbox" id="cfgShowSubs" checked>
-                        <span>Subscriptions &amp; Members</span>
-                      </label>
-                      <label class="toggle-option">
-                        <input type="checkbox" id="cfgShowFollows" checked>
-                        <span>Followers</span>
-                      </label>
-                      <label class="toggle-option">
-                        <input type="checkbox" id="cfgSoundEnabled" checked>
-                        <span>Play Audio Chime 🔔</span>
-                      </label>
-                    </div>
-
-                    <div class="slider-field-row">
-                      <span>Display Duration: <strong id="cfgDurationVal">5s</strong></span>
-                      <input type="range" id="cfgDurationSlider" min="3" max="15" value="5" step="1">
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- RECENT AUDIENCE ALERTS FEED (HISTORY) -->
-              <div class="alerts-history-section">
-                <div class="history-section-header">
-                  <div>
-                    <h3>Live Audience Activity Feed</h3>
-                    <p class="eyebrow">Real-time log of who liked, subscribed, or followed across all platforms</p>
-                  </div>
-                  <div class="history-filter-tabs" id="alertsFilterTabs">
-                    <button type="button" class="alert-filter-btn active" data-filter="all">All Alerts (<span id="totalAlertsCount">4</span>)</button>
-                    <button type="button" class="alert-filter-btn" data-filter="subscribe">Subscribes</button>
-                    <button type="button" class="alert-filter-btn" data-filter="follow">Follows</button>
-                    <button type="button" class="alert-filter-btn" data-filter="like">Likes</button>
-                  </div>
-                </div>
-
-                <div class="alerts-list-container" id="alertsHistoryList">
-                  <!-- Dynamically populated -->
-                </div>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <!-- RIGHT WORKSPACE: UNIFIED LIVE CHAT FEED -->
-        <aside class="chat-panel panel">
-          <div class="chat-header">
-            <div>
-              <div class="heading-with-icon">
-                <span class="live-pulse-green"></span>
-                <p class="eyebrow">Unified Audience</p>
-              </div>
-              <h2>Live Chat Stream</h2>
-            </div>
-            <button class="icon-button" id="platformSettingsButton" aria-label="Platform settings" title="Manage Platform Credentials">
-              <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12h2M3 12h2m7-9v2m0 14v2m6.36-15.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/></svg>
-            </button>
-          </div>
-
-          <!-- CHAT FILTER TABS -->
-          <div class="chat-filters" id="chatFilters">
-            <button class="active" data-filter="all">All <span id="commentCount">0</span></button>
-            <button data-filter="youtube" class="filter-yt">YouTube</button>
-            <button data-filter="twitch" class="filter-twitch">Twitch</button>
-            <button data-filter="facebook" class="filter-fb">Facebook</button>
-            <button data-filter="tiktok" class="filter-tiktok">TikTok</button>
-            <button data-filter="instagram" class="filter-ig">Instagram</button>
-            <button data-filter="x" class="filter-x">X</button>
-          </div>
-
-          <!-- PINNED COMMENT BANNER -->
-          <div class="chat-pinned-box" id="chatPinnedBox" style="display: none;"></div>
-
-          <!-- SCROLLABLE CHAT FEED -->
-          <div class="chat-feed" id="chatFeed">
-            <div class="empty-state-chat">
-              <div class="empty-state-icon">💬</div>
-              <strong>Chat Stream Ready</strong>
-              <p>When you go live on YouTube, Twitch, Facebook, TikTok, Instagram or X, comments from your viewers will appear here in real time. Click Reply to answer directly on that platform, or Pin to spotlight a message.</p>
-            </div>
-          </div>
-
-          <!-- CHAT COMPOSE FORM -->
-          <form class="chat-compose" id="chatForm">
-            <!-- REPLY TARGET BANNER (Visible when replying to a specific comment) -->
-            <div class="reply-target-bar" id="replyTargetBar" style="display: none;">
-              <div class="reply-target-left">
-                <span class="reply-arrow-icon">↳</span>
-                <span>Replying to <strong id="replyTargetAuthor">@Author</strong> on <span class="reply-plat-pill facebook" id="replyTargetPlatform">Facebook</span></span>
-              </div>
-              <button type="button" class="btn-cancel-reply" id="btnCancelReply" title="Cancel reply (Esc)">&times;</button>
-            </div>
-
-            <div class="broadcast-target" id="broadcastTargetBar">
-              <span>Broadcasting reply as</span>
-              <strong id="chatSenderName">Streamer (You)</strong>
-              <span>to all active platforms</span>
-            </div>
-
-            <div class="compose-row">
-              <input id="chatInput" type="text" placeholder="Send message to all synchronized platforms..." autocomplete="off">
-              <button type="submit" aria-label="Send comment" title="Send (Enter)">
-                <svg viewBox="0 0 24 24"><path d="m4 4 16 8-16 8 3-8-3-8Zm3 8h13"/></svg>
-              </button>
-            </div>
-          </form>
-        </aside>
-      </div>
-    </main>
-
-    <!-- TOAST NOTIFICATIONS -->
-    <div class="toast" id="toast" role="status"></div>
-
-    <!-- STOP STREAM CONFIRMATION MODAL -->
-    <div class="modal-backdrop" id="stopModal" aria-hidden="true">
-      <div class="modal">
-        <span class="modal-icon danger">
-          <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg>
-        </span>
-        <p class="eyebrow">Live Broadcast</p>
-        <h2>End Stream Everywhere?</h2>
-        <p>This will stop streaming across all connected platforms in OBS Studio. Your recording will remain active.</p>
-        <div class="modal-actions">
-          <button id="cancelStop" class="secondary-button" type="button">Keep Streaming</button>
-          <button id="confirmStop" class="danger-button" type="button">End Stream Now</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- OBS WEBSOCKET CONNECTION MODAL -->
-    <div class="modal-backdrop" id="connectionModal" aria-hidden="true">
-      <form class="modal connection-modal" id="connectionForm">
-        <span class="modal-icon connect-icon">
-          <svg viewBox="0 0 24 24"><path d="M8 12h8m-4-4v8M5 5h14v14H5z"/></svg>
-        </span>
-        <p class="eyebrow">OBS Studio WebSocket 5.x</p>
-        <h2>Connect OBS Studio</h2>
-        <div class="connect-guide">
-          <strong>Direct local connection</strong>
-          <ol>
-            <li>Open OBS Studio &gt; <b>Tools &gt; WebSocket Server Settings</b>.</li>
-            <li>Enable server, keep port <code>4455</code>, copy password.</li>
-            <li>Click <b>Connect OBS</b> below to auto-pair!</li>
-          </ol>
-        </div>
-        <label class="field-label">
-          <span>WebSocket Address</span>
-          <input id="obsAddress" type="text" value="ws://127.0.0.1:4455" placeholder="ws://127.0.0.1:4455" required>
-        </label>
-        <label class="field-label">
-          <span>WebSocket Password</span>
-          <input id="obsPassword" type="password" placeholder="Leave empty if disabled in OBS">
-        </label>
-        <label class="field-label">
-          <span>Microphone Input Name</span>
-          <input id="obsMicInput" type="text" value="Mic/Aux" required>
-        </label>
-        <p class="connection-error" id="connectionError"></p>
-        <div class="modal-actions">
-          <button type="button" id="cancelConnection" class="secondary-button">Cancel</button>
-          <button type="submit" class="connect-button" id="connectSubmit">Connect OBS</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- ACCOUNT MODAL -->
-    <div class="modal-backdrop" id="accountModal" aria-hidden="true">
-      <form class="modal account-modal" id="accountForm">
-        <div class="modal-header-row">
-          <div>
-            <p class="eyebrow" id="accountEyebrow">Studio Profile &bull; Account Settings</p>
-            <h2 id="accountTitle">Account Profile</h2>
-          </div>
-          <button type="button" id="cancelAccount" class="icon-button modal-close-btn" aria-label="Close account dialog" title="Close">&times;</button>
-        </div>
-
-        <!-- AVATAR EDIT SECTION -->
-        <div class="avatar-edit-section" id="accountAvatarSection">
-          <div class="avatar-edit-preview-wrap">
-            <div class="avatar-edit-preview" id="accountAvatarPreview">
-              <span id="accountAvatarInitials">RZ</span>
-              <img id="accountAvatarImg" src="" alt="Avatar" style="display: none;">
-            </div>
-            <label for="accountAvatarFile" class="avatar-edit-badge" title="Upload new photo">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            </label>
-          </div>
-          <div class="avatar-edit-controls">
-            <input type="file" id="accountAvatarFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
-            <div class="avatar-btns-row">
-              <button type="button" class="btn-avatar-action" id="btnUploadAvatar">
-                <svg viewBox="0 0 24 24" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m14-7-5-5-5 5m5-5v12"/></svg>
-                <span>Upload Photo</span>
-              </button>
-              <button type="button" class="btn-avatar-action remove" id="btnRemoveAvatar" style="display: none;">
-                <span>Remove</span>
-              </button>
-            </div>
-            <span class="avatar-subtext">JPG, PNG or WebP. Shown on your deck, topbar, and live replies.</span>
-          </div>
-        </div>
-
-        <label class="field-label" id="accountNameLabel">
-          <span>Display Name</span>
-          <input id="accountName" type="text" autocomplete="name" placeholder="Your name (e.g. Rezanur)">
-        </label>
-        <label class="field-label" id="accountEmailLabel">
-          <span>Email Address</span>
-          <input id="accountEmail" type="email" autocomplete="email" required>
-        </label>
-        <label class="field-label" id="accountPasswordLabel">
-          <span id="accountPasswordLabelText">Password</span>
-          <input id="accountPassword" type="password" autocomplete="current-password" minlength="6">
-          <small id="accountPasswordHint" class="field-hint" style="display: none;">Leave blank to keep current password</small>
-        </label>
-        <p class="connection-error" id="accountError"></p>
-        <div class="modal-actions">
-          <button type="button" id="accountMode" class="secondary-button">Create account</button>
-          <button type="submit" id="accountSubmitBtn" class="connect-button">Save Changes</button>
-        </div>
-        <button type="button" class="text-button logout-button" id="logoutButton">Sign out</button>
-      </form>
-    </div>
-
-    <!-- PLATFORM SETTINGS MODAL -->
-    <div class="modal-backdrop" id="platformModal" aria-hidden="true">
-      <form class="modal platform-modal" id="platformForm">
-        <p class="eyebrow">Cloud Credentials &bull; Multi-Platform</p>
-        <h2>Platform Settings</h2>
-        
-        <div class="settings-tabs">
-          <button type="button" class="active" data-settings-tab="youtube">YouTube</button>
-          <button type="button" data-settings-tab="twitch">Twitch</button>
-          <button type="button" data-settings-tab="facebook">Facebook</button>
-          <button type="button" data-settings-tab="tiktok">TikTok</button>
-          <button type="button" data-settings-tab="instagram">Instagram</button>
-          <button type="button" data-settings-tab="x">X (Twitter)</button>
-        </div>
-
-        <!-- YOUTUBE TAB -->
-        <section class="settings-section active" data-settings-section="youtube">
-          <a class="oauth-button youtube-oauth" href="/api/oauth/youtube/start">
-            <span>▶</span>
-            <strong>Connect with Google / YouTube</strong>
-          </a>
-          <p class="oauth-status" id="youtubeOAuthStatus">One-click OAuth automatically links your channel.</p>
-          <div class="platform-guide">
-            <strong>Custom API Setup (Optional)</strong>
-            <p>If not using 1-Click Auto-Connect, enter custom credentials:</p>
-          </div>
-          <label class="field-label">
-            <span>YouTube API Key</span>
-            <input name="youtube.apiKey" type="password" placeholder="AIzaSy...">
-          </label>
-          <label class="field-label">
-            <span>Channel ID</span>
-            <input name="youtube.channelId" type="text" placeholder="UC...">
-          </label>
-          <label class="field-label">
-            <span>Video ID Override</span>
-            <input name="youtube.videoId" type="text" placeholder="Optional">
-          </label>
-        </section>
-
-        <!-- TWITCH TAB -->
-        <section class="settings-section" data-settings-section="twitch">
-          <a class="oauth-button twitch-oauth" href="/api/oauth/twitch/start">
-            <span>◈</span>
-            <strong>Connect with Twitch Account</strong>
-          </a>
-          <p class="oauth-status" id="twitchOAuthStatus">OAuth allows sending chat messages directly as your channel.</p>
-          <label class="field-label">
-            <span>Twitch Client ID</span>
-            <input name="twitch.clientId" type="text" placeholder="Client ID from dev.twitch.tv">
-          </label>
-          <label class="field-label">
-            <span>App Access Token</span>
-            <input name="twitch.accessToken" type="password" placeholder="Optional if using Twitch OAuth above">
-          </label>
-          <label class="field-label">
-            <span>Channel Name</span>
-            <input name="twitch.channel" type="text" placeholder="e.g. rezanur_live">
-          </label>
-        </section>
-
-        <!-- FACEBOOK TAB -->
-        <section class="settings-section" data-settings-section="facebook">
-          <label class="field-label">
-            <span>Page Access Token</span>
-            <input name="facebook.accessToken" type="password" placeholder="EAA...">
-          </label>
-          <label class="field-label">
-            <span>Facebook Page ID</span>
-            <input name="facebook.pageId" type="text" placeholder="e.g. 1029384756">
-          </label>
-          <label class="field-label">
-            <span>Live Video ID Override</span>
-            <input name="facebook.liveVideoId" type="text" placeholder="Leave empty for auto-detect">
-          </label>
-          <label class="field-label">
-            <span>Graph API Version</span>
-            <input name="facebook.graphVersion" type="text" value="v24.0" placeholder="v24.0">
-          </label>
-          <button type="button" id="testFacebookConnection" class="test-platform-button">Test Connection</button>
-          <p class="oauth-status" id="facebookTestStatus">Save before testing.</p>
-        </section>
-
-        <!-- TIKTOK TAB -->
-        <section class="settings-section" data-settings-section="tiktok">
-          <button type="button" class="oauth-button tiktok-oauth" data-action="auto-connect-modal" data-platform="tiktok">
-            <span>♪</span>
-            <strong id="btnModalTikTokConnect">Auto-Connect TikTok Account</strong>
-          </button>
-          <p class="oauth-status" id="tiktokOAuthStatus">Auto-connects your TikTok account for instant video &amp; clip syndication.</p>
-          <label class="field-label">
-            <span>TikTok Handle / Username</span>
-            <input name="tiktok.handle" type="text" placeholder="e.g. @rezanur_live">
-          </label>
-          <label class="field-label">
-            <span>Creator Account Display Name</span>
-            <input name="tiktok.accountName" type="text" placeholder="e.g. Rezanur Live">
-          </label>
-          <label class="field-label">
-            <span>Client Key (Optional)</span>
-            <input name="tiktok.clientKey" type="text" placeholder="TikTok Developer Client Key">
-          </label>
-          <label class="field-label">
-            <span>Access Token (Optional)</span>
-            <input name="tiktok.accessToken" type="password" placeholder="TikTok Open API Access Token">
-          </label>
-        </section>
-
-        <!-- INSTAGRAM TAB -->
-        <section class="settings-section" data-settings-section="instagram">
-          <button type="button" class="oauth-button instagram-oauth" data-action="auto-connect-modal" data-platform="instagram">
-            <span>📸</span>
-            <strong id="btnModalInstagramConnect">Auto-Connect Instagram Account</strong>
-          </button>
-          <p class="oauth-status" id="instagramOAuthStatus">Auto-connects your Instagram account for instant Reels syndication.</p>
-          <label class="field-label">
-            <span>Instagram Handle</span>
-            <input name="instagram.handle" type="text" placeholder="e.g. @rezanur.studio">
-          </label>
-          <label class="field-label">
-            <span>Instagram Account ID</span>
-            <input name="instagram.accountId" type="text" placeholder="Instagram Business Account ID">
-          </label>
-          <label class="field-label">
-            <span>Graph API Access Token</span>
-            <input name="instagram.accessToken" type="password" placeholder="Instagram User / Page Token">
-          </label>
-        </section>
-
-        <!-- X (TWITTER) TAB -->
-        <section class="settings-section" data-settings-section="x">
-          <button type="button" class="oauth-button x-oauth" data-action="auto-connect-modal" data-platform="x">
-            <span>𝕏</span>
-            <strong id="btnModalXConnect">Auto-Connect X (Twitter) Account</strong>
-          </button>
-          <p class="oauth-status" id="xOAuthStatus">Auto-connects your X profile for instant video tweet syndication.</p>
-          <label class="field-label">
-            <span>X Handle / Username</span>
-            <input name="x.handle" type="text" placeholder="e.g. @rezanur_live">
-          </label>
-          <label class="field-label">
-            <span>API Key</span>
-            <input name="x.apiKey" type="password" placeholder="X Consumer Key">
-          </label>
-          <label class="field-label">
-            <span>API Secret</span>
-            <input name="x.apiSecret" type="password" placeholder="X Consumer Secret">
-          </label>
-          <label class="field-label">
-            <span>User Access Token</span>
-            <input name="x.accessToken" type="password" placeholder="X OAuth 1.0a / 2.0 Access Token">
-          </label>
-        </section>
-
-        <p class="connection-error" id="platformError"></p>
-        <div class="modal-actions">
-          <button type="button" id="cancelPlatformSettings" class="secondary-button">Cancel</button>
-          <button type="submit" class="connect-button">Save Settings</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- MULTI-PLATFORM VIDEO PUBLISHER MODAL -->
-    <div class="modal-backdrop" id="videoUploadModal" aria-hidden="true">
-      <div class="modal video-upload-modal">
-        <div class="modal-header-row">
-          <div>
-            <p class="eyebrow">OmniPublish &bull; Video Syndication</p>
-            <h2>Upload to All Platforms</h2>
-          </div>
-          <button type="button" id="cancelVideoUpload" class="icon-button modal-close-btn" aria-label="Close dialog" title="Close">&times;</button>
-        </div>
-        <p class="modal-subtext">Select one video to publish simultaneously across YouTube, Facebook, Twitch, TikTok, Instagram &amp; X.</p>
-
-        <!-- TABS: NEW UPLOAD / HISTORY -->
-        <div class="upload-modal-tabs">
-          <button type="button" class="tab-btn active" id="tabNewUploadBtn">New Upload</button>
-          <button type="button" class="tab-btn" id="tabUploadHistoryBtn">Published Videos (<span id="publishedVideosCount">0</span>)</button>
-        </div>
-
-        <!-- TAB 1: NEW UPLOAD VIEW -->
-        <div id="uploadTabNew" class="upload-tab-pane">
-          <form id="videoUploadForm">
-            <!-- DROPZONE -->
-            <div class="video-dropzone" id="videoDropzone">
-              <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" hidden>
-              <div class="dropzone-idle" id="dropzoneIdle">
-                <div class="dropzone-icon">
-                  <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
-                </div>
-                <strong>Drag &amp; drop video file here or click to browse</strong>
-                <p>Supports MP4, MOV, WEBM, MKV (or publish an instant highlight)</p>
-                <button type="button" class="btn-browse-file" id="btnBrowseVideo">Choose Video File</button>
-              </div>
-
-              <!-- FILE LOADED PREVIEW -->
-              <div class="dropzone-loaded" id="dropzoneLoaded" style="display: none;">
-                <div class="video-preview-wrapper">
-                  <video id="videoPreviewPlayer" controls playsinline preload="metadata"></video>
-                </div>
-                <div class="video-file-info">
-                  <div>
-                    <strong id="videoFileNameText">video.mp4</strong>
-                    <div class="video-file-meta-pills">
-                      <span id="videoFileSizeBadge" class="file-pill">0 MB</span>
-                      <span id="videoDurationBadge" class="file-pill">00:00</span>
-                      <span id="videoResolutionBadge" class="file-pill">1080p</span>
-                    </div>
-                  </div>
-                  <button type="button" class="text-button" id="btnChangeVideo">Change file</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- METADATA FORM -->
-            <div class="video-fields-grid">
-              <label class="field-label full-width">
-                <span>Video Title *</span>
-                <input id="videoUploadTitle" type="text" placeholder="e.g. Insane Highlights &amp; Best Moments | Stream #1" required maxlength="120">
-              </label>
-
-              <label class="field-label full-width">
-                <span>Description</span>
-                <textarea id="videoUploadDescription" rows="2" placeholder="Add description, links, hashtags (#Stream #Gaming)..."></textarea>
-              </label>
-
-              <label class="field-label">
-                <span>Tags (comma-separated)</span>
-                <input id="videoUploadTags" type="text" placeholder="e.g. stream, gaming, highlights, live">
-              </label>
-
-              <label class="field-label">
-                <span>Category</span>
-                <select id="videoUploadCategory" class="field-select">
-                  <option value="Gaming" selected>Gaming</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="People &amp; Blogs">People &amp; Blogs</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Music">Music</option>
-                  <option value="Education">Education</option>
-                </select>
-              </label>
-
-              <label class="field-label">
-                <span>Visibility</span>
-                <select id="videoUploadPrivacy" class="field-select">
-                  <option value="public" selected>Public (Live to All)</option>
-                  <option value="unlisted">Unlisted</option>
-                  <option value="private">Private</option>
-                </select>
-              </label>
-            </div>
-
-            <!-- TARGET PLATFORMS SELECTION -->
-            <div class="platforms-selector-section">
-              <div class="selector-title-row">
-                <span class="selector-title">Target Broadcast Platforms:</span>
-                <span class="selector-badge-all">All 6 Configured &bull; Multi-Cast Ready</span>
-              </div>
-              <div class="target-platforms-grid">
-                <!-- YOUTUBE -->
-                <label class="platform-select-card active" data-target="youtube">
-                  <input type="checkbox" name="targetPlatform" value="youtube" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon yt"><svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg></span>
-                    <strong>YouTube</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_youtube">● Connected</span>
-                  </div>
-                  <small>HD Video &bull; Shorts eligible</small>
-                </label>
-
-                <!-- FACEBOOK -->
-                <label class="platform-select-card active" data-target="facebook">
-                  <input type="checkbox" name="targetPlatform" value="facebook" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon fb"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></span>
-                    <strong>Facebook</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_facebook">● Connected</span>
-                  </div>
-                  <small>Page Watch &bull; Reels</small>
-                </label>
-
-                <!-- TWITCH -->
-                <label class="platform-select-card active" data-target="twitch">
-                  <input type="checkbox" name="targetPlatform" value="twitch" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon twitch"><svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg></span>
-                    <strong>Twitch</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_twitch">● Connected</span>
-                  </div>
-                  <small>Channel VOD &bull; Highlights</small>
-                </label>
-
-                <!-- TIKTOK -->
-                <label class="platform-select-card active" data-target="tiktok">
-                  <input type="checkbox" name="targetPlatform" value="tiktok" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon tiktok"><svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></span>
-                    <strong>TikTok</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_tiktok">● Connected</span>
-                  </div>
-                  <small>Shorts &bull; Vertical Feed</small>
-                </label>
-
-                <!-- INSTAGRAM -->
-                <label class="platform-select-card active" data-target="instagram">
-                  <input type="checkbox" name="targetPlatform" value="instagram" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon insta"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg></span>
-                    <strong>Instagram</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_instagram">● Connected</span>
-                  </div>
-                  <small>Reels Syndication</small>
-                </label>
-
-                <!-- X / TWITTER -->
-                <label class="platform-select-card active" data-target="x">
-                  <input type="checkbox" name="targetPlatform" value="x" checked>
-                  <div class="plat-card-header">
-                    <span class="plat-icon x-corp"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
-                    <strong>X (Twitter)</strong>
-                    <span class="plat-conn-badge connected" id="synConnBadge_x">● Connected</span>
-                  </div>
-                  <small>Video Broadcast Post</small>
-                </label>
-              </div>
-            </div>
-
-            <!-- UPLOAD PROGRESS MATRIX -->
-            <div class="upload-progress-matrix" id="uploadProgressMatrix" style="display: none;">
-              <div class="matrix-title">
-                <span class="live-pulse-green"></span>
-                <strong id="matrixStatusTitle">Syndicating Video Everywhere...</strong>
-              </div>
-              <div class="matrix-bars-list" id="matrixBarsList">
-                <!-- Dynamically populated per platform -->
-              </div>
-            </div>
-
-            <p class="connection-error" id="videoUploadError"></p>
-
-            <div class="modal-actions">
-              <button type="button" id="cancelUploadForm" class="secondary-button">Close</button>
-              <button type="submit" id="btnSubmitVideoUpload" class="connect-button btn-publish-action">
-                <span class="btn-spark">🚀</span>
-                <span id="btnSubmitVideoText">Upload to All Platforms</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- TAB 2: PUBLISHED HISTORY VIEW -->
-        <div id="uploadTabHistory" class="upload-tab-pane" style="display: none;">
-          <div class="history-list" id="publishedVideosList">
-            <p class="empty-state">No videos uploaded yet. Upload your first video to syndicate everywhere!</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- REMOTE OBS AGENT MODAL -->
-    <div class="modal-backdrop" id="remoteObsModal" aria-hidden="true">
-      <div class="modal remote-obs-modal">
-        <p class="eyebrow">Cloud Host &bull; OBS Agent</p>
-        <h2>Connect Remote OBS PC</h2>
-        <p class="remote-intro">If accessing Relay hosted on the web, run this single PowerShell command on the OBS streaming machine.</p>
-        <div class="remote-steps">
-          <div class="remote-step active"><b>1</b><span><strong>Generate</strong><small>One-time pairing code</small></span></div>
-          <div class="remote-step"><b>2</b><span><strong>Run</strong><small>Paste in PowerShell</small></span></div>
-          <div class="remote-step"><b>3</b><span><strong>Connected</strong><small>Instant live link</small></span></div>
-        </div>
-        <div class="agent-command-wrap">
-          <code class="agent-command" id="agentCommand">Click Generate command to begin.</code>
-          <button type="button" id="copyAgentCommand" class="copy-command" disabled>Copy</button>
-        </div>
-        <p class="connection-error" id="remoteObsError"></p>
-        <div class="modal-actions">
-          <button type="button" id="cancelRemoteObs" class="secondary-button">Close</button>
-          <button type="button" id="generatePairingCode" class="connect-button">Generate command</button>
-        </div>
-      </div>
     </div>
   </div>
 
-  <script src="app.js?v=20261109-pro2"></script>
+  <!-- =========================================================================
+       VIEW B: STUDIO WORKSPACE (When logged in)
+       ========================================================================= -->
+  <main class="main-content" id="workspaceView" style="display: none;">
+
+    <!-- TAB 1: OVERVIEW & PLATFORMS -->
+    <section class="tab-view active" id="tabOverview">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Broadcast Deck</h1>
+          <p class="section-desc">Real-time status across all 6 live syndication destinations.</p>
+        </div>
+        <div class="section-actions">
+          <button type="button" class="btn-secondary" id="btnAutoConnectAll">
+            <span>⚡ Re-Sync All 6 Platforms</span>
+          </button>
+          <button type="button" class="btn-primary" data-tab-link="obs">
+            <span>OBS Controls</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Hero Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Live Audience</span>
+          <strong class="metric-value" id="totalAudienceCount">0</strong>
+          <span class="metric-sub good">● Real-time sync</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Connected Platforms</span>
+          <strong class="metric-value" id="connectedPlatformsCount">6 / 6</strong>
+          <span class="metric-sub good">All channels ready</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">RTMP Pipeline</span>
+          <strong class="metric-value">&lt; 95 ms</strong>
+          <span class="metric-sub good">Zero packet loss</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">OBS Remote</span>
+          <strong class="metric-value" id="obsMetricState">Ready</strong>
+          <span class="metric-sub" id="obsMetricSub">Port 4455 standby</span>
+        </div>
+      </div>
+
+      <!-- 6 Clean Platform Cards -->
+      <div class="platform-grid">
+        <!-- 1. YouTube Live -->
+        <div class="platform-card" data-platform="youtube">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon youtube">▶</div>
+              <div>
+                <div class="plat-name">YouTube Live</div>
+                <div class="plat-account" id="platHandle_youtube">YouTube Live</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_youtube">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Live Viewers</span>
+            <span class="plat-stat-val" id="platViewers_youtube">0</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="youtube">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="youtube">Configure</button>
+          </div>
+        </div>
+
+        <!-- 2. Twitch -->
+        <div class="platform-card" data-platform="twitch">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon twitch">👾</div>
+              <div>
+                <div class="plat-name">Twitch</div>
+                <div class="plat-account" id="platHandle_twitch">rezanur_live</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_twitch">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Live Viewers</span>
+            <span class="plat-stat-val" id="platViewers_twitch">0</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="twitch">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="twitch">Configure</button>
+          </div>
+        </div>
+
+        <!-- 3. Facebook Live -->
+        <div class="platform-card" data-platform="facebook">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon facebook">f</div>
+              <div>
+                <div class="plat-name">Facebook Live</div>
+                <div class="plat-account" id="platHandle_facebook">Rezanur Gaming</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_facebook">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Live Viewers</span>
+            <span class="plat-stat-val" id="platViewers_facebook">0</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="facebook">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="facebook">Configure</button>
+          </div>
+        </div>
+
+        <!-- 4. TikTok -->
+        <div class="platform-card" data-platform="tiktok">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon tiktok">♪</div>
+              <div>
+                <div class="plat-name">TikTok</div>
+                <div class="plat-account" id="platHandle_tiktok">@rezanur_live</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_tiktok">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Syndication</span>
+            <span class="plat-stat-val" id="platViewers_tiktok">Active</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="tiktok">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="tiktok">Configure</button>
+          </div>
+        </div>
+
+        <!-- 5. Instagram -->
+        <div class="platform-card" data-platform="instagram">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon instagram">📸</div>
+              <div>
+                <div class="plat-name">Instagram</div>
+                <div class="plat-account" id="platHandle_instagram">@rezanur.studio</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_instagram">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Syndication</span>
+            <span class="plat-stat-val" id="platViewers_instagram">Active</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="instagram">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="instagram">Configure</button>
+          </div>
+        </div>
+
+        <!-- 6. X (Twitter) -->
+        <div class="platform-card" data-platform="x">
+          <div class="plat-top">
+            <div class="plat-info">
+              <div class="plat-icon x">𝕏</div>
+              <div>
+                <div class="plat-name">X (Twitter)</div>
+                <div class="plat-account" id="platHandle_x">@rezanur_live</div>
+              </div>
+            </div>
+            <span class="status-badge connected" id="platBadge_x">● Connected</span>
+          </div>
+          <div class="plat-stats-row">
+            <span class="plat-stat-label">Syndication</span>
+            <span class="plat-stat-val" id="platViewers_x">Active</span>
+          </div>
+          <div class="plat-actions">
+            <button type="button" class="btn-plat-toggle active" data-action="toggle-connect" data-platform="x">Connected</button>
+            <button type="button" class="btn-plat-cfg" data-action="configure" data-platform="x">Configure</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RTMP Stream Ingest Keys -->
+      <div class="stream-info-card">
+        <div class="stream-info-header">
+          <div class="stream-info-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>OBS RTMP Multi-Cast Ingest Server</span>
+          </div>
+          <span style="font-size:12px; color:var(--text-muted);">Paste into OBS Studio &bull; 1080p60 6000kbps Relay</span>
+        </div>
+        <div class="stream-keys-grid">
+          <div class="key-field-box">
+            <div class="key-field-left">
+              <span class="key-field-lbl">Server URL</span>
+              <span class="key-field-val" id="rtmpServerUrl">rtmps://live.streamcommand.io/live</span>
+            </div>
+            <button type="button" class="btn-copy-sm" data-copy-target="#rtmpServerUrl">Copy</button>
+          </div>
+          <div class="key-field-box">
+            <div class="key-field-left">
+              <span class="key-field-lbl">Master Stream Key</span>
+              <span class="key-field-val" id="rtmpStreamKey">live_sec_7894a82b991c49f8</span>
+            </div>
+            <button type="button" class="btn-copy-sm" data-copy-target="#rtmpStreamKey">Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: UNIFIED LIVE CHAT -->
+    <section class="tab-view" id="tabChat">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Unified Audience Chat</h2>
+          <p class="section-desc">One centralized feed for comments from all 6 synchronized platforms.</p>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <!-- Filter Tabs -->
+        <div class="chat-filter-bar">
+          <div class="chat-filter-pills" id="chatFilters">
+            <button type="button" class="chat-filter-pill active" data-filter="all">All Comments (<span id="chatCountSpan">0</span>)</button>
+            <button type="button" class="chat-filter-pill" data-filter="youtube">YouTube</button>
+            <button type="button" class="chat-filter-pill" data-filter="twitch">Twitch</button>
+            <button type="button" class="chat-filter-pill" data-filter="facebook">Facebook</button>
+            <button type="button" class="chat-filter-pill" data-filter="tiktok">TikTok</button>
+            <button type="button" class="chat-filter-pill" data-filter="instagram">Instagram</button>
+            <button type="button" class="chat-filter-pill" data-filter="x">X</button>
+          </div>
+        </div>
+
+        <!-- Pinned Comment Bar (If any) -->
+        <div class="pinned-banner" id="chatPinnedBanner" style="display: none;">
+          <div class="pinned-left">
+            <span class="pinned-badge-icon">📌</span>
+            <span><strong class="pinned-author" id="pinnedAuthor">@User</strong>: <span class="pinned-text" id="pinnedMessage">Pinned comment text</span></span>
+          </div>
+          <button type="button" class="btn-unpin" id="btnUnpinMessage" title="Unpin message">&times; Unpin</button>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chat-messages-area" id="chatFeed">
+          <div class="empty-chat-state" id="emptyChatPlaceholder">
+            <div class="empty-chat-icon">💬</div>
+            <h3>Unified Chat Stream Ready</h3>
+            <p>When you start broadcasting or viewers comment on YouTube, Twitch, Facebook, TikTok, Instagram or X, messages will appear here in real time.</p>
+          </div>
+        </div>
+
+        <!-- Composer Form -->
+        <form class="chat-composer-box" id="chatComposeForm">
+          <div class="reply-target-preview" id="replyPreviewBar" style="display: none;">
+            <span class="reply-target-text">Replying to <strong id="replyAuthor">@Viewer</strong> on <span id="replyPlatformName">Facebook</span></span>
+            <button type="button" class="btn-cancel-reply-x" id="btnCancelReply">&times;</button>
+          </div>
+
+          <div class="chat-input-row">
+            <input type="text" class="chat-input-field" id="chatInputMessage" placeholder="Type a message to reply across all synchronized channels..." autocomplete="off">
+            <button type="submit" class="btn-primary" id="btnChatSend">
+              <span>Send</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: PUBLISH VIDEO (OMNIPUBLISH) -->
+    <section class="tab-view" id="tabPublish">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Video Syndication (OmniPublish)</h2>
+          <p class="section-desc">Upload once. Automatically distribute to YouTube, Twitch, Facebook, TikTok, Instagram, and X.</p>
+        </div>
+      </div>
+
+      <div class="publish-layout">
+        <!-- Upload Form Card -->
+        <div class="publish-card">
+          <h3 class="publish-card-title">New Video Upload</h3>
+
+          <!-- Dropzone -->
+          <div class="file-dropzone" id="fileDropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Click to choose or drag &amp; drop video file</div>
+            <div class="dropzone-sub">MP4, MOV, or WebM &bull; Up to 4K 60fps</div>
+            <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm" style="display: none;">
+          </div>
+
+          <div class="selected-file-info" id="selectedFileInfo">
+            <div>
+              <strong id="selectedFileName">video.mp4</strong>
+              <div style="font-size:11px; color:var(--text-faint);" id="selectedFileSize">0 MB</div>
+            </div>
+            <button type="button" class="btn-icon-subtle" id="btnRemoveSelectedFile" title="Remove file">&times;</button>
+          </div>
+
+          <!-- Title & Description -->
+          <div class="form-group">
+            <label class="form-label">Video Title</label>
+            <input type="text" class="form-input" id="uploadTitle" placeholder="e.g. Apex Legends Champion Gameplay #42">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Caption / Description</label>
+            <textarea class="form-textarea" id="uploadDesc" placeholder="Write your post caption, hashtags, and social links..."></textarea>
+          </div>
+
+          <!-- Platform Checkbox Grid -->
+          <div class="form-group">
+            <label class="form-label">Destination Platforms</label>
+            <div class="platforms-select-grid">
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="youtube" checked>
+                <span class="checkbox-plat-name">YouTube VOD / Shorts</span>
+              </label>
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="twitch" checked>
+                <span class="checkbox-plat-name">Twitch Highlights</span>
+              </label>
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="facebook" checked>
+                <span class="checkbox-plat-name">Facebook Video / Reels</span>
+              </label>
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="tiktok" checked>
+                <span class="checkbox-plat-name">TikTok Shorts</span>
+              </label>
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="instagram" checked>
+                <span class="checkbox-plat-name">Instagram Reels</span>
+              </label>
+              <label class="platform-checkbox-label">
+                <input type="checkbox" name="pubPlat" value="x" checked>
+                <span class="checkbox-plat-name">X (Twitter) Broadcast</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-box" id="uploadProgressBar">
+            <div class="progress-track"><div class="progress-fill" id="uploadProgressFill"></div></div>
+            <span class="progress-status-text" id="uploadStatusText">Transcoding and distributing...</span>
+          </div>
+
+          <button type="button" class="btn-primary" id="btnSubmitPublish" style="justify-content:center; padding:12px;">
+            <span>Publish Video Across Selected Platforms</span>
+          </button>
+        </div>
+
+        <!-- History Card -->
+        <div class="publish-card">
+          <h3 class="publish-card-title">Recent Publications</h3>
+          <div class="history-list" id="uploadHistoryList">
+            <div style="text-align:center; padding:40px 20px; color:var(--text-faint);">
+              No videos published yet. Upload your first clip to start syndicating!
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: ALERT BOX & OVERLAYS -->
+    <section class="tab-view" id="tabAlerts">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Live Alert Box // OBS Overlay</h2>
+          <p class="section-desc">Broadcast overlays for likes, follows, and subscriptions across all platforms.</p>
+        </div>
+      </div>
+
+      <div class="alerts-layout">
+        <!-- Configuration Card -->
+        <div class="obs-overlay-card">
+          <h3 class="publish-card-title">OBS Browser Source URL</h3>
+          <p style="font-size:13px; color:var(--text-muted);">
+            In OBS Studio, add a <strong>Browser Source</strong>, paste this URL, and set width to <strong>800</strong> and height to <strong>600</strong>.
+          </p>
+
+          <div class="obs-url-box">
+            <span class="obs-url-text" id="alertOverlayUrl">Loading overlay URL...</span>
+            <button type="button" class="btn-copy-sm" data-copy-target="#alertOverlayUrl">Copy URL</button>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <a href="/alerts.html" target="_blank" class="btn-secondary" style="font-size:12px;">
+              <span>↗ Open Overlay Preview</span>
+            </a>
+          </div>
+
+          <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:16px;">
+            <h4 style="font-size:13px; font-weight:700; color:#fff; margin-bottom:10px;">Test Live Alerts</h4>
+            <div class="test-alert-bar">
+              <button type="button" class="btn-test-alert" data-test-alert="subscribe">💎 Test Subscriber</button>
+              <button type="button" class="btn-test-alert" data-test-alert="like">❤️ Test Like</button>
+              <button type="button" class="btn-test-alert" data-test-alert="follow">🚀 Test Follow</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Activity Feed -->
+        <div class="alerts-feed-card">
+          <h3 class="publish-card-title">Live Activity Feed</h3>
+          <div id="alertsActivityFeed" style="display:flex; flex-direction:column; gap:10px; max-height:460px; overflow-y:auto;">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: OBS STUDIO REMOTE -->
+    <section class="tab-view" id="tabObs">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>OBS Studio Controller</h2>
+          <p class="section-desc">Remote-control scenes, live streaming, and recording from any device.</p>
+        </div>
+      </div>
+
+      <div class="obs-remote-card">
+        <!-- Pairing Banner -->
+        <div class="obs-pairing-banner">
+          <div>
+            <strong style="color:#fff; font-size:14px;">OBS WebSocket Pairing Code</strong>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Run <code>npm run agent</code> or PowerShell <code>.\agent.ps1</code> with this code:</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="obs-code-val" id="obsPairingCodeDisplay">PAIRING...</span>
+            <button type="button" class="btn-copy-sm" id="btnRefreshPairingCode">New Code</button>
+          </div>
+        </div>
+
+        <!-- Big Studio Action Buttons -->
+        <div class="obs-big-controls">
+          <button type="button" class="btn-studio-action" id="btnObsStreamToggle" data-command="StartStream">
+            <span class="studio-btn-icon">📡</span>
+            <span class="studio-btn-lbl" id="lblObsStream">Start Live Stream</span>
+          </button>
+          <button type="button" class="btn-studio-action" id="btnObsRecordToggle" data-command="StartRecord">
+            <span class="studio-btn-icon">⏺️</span>
+            <span class="studio-btn-lbl" id="lblObsRecord">Start Recording</span>
+          </button>
+          <button type="button" class="btn-studio-action" id="btnObsMuteToggle" data-command="SetInputMute">
+            <span class="studio-btn-icon">🎙️</span>
+            <span class="studio-btn-lbl" id="lblObsMute">Mute Microphone</span>
+          </button>
+        </div>
+
+        <!-- Scene Switcher Grid -->
+        <div class="scene-switcher-section">
+          <span class="form-label" style="text-transform:uppercase; letter-spacing:0.05em;">Studio Scenes</span>
+          <div class="scene-btns-grid">
+            <button type="button" class="btn-scene-select active" data-scene="Camera 1 - Main">Main Camera</button>
+            <button type="button" class="btn-scene-select" data-scene="Gameplay / Screen">Gameplay</button>
+            <button type="button" class="btn-scene-select" data-scene="Be Right Back">Be Right Back</button>
+            <button type="button" class="btn-scene-select" data-scene="Stream Ending">Stream Ending</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       MODAL 1: USER PROFILE & SETTINGS
+       ========================================================================= -->
+  <div class="modal-backdrop" id="profileModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Account &amp; Streamer Profile</h3>
+        <button type="button" class="btn-close-modal" data-close-modal="profileModal">&times;</button>
+      </div>
+      <form id="profileForm">
+        <div class="modal-body">
+          <!-- Avatar Preview Row -->
+          <div class="avatar-edit-row">
+            <div class="avatar-preview-lg" id="modalAvatarPreview">R</div>
+            <div style="flex:1;">
+              <strong style="color:#fff; font-size:13px; display:block;">Profile Picture</strong>
+              <span style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:8px;">JPG, PNG, or WebP</span>
+              <input type="file" id="modalAvatarFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+              <button type="button" class="btn-secondary" id="btnChooseAvatarFile" style="font-size:12px; padding:6px 12px;">
+                <span>Choose Photo</span>
+              </button>
+              <button type="button" class="btn-icon-subtle" id="btnRemoveAvatar" title="Remove photo" style="display:inline-flex;">
+                &times;
+              </button>
+            </div>
+          </div>
+
+          <!-- Display Name -->
+          <div class="form-group">
+            <label class="form-label">Display Name</label>
+            <input type="text" class="form-input" id="profileInputName" placeholder="Your Streamer Name" required>
+          </div>
+
+          <!-- Email (Read only) -->
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="profileInputEmail" readonly style="opacity:0.6; cursor:not-allowed;">
+          </div>
+
+          <!-- Change Password -->
+          <div class="form-group">
+            <label class="form-label">New Password (leave blank to keep current)</label>
+            <input type="password" class="form-input" id="profileInputPassword" placeholder="Minimum 8 characters">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close-modal="profileModal">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSaveProfile">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: PLATFORM CONFIGURATION (Stream keys / IDs)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="platformModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="platformModalTitle">Configure Platform</h3>
+        <button type="button" class="btn-close-modal" data-close-modal="platformModal">&times;</button>
+      </div>
+      <form id="platformConfigForm">
+        <input type="hidden" id="cfgPlatformKey">
+        <div class="modal-body" id="platformConfigBody">
+          <!-- Dynamic inputs based on selected platform -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close-modal="platformModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notice" id="toastNotice"></div>
+
+  <!-- Application Script -->
+  <script src="app.js"></script>
 </body>
 </html>
