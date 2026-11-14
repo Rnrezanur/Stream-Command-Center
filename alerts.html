@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alert Box &bull; OBS Studio Overlay</title>
+  <style>
+    :root {
+      --bg: transparent;
+      --sub-gold: #fbbf24;
+      --sub-green: #10b981;
+      --like-ruby: #ef4444;
+      --like-pink: #ec4899;
+      --follow-cyan: #06b6d4;
+      --follow-purple: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 50px;
+    }
+
+    #alertStage {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      pointer-events: none;
+    }
+
+    /* THE ANIMATED ALERT CARD */
+    .alert-card {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      padding: 18px 28px;
+      border-radius: 20px;
+      background: rgba(10, 14, 22, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      opacity: 0;
+      transform: translateY(-60px) scale(0.85);
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .alert-card.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .alert-card.exiting {
+      opacity: 0;
+      transform: translateY(-30px) scale(0.92);
+      transition: all 0.4s ease-in;
+    }
+
+    /* SHINE / GLOW ACCENTS */
+    .alert-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transform: skewX(-25deg);
+      animation: alertShine 2.5s infinite;
+    }
+
+    @keyframes alertShine {
+      0% { left: -100%; }
+      30%, 100% { left: 200%; }
+    }
+
+    /* TYPE VARIANTS */
+    .alert-card.subscribe {
+      border-color: var(--sub-green);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.4), 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+    .alert-card.like {
+      border-color: var(--like-pink);
+      box-shadow: 0 0 40px rgba(236, 72, 153, 0.4), 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+    .alert-card.follow {
+      border-color: var(--follow-cyan);
+      box-shadow: 0 0 40px rgba(6, 182, 212, 0.4), 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+
+    /* ICON BADGE */
+    .alert-icon-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 36px;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      animation: pulseIcon 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseIcon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .alert-card.subscribe .alert-icon-wrap {
+      background: linear-gradient(135deg, #10b981, #fbbf24);
+      color: #041f17;
+    }
+    .alert-card.like .alert-icon-wrap {
+      background: linear-gradient(135deg, #ef4444, #ec4899);
+      color: #fff;
+    }
+    .alert-card.follow .alert-icon-wrap {
+      background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+      color: #fff;
+    }
+
+    /* CONTENT BLOCK */
+    .alert-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .alert-tag-banner {
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-card.subscribe .alert-tag-banner { color: #34d399; }
+    .alert-card.like .alert-tag-banner { color: #f472b6; }
+    .alert-card.follow .alert-tag-banner { color: #38bdf8; }
+
+    .alert-hero-user {
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      line-height: 1.1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    }
+
+    .alert-detail-txt {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: 2px;
+    }
+
+    .alert-plat-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: capitalize;
+    }
+
+    /* FLOATING TEST TRIGGER (Only shows if NOT in OBS) */
+    .obs-helper-dock {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 18px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: #94a3b8;
+      pointer-events: auto;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .obs-helper-dock button {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .obs-helper-dock button:hover {
+      background: #10b981;
+      color: #041f17;
+      border-color: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div id="alertStage">
+    <!-- Active Alert Card -->
+    <div id="alertCard" class="alert-card subscribe" style="display: none;">
+      <div class="alert-icon-wrap" id="alertIcon">💎</div>
+      <div class="alert-body">
+        <span class="alert-tag-banner" id="alertTag">NEW SUBSCRIBER!</span>
+        <h1 class="alert-hero-user" id="alertUser">Sarah Chen</h1>
+        <p class="alert-detail-txt">
+          <span id="alertDetail">Subscribed on YouTube!</span>
+          <span class="alert-plat-badge" id="alertPlatBadge">YouTube</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BROWSER TEST CONTROLS (Discreet footer dock) -->
+  <div class="obs-helper-dock" id="helperDock">
+    <span>OBS Browser Overlay Ready &bull; Test:</span>
+    <button type="button" onclick="testAlert('subscribe')">💎 Subscribe</button>
+    <button type="button" onclick="testAlert('like')">❤️ Like</button>
+    <button type="button" onclick="testAlert('follow')">🚀 Follow</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userKey = urlParams.get("key") || "";
+    const isObs = Boolean(window.obsstudio || urlParams.get("obs") === "1");
+    if (isObs) {
+      const dock = document.getElementById("helperDock");
+      if (dock) dock.style.display = "none";
+    }
+
+    const card = document.getElementById("alertCard");
+    const iconEl = document.getElementById("alertIcon");
+    const tagEl = document.getElementById("alertTag");
+    const userEl = document.getElementById("alertUser");
+    const detailEl = document.getElementById("alertDetail");
+    const platEl = document.getElementById("alertPlatBadge");
+
+    const queue = [];
+    let isPlaying = false;
+    let lastSeenId = "";
+
+    // Web Audio Chime Synthesis
+    function playChime(type, volume = 0.8) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") ctx.resume();
+
+        const now = ctx.currentTime;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(volume * 0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+        gain.connect(ctx.destination);
+
+        const notes = type === "subscribe"
+          ? [523.25, 659.25, 783.99, 1046.50] // C5, E5, G5, C6 triumphant
+          : type === "like"
+          ? [659.25, 880.00, 1046.50]         // E5, A5, C6 lively
+          : [587.33, 739.99, 880.00];         // D5, F#5, A5 uplifting
+
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, now + (idx * 0.09));
+          osc.connect(gain);
+          osc.start(now + (idx * 0.09));
+          osc.stop(now + (idx * 0.09) + 0.35);
+        });
+      } catch (_) {}
+    }
+
+    function showAlert(alert) {
+      if (!alert) return;
+      isPlaying = true;
+
+      const type = alert.type || "subscribe";
+      const username = alert.username || "Viewer";
+      const platform = alert.platform || "YouTube";
+      const detail = alert.detail || alert.message || "";
+
+      // Configure Card
+      card.className = `alert-card ${type}`;
+      if (type === "subscribe") {
+        iconEl.textContent = "💎";
+        tagEl.textContent = "NEW SUBSCRIBER!";
+      } else if (type === "like") {
+        iconEl.textContent = "❤️";
+        tagEl.textContent = "NEW LIKE / REACTION!";
+      } else {
+        iconEl.textContent = "🚀";
+        tagEl.textContent = "NEW FOLLOWER!";
+      }
+
+      userEl.textContent = username;
+      detailEl.textContent = detail;
+      platEl.textContent = platform;
+
+      card.style.display = "flex";
+      // Force repaint for transition
+      void card.offsetWidth;
+      card.classList.add("active");
+      card.classList.remove("exiting");
+
+      playChime(type);
+
+      const durationMs = 5000;
+      setTimeout(() => {
+        card.classList.add("exiting");
+        card.classList.remove("active");
+        setTimeout(() => {
+          card.style.display = "none";
+          isPlaying = false;
+          if (queue.length > 0) {
+            showAlert(queue.shift());
+          }
+        }, 500);
+      }, durationMs);
+    }
+
+    function enqueueAlert(alert) {
+      if (isPlaying) {
+        queue.push(alert);
+      } else {
+        showAlert(alert);
+      }
+    }
+
+    function testAlert(type) {
+      const names = ["Sarah Chen", "Alex Rivera", "David K.", "Elena Rostova", "Marcus Vance", "NeonPixel", "LunaStar"];
+      const randName = names[Math.floor(Math.random() * names.length)];
+      const plat = type === "subscribe" ? "YouTube" : type === "like" ? "Facebook" : "Twitch";
+      enqueueAlert({
+        id: "test_" + Date.now(),
+        type,
+        username: randName,
+        platform: plat,
+        detail: type === "subscribe" ? "Subscribed to channel!" : type === "like" ? "Liked the live broadcast!" : "Followed on Twitch!"
+      });
+    }
+
+    // Polling /api/alerts
+    async function pollAlerts() {
+      try {
+        const query = userKey ? `?key=${encodeURIComponent(userKey)}` : "";
+        const res = await fetch(`/api/alerts${query}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.latestAlert && data.latestAlert.id !== lastSeenId) {
+          // If initializing for the first time, record latestAlert ID so we don't spam old alerts
+          if (!lastSeenId) {
+            lastSeenId = data.latestAlert.id;
+          } else {
+            lastSeenId = data.latestAlert.id;
+            enqueueAlert(data.latestAlert);
+          }
+        }
+      } catch (_) {}
+    }
+
+    setInterval(pollAlerts, 800);
+    pollAlerts();
+  </script>
+</body>
+</html>

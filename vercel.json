@@ -21,12 +21,20 @@
     {
       "src": "favicon.svg",
       "use": "@vercel/static"
+    },
+    {
+      "src": "alerts.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/index.js"
+    },
+    {
+      "src": "/alerts",
+      "dest": "/alerts.html"
     },
     {
       "handle": "filesystem"

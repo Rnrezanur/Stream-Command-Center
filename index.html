@@ -114,6 +114,10 @@
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2 5 5h-5V4Zm-1 9v4h-2v-4H8l4-4 4 4h-2Z"/></svg>
           <span class="nav-tooltip">Upload</span>
         </button>
+        <button class="nav-item" id="sidebarAlertsBtn" aria-label="Alert Box" title="Alert Box &amp; OBS Overlay" data-nav-view="alerts">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="nav-tooltip">Alerts</span>
+        </button>
         <button class="nav-item" id="sidebarSettingsBtn" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12h2M3 12h2m7-9v2m0 14v2m6.36-15.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/></svg>
           <span class="nav-tooltip">Settings</span>
@@ -160,6 +164,11 @@
           <button type="button" class="view-tab-btn" data-view="syndicate">
             <span class="tab-icon">📹</span>
             <span>OmniPublish</span>
+          </button>
+          <button type="button" class="view-tab-btn" data-view="alerts">
+            <span class="tab-icon">🔔</span>
+            <span>Alert Box</span>
+            <span class="tab-counter" id="topbarAlertsCount">4</span>
           </button>
         </nav>
 
@@ -412,6 +421,45 @@
                   <strong id="glanceFbViewers">360</strong>
                   <small id="glanceFbHandle">Rezanur Gaming</small>
                 </div>
+              </div>
+            </div>
+
+            <!-- LIVE ALERT BOX QUICK BAR & TICKER -->
+            <div class="panel alert-glance-panel">
+              <div class="glance-header">
+                <div class="heading-with-icon">
+                  <span class="live-pulse-purple"></span>
+                  <p class="eyebrow">Live Alert Box // Stream Overlay</p>
+                </div>
+                <div class="alert-glance-actions">
+                  <button type="button" class="btn-deck-alert-test" data-test-type="subscribe" title="Test Subscriber Alert">
+                    <span>💎 Test Sub</span>
+                  </button>
+                  <button type="button" class="btn-deck-alert-test" data-test-type="like" title="Test Like Alert">
+                    <span>❤️ Test Like</span>
+                  </button>
+                  <button type="button" class="btn-deck-alert-test" data-test-type="follow" title="Test Follow Alert">
+                    <span>🚀 Test Follow</span>
+                  </button>
+                  <button type="button" class="btn-switch-view-link" data-switch-view="alerts">
+                    <span>Alert Box Console</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="deck-alert-strip" id="deckAlertStrip">
+                <div class="deck-alert-icon-box" id="deckAlertIconBox">💎</div>
+                <div class="deck-alert-content">
+                  <div class="deck-alert-meta">
+                    <span class="deck-alert-badge" id="deckAlertBadge">LATEST ALERT</span>
+                    <span class="deck-alert-plat" id="deckAlertPlatform">YouTube</span>
+                    <time id="deckAlertTime">2m ago</time>
+                  </div>
+                  <strong class="deck-alert-msg" id="deckAlertMessage">Sarah Chen subscribed on YouTube!</strong>
+                </div>
+                <button type="button" class="btn-replay-deck-alert" id="btnReplayDeckAlert" title="Trigger on OBS Overlay Screen">
+                  <span>Replay on Stream</span>
+                </button>
               </div>
             </div>
           </div>
@@ -716,6 +764,156 @@
               <!-- RECENT PUBLISHED VIDEOS PREVIEW -->
               <div class="recent-uploads-bar" id="workspaceRecentUploads">
                 <span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>
+              </div>
+            </section>
+          </div>
+
+          <!-- VIEW 4: ALERT BOX & OBS OVERLAY -->
+          <div class="workspace-view" id="viewAlerts" style="display: none;">
+            <section class="panel alerts-console-panel">
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Interactive Stream Overlay // Streamlabs &amp; OBS Compatible</p>
+                  <h2>Alert Box Studio</h2>
+                </div>
+                <div class="alerts-header-actions">
+                  <button type="button" class="btn-open-overlay-link" id="btnOpenOverlayWindow" title="Open overlay in standalone browser window">
+                    <span>🖥️ Open Overlay Window</span>
+                  </button>
+                  <button type="button" class="btn-copy-overlay-url" id="btnCopyOverlayUrl" title="Copy URL for OBS Studio Browser Source">
+                    <span>📋 Copy OBS Overlay URL</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- PREVIEW & QUICK TEST GRID -->
+              <div class="alert-studio-grid">
+                <!-- LIVE PREVIEW BOX -->
+                <div class="alert-preview-card">
+                  <div class="preview-header-bar">
+                    <div class="preview-title-wrap">
+                      <span class="preview-pulse-dot"></span>
+                      <strong>OBS Overlay Screen Preview</strong>
+                    </div>
+                    <span class="preview-res-badge">Transparent &bull; 800 × 600</span>
+                  </div>
+                  <div class="alert-preview-stage" id="alertPreviewStage">
+                    <!-- Live animated alert card preview -->
+                    <div class="preview-alert-card subscribe" id="previewAlertCard">
+                      <div class="preview-icon-wrap" id="previewAlertIcon">💎</div>
+                      <div class="preview-text-body">
+                        <span class="preview-tag-banner" id="previewAlertTag">NEW SUBSCRIBER!</span>
+                        <h3 class="preview-hero-user" id="previewAlertName">Sarah Chen</h3>
+                        <p class="preview-detail-text">
+                          <span id="previewAlertDesc">Subscribed on YouTube!</span>
+                          <span class="preview-plat-badge" id="previewAlertPlatBadge">YouTube</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="preview-controls-row">
+                    <span class="test-title">Simulate Real Stream Event:</span>
+                    <div class="test-buttons-group">
+                      <button type="button" class="btn-test-alert like" data-test="like">
+                        <span>❤️ Test Like</span>
+                      </button>
+                      <button type="button" class="btn-test-alert subscribe" data-test="subscribe">
+                        <span>💎 Test Subscribe</span>
+                      </button>
+                      <button type="button" class="btn-test-alert follow" data-test="follow">
+                        <span>🚀 Test Follow</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- OBS BROWSER SOURCE INTEGRATION CARD -->
+                <div class="alert-config-card">
+                  <div class="card-title-row">
+                    <div class="heading-with-icon">
+                      <span class="obs-icon-badge">OBS</span>
+                      <h3>OBS Studio Browser Source Setup</h3>
+                    </div>
+                  </div>
+                  <p class="obs-guide-text">Add this transparent overlay directly to your OBS Studio scene so your viewers see when someone likes, subscribes, or follows:</p>
+
+                  <div class="obs-url-box">
+                    <input type="text" id="obsOverlayUrlInput" readonly value="http://localhost:4173/alerts.html">
+                    <button type="button" class="btn-copy-code" id="btnCopyOverlayInput">Copy</button>
+                  </div>
+
+                  <div class="obs-steps-list">
+                    <div class="obs-step-item">
+                      <b>1</b>
+                      <div>
+                        <strong>Add Browser Source in OBS</strong>
+                        <small>In OBS Studio &gt; Sources &gt; Click <b>+</b> &gt; Select <b>Browser</b>.</small>
+                      </div>
+                    </div>
+                    <div class="obs-step-item">
+                      <b>2</b>
+                      <div>
+                        <strong>Paste the Overlay URL</strong>
+                        <small>Set Width: <code>800</code>, Height: <code>600</code> (or <code>1920x1080</code>).</small>
+                      </div>
+                    </div>
+                    <div class="obs-step-item">
+                      <b>3</b>
+                      <div>
+                        <strong>Test Your Alert</strong>
+                        <small>Click "Test Subscribe" or "Test Follow" below to see it pop up live on your OBS stream!</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ALERT SETTINGS / OPTIONS -->
+                  <div class="alert-options-form">
+                    <h4>Alert Box Settings</h4>
+                    <div class="options-toggle-grid">
+                      <label class="toggle-option">
+                        <input type="checkbox" id="cfgShowLikes" checked>
+                        <span>Likes &amp; Reactions</span>
+                      </label>
+                      <label class="toggle-option">
+                        <input type="checkbox" id="cfgShowSubs" checked>
+                        <span>Subscriptions &amp; Members</span>
+                      </label>
+                      <label class="toggle-option">
+                        <input type="checkbox" id="cfgShowFollows" checked>
+                        <span>Followers</span>
+                      </label>
+                      <label class="toggle-option">
+                        <input type="checkbox" id="cfgSoundEnabled" checked>
+                        <span>Play Audio Chime 🔔</span>
+                      </label>
+                    </div>
+
+                    <div class="slider-field-row">
+                      <span>Display Duration: <strong id="cfgDurationVal">5s</strong></span>
+                      <input type="range" id="cfgDurationSlider" min="3" max="15" value="5" step="1">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RECENT AUDIENCE ALERTS FEED (HISTORY) -->
+              <div class="alerts-history-section">
+                <div class="history-section-header">
+                  <div>
+                    <h3>Live Audience Activity Feed</h3>
+                    <p class="eyebrow">Real-time log of who liked, subscribed, or followed across all platforms</p>
+                  </div>
+                  <div class="history-filter-tabs" id="alertsFilterTabs">
+                    <button type="button" class="alert-filter-btn active" data-filter="all">All Alerts (<span id="totalAlertsCount">4</span>)</button>
+                    <button type="button" class="alert-filter-btn" data-filter="subscribe">Subscribes</button>
+                    <button type="button" class="alert-filter-btn" data-filter="follow">Follows</button>
+                    <button type="button" class="alert-filter-btn" data-filter="like">Likes</button>
+                  </div>
+                </div>
+
+                <div class="alerts-list-container" id="alertsHistoryList">
+                  <!-- Dynamically populated -->
+                </div>
               </div>
             </section>
           </div>

@@ -456,6 +456,12 @@ function renderDashboard(data) {
     }
     applyChatFilter();
   }
+
+  // Update Alert Box state & views
+  if (Array.isArray(data.alerts)) {
+    currentAlerts = data.alerts;
+    renderAlerts(currentAlerts, data.latestAlert);
+  }
 }
 
 function setReplyTarget(target) {
@@ -648,12 +654,13 @@ async function autoConnectLocalOBS() {
   }
 }
 
-// WORKSPACE VIEW SWITCHER (DECK // PLATFORMS // SYNDICATE)
+// WORKSPACE VIEW SWITCHER (DECK // PLATFORMS // SYNDICATE // ALERTS)
 function switchWorkspaceView(view = "deck") {
   const views = {
     deck: $("#viewDeck"),
     platforms: $("#viewPlatforms"),
-    syndicate: $("#viewSyndicate")
+    syndicate: $("#viewSyndicate"),
+    alerts: $("#viewAlerts")
   };
 
   Object.entries(views).forEach(([key, el]) => {
@@ -670,11 +677,14 @@ function switchWorkspaceView(view = "deck") {
   const sidebarDeck = $("#sidebarConsoleBtn") || $(".nav-item[data-nav-view='deck']");
   const sidebarPlat = $("#sidebarPlatformsBtn");
   const sidebarUpload = $("#sidebarUploadBtn");
+  const sidebarAlerts = $("#sidebarAlertsBtn");
 
   $$(".sidebar .nav-item").forEach((b) => b.classList.remove("active"));
   if (view === "deck" && sidebarDeck) sidebarDeck.classList.add("active");
   if (view === "platforms" && sidebarPlat) sidebarPlat.classList.add("active");
   if (view === "syndicate" && sidebarUpload) sidebarUpload.classList.add("active");
+  if (view === "alerts" && sidebarAlerts) sidebarAlerts.classList.add("active");
+  if (view === "alerts") updateOverlayUrlDisplay();
 }
 
 // EVENT LISTENERS //
@@ -848,6 +858,7 @@ $$(".view-tab-btn").forEach((btn) => {
 $("#sidebarConsoleBtn")?.addEventListener("click", () => switchWorkspaceView("deck"));
 $("#sidebarPlatformsBtn")?.addEventListener("click", () => switchWorkspaceView("platforms"));
 $("#sidebarUploadBtn")?.addEventListener("click", () => switchWorkspaceView("syndicate"));
+$("#sidebarAlertsBtn")?.addEventListener("click", () => switchWorkspaceView("alerts"));
 
 document.addEventListener("click", (e) => {
   const switchLink = e.target.closest("[data-switch-view]");
@@ -1848,6 +1859,276 @@ function checkOAuthCallbackBanner() {
   history.replaceState({}, "", location.pathname);
 }
 
+// ========================================================
+// ALERT BOX STUDIO & OBS OVERLAY CONTROLS
+// ========================================================
+let currentAlerts = [];
+
+function updateOverlayUrlDisplay() {
+  const input = $("#obsOverlayUrlInput");
+  const keyParam = signedInUser ? `?key=${encodeURIComponent(signedInUser.id)}` : "";
+  const fullUrl = `${location.origin}/alerts.html${keyParam}`;
+  if (input) input.value = fullUrl;
+}
+
+function timeAgo(dateString) {
+  try {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return `${Math.floor(diffHr / 24)}d ago`;
+  } catch (_) {
+    return "Recently";
+  }
+}
+
+function renderAlerts(alerts, latestAlert) {
+  const topbarCount = $("#topbarAlertsCount");
+  if (topbarCount) topbarCount.textContent = alerts.length;
+
+  const totalCount = $("#totalAlertsCount");
+  if (totalCount) totalCount.textContent = alerts.length;
+
+  // 1. Update Deck View Strip
+  const currentLatest = latestAlert || alerts[0];
+  if (currentLatest) {
+    const iconBox = $("#deckAlertIconBox");
+    const platEl = $("#deckAlertPlatform");
+    const msgEl = $("#deckAlertMessage");
+    const timeEl = $("#deckAlertTime");
+
+    if (iconBox) iconBox.textContent = currentLatest.type === "subscribe" ? "💎" : currentLatest.type === "like" ? "❤️" : "🚀";
+    if (platEl) platEl.textContent = capitalize(currentLatest.platform || "live");
+    if (msgEl) msgEl.textContent = currentLatest.message || `${currentLatest.username} interacted!`;
+    if (timeEl) timeEl.textContent = currentLatest.time ? timeAgo(currentLatest.time) : "Just now";
+
+    const replayDeckBtn = $("#btnReplayDeckAlert");
+    if (replayDeckBtn) {
+      replayDeckBtn.onclick = () => replayAlert(currentLatest);
+    }
+  }
+
+  // 2. Update History List in Alert Box Console
+  const historyList = $("#alertsHistoryList");
+  if (historyList) {
+    const filter = $("#alertsFilterTabs .alert-filter-btn.active")?.dataset.filter || "all";
+    const filtered = alerts.filter((a) => filter === "all" || a.type === filter);
+
+    if (filtered.length === 0) {
+      historyList.innerHTML = `<p class="empty-state">No ${filter === "all" ? "" : filter} alerts recorded yet. Click one of the test buttons to simulate a stream alert!</p>`;
+    } else {
+      historyList.innerHTML = filtered.map((a) => {
+        const iconSym = a.type === "subscribe" ? "💎" : a.type === "like" ? "❤️" : "🚀";
+        return `
+          <div class="alert-history-item" data-id="${escapeHtml(a.id || "")}">
+            <div class="alert-item-icon ${a.type}">${iconSym}</div>
+            <div class="alert-item-info">
+              <div class="alert-item-top">
+                <strong class="alert-item-user">${escapeHtml(a.username || "Viewer")}</strong>
+                <span class="alert-item-badge ${a.platform}">${escapeHtml(a.platform || "stream")}</span>
+                <span class="tag ${a.type}-tag">${a.type.toUpperCase()}</span>
+              </div>
+              <p class="alert-item-desc">${escapeHtml(a.detail || a.message || "")}</p>
+            </div>
+            <time class="alert-item-time">${timeAgo(a.time)}</time>
+            <button type="button" class="btn-replay-item" data-action="replay-alert" data-id="${escapeHtml(a.id || "")}" title="Replay alert on stream">
+              <span>Replay</span>
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+}
+
+function playLocalChime(type) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") ctx.resume();
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    gain.connect(ctx.destination);
+    const notes = type === "subscribe" ? [523.25, 659.25, 783.99, 1046.50]
+                : type === "like" ? [659.25, 880.00, 1046.50]
+                : [587.33, 739.99, 880.00];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now + (idx * 0.09));
+      osc.connect(gain);
+      osc.start(now + (idx * 0.09));
+      osc.stop(now + (idx * 0.09) + 0.35);
+    });
+  } catch (_) {}
+}
+
+function triggerPreviewAlert(type, username, platform, detail) {
+  const card = $("#previewAlertCard");
+  const icon = $("#previewAlertIcon");
+  const tag = $("#previewAlertTag");
+  const nameEl = $("#previewAlertName");
+  const descEl = $("#previewAlertDesc");
+  const platEl = $("#previewAlertPlatBadge");
+  if (!card) return;
+
+  card.className = `preview-alert-card ${type}`;
+  if (type === "subscribe") {
+    if (icon) icon.textContent = "💎";
+    if (tag) tag.textContent = "NEW SUBSCRIBER!";
+  } else if (type === "like") {
+    if (icon) icon.textContent = "❤️";
+    if (tag) tag.textContent = "NEW LIKE / REACTION!";
+  } else {
+    if (icon) icon.textContent = "🚀";
+    if (tag) tag.textContent = "NEW FOLLOWER!";
+  }
+
+  if (nameEl) nameEl.textContent = username;
+  if (descEl) descEl.textContent = detail;
+  if (platEl) platEl.textContent = capitalize(platform);
+
+  card.style.animation = "none";
+  void card.offsetWidth;
+  card.style.animation = "alertFloat 3s infinite ease-in-out";
+
+  playLocalChime(type);
+}
+
+async function sendTestAlert(type) {
+  showToast(`🔔 Triggering test ${type} alert...`);
+  try {
+    const res = await api("/api/alerts/test", {
+      method: "POST",
+      body: JSON.stringify({ type })
+    });
+    if (res.alert) {
+      triggerPreviewAlert(res.alert.type, res.alert.username, res.alert.platform, res.alert.message);
+      showToast(`✓ Broadcasted test ${res.alert.type} alert for ${res.alert.username}!`);
+      await refreshDashboard();
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function replayAlert(alert) {
+  if (!alert) return;
+  showToast(`🔔 Replaying alert for ${alert.username}...`);
+  try {
+    await api("/api/alerts", {
+      method: "POST",
+      body: JSON.stringify({
+        type: alert.type,
+        platform: alert.platform,
+        username: alert.username,
+        message: alert.message,
+        detail: alert.detail
+      })
+    });
+    triggerPreviewAlert(alert.type, alert.username, alert.platform, alert.message);
+    await refreshDashboard();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// Test buttons in Alert Box view
+$$(".btn-test-alert").forEach((btn) => {
+  btn.addEventListener("click", () => sendTestAlert(btn.dataset.test));
+});
+
+// Test buttons in Broadcast Deck view
+$$(".btn-deck-alert-test").forEach((btn) => {
+  btn.addEventListener("click", () => sendTestAlert(btn.dataset.testType));
+});
+
+// Copy OBS Overlay URL
+function copyOverlayUrl() {
+  updateOverlayUrlDisplay();
+  const input = $("#obsOverlayUrlInput");
+  if (!input) return;
+  navigator.clipboard.writeText(input.value)
+    .then(() => showToast("✓ OBS Overlay URL copied to clipboard!"))
+    .catch(() => {
+      input.select();
+      document.execCommand("copy");
+      showToast("✓ Copied overlay URL");
+    });
+}
+
+$("#btnCopyOverlayUrl")?.addEventListener("click", copyOverlayUrl);
+$("#btnCopyOverlayInput")?.addEventListener("click", copyOverlayUrl);
+
+// Open overlay standalone window
+$("#btnOpenOverlayWindow")?.addEventListener("click", () => {
+  updateOverlayUrlDisplay();
+  const keyParam = signedInUser ? `?key=${encodeURIComponent(signedInUser.id)}` : "";
+  window.open(`/alerts.html${keyParam}`, "OBSAlertOverlay", "width=800,height=600,menubar=no,toolbar=no");
+});
+
+// Alert filter tabs
+$("#alertsFilterTabs")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".alert-filter-btn");
+  if (!btn) return;
+  $$("#alertsFilterTabs .alert-filter-btn").forEach((b) => b.classList.toggle("active", b === btn));
+  renderAlerts(currentAlerts, currentAlerts[0] || null);
+});
+
+// Replay buttons in alert list
+document.addEventListener("click", (e) => {
+  const replayBtn = e.target.closest('[data-action="replay-alert"]');
+  if (replayBtn) {
+    const id = replayBtn.dataset.id;
+    const found = currentAlerts.find((a) => a.id === id);
+    if (found) replayAlert(found);
+  }
+});
+
+// Alert duration slider display
+$("#cfgDurationSlider")?.addEventListener("input", (e) => {
+  const val = $("#cfgDurationVal");
+  if (val) val.textContent = `${e.target.value}s`;
+});
+
+// Save alert options
+["cfgShowLikes", "cfgShowSubs", "cfgShowFollows", "cfgSoundEnabled"].forEach((id) => {
+  $(`#${id}`)?.addEventListener("change", async () => {
+    try {
+      await api("/api/alerts/config", {
+        method: "PUT",
+        body: JSON.stringify({
+          showLikes: $("#cfgShowLikes")?.checked,
+          showSubscribes: $("#cfgShowSubs")?.checked,
+          showFollows: $("#cfgShowFollows")?.checked,
+          soundEnabled: $("#cfgSoundEnabled")?.checked,
+          duration: Number($("#cfgDurationSlider")?.value || 5)
+        })
+      });
+      showToast("✓ Alert settings saved");
+    } catch (_) {}
+  });
+});
+
+$("#cfgDurationSlider")?.addEventListener("change", async () => {
+  try {
+    await api("/api/alerts/config", {
+      method: "PUT",
+      body: JSON.stringify({
+        duration: Number($("#cfgDurationSlider")?.value || 5)
+      })
+    });
+    showToast("✓ Alert duration updated");
+  } catch (_) {}
+});
+
 // INIT
 loadSavedPreferences();
 checkOAuthCallbackBanner();
@@ -1855,3 +2136,4 @@ if (location.protocol === "https:") {
   remoteObsTimer = setInterval(refreshRemoteOBS, 2500);
 }
 loadCurrentUser();
+updateOverlayUrlDisplay();

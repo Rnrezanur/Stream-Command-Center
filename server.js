@@ -344,6 +344,68 @@ function getUserChatState(userId) {
   return userChatState.get(userId);
 }
 
+const userAlertsState = new Map(); // userId -> { alerts: [], latestAlert: null, config: { ... } }
+
+function getUserAlertsState(userId) {
+  if (!userAlertsState.has(userId)) {
+    const now = Date.now();
+    userAlertsState.set(userId, {
+      alerts: [
+        {
+          id: "alt_init_1",
+          type: "subscribe",
+          platform: "youtube",
+          username: "Sarah Chen",
+          message: "Sarah Chen subscribed on YouTube!",
+          detail: "Member • 1st Month",
+          time: new Date(now - 120000).toISOString()
+        },
+        {
+          id: "alt_init_2",
+          type: "like",
+          platform: "facebook",
+          username: "Alex Rivera",
+          message: "Alex Rivera liked the live stream on Facebook!",
+          detail: "Reaction: Super Like",
+          time: new Date(now - 360000).toISOString()
+        },
+        {
+          id: "alt_init_3",
+          type: "follow",
+          platform: "twitch",
+          username: "NeonPixel",
+          message: "NeonPixel followed on Twitch!",
+          detail: "New Follower",
+          time: new Date(now - 720000).toISOString()
+        },
+        {
+          id: "alt_init_4",
+          type: "follow",
+          platform: "tiktok",
+          username: "GamingPro_Live",
+          message: "GamingPro_Live followed on TikTok!",
+          detail: "New Follower",
+          time: new Date(now - 1200000).toISOString()
+        }
+      ],
+      latestAlert: null,
+      config: {
+        soundEnabled: true,
+        volume: 0.8,
+        duration: 5,
+        showLikes: true,
+        showSubscribes: true,
+        showFollows: true,
+        animation: "slide",
+        likeTemplate: "{name} liked the stream!",
+        subTemplate: "{name} subscribed to the channel!",
+        followTemplate: "{name} is now following!"
+      }
+    });
+  }
+  return userAlertsState.get(userId);
+}
+
 async function getYouTube(settings) {
   if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) {
     return {
@@ -601,11 +663,15 @@ async function dashboard(user) {
   }
 
   comments.sort((a, b) => new Date(b.time) - new Date(a.time));
+  const userAlerts = getUserAlertsState(user.id);
   return {
     platforms,
     comments: comments.slice(0, 200),
     pinnedComment: userChat.pinnedComment || null,
-    totalViewers: Object.values(platforms).reduce((sum, item) => sum + (Number(item.viewers) || 0), 0)
+    totalViewers: Object.values(platforms).reduce((sum, item) => sum + (Number(item.viewers) || 0), 0),
+    alerts: userAlerts.alerts.slice(0, 50),
+    latestAlert: userAlerts.latestAlert || (userAlerts.alerts[0] || null),
+    alertConfig: userAlerts.config
   };
 }
 
@@ -852,8 +918,113 @@ async function handleApi(req, res, url) {
     }
     return json(res, 200, { user: null });
   }
+  if (req.method === "GET" && url.pathname === "/api/alerts") {
+    let targetUserId = null;
+    const auth = cookies(req);
+    if (auth.relay_access) {
+      const u = verifySession(auth.relay_access);
+      if (u) targetUserId = u.id;
+    }
+    if (!targetUserId && url.searchParams.get("key")) {
+      targetUserId = url.searchParams.get("key");
+    }
+    if (!targetUserId) {
+      targetUserId = (useLocalFallback(db) ? localDb.users[0]?.id : null) || "demo_streamer";
+    }
+    const userAlerts = getUserAlertsState(targetUserId);
+    return json(res, 200, {
+      ok: true,
+      alerts: userAlerts.alerts,
+      latestAlert: userAlerts.latestAlert || (userAlerts.alerts[0] || null),
+      config: userAlerts.config
+    });
+  }
   const user = await requireUser(req, res);
   if (!user) return;
+  if (req.method === "POST" && url.pathname === "/api/alerts/test") {
+    const body = await readBody(req);
+    const type = ["like", "subscribe", "follow"].includes(body.type) ? body.type : "subscribe";
+    const platform = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"].includes(body.platform)
+      ? body.platform
+      : (type === "subscribe" ? "youtube" : type === "like" ? "facebook" : "twitch");
+
+    const sampleNames = [
+      "Sarah Chen", "Alex Rivera", "David K.", "Elena Rostova", "Marcus Vance",
+      "NeonPulse", "PixelWarrior", "LunaStar", "CosmicGamer", "CyberVortex", "Samurai99"
+    ];
+    const username = body.username ? String(body.username).trim() : sampleNames[Math.floor(Math.random() * sampleNames.length)];
+
+    const platName = platform === "youtube" ? "YouTube"
+      : platform === "twitch" ? "Twitch"
+      : platform === "facebook" ? "Facebook"
+      : platform === "tiktok" ? "TikTok"
+      : platform === "instagram" ? "Instagram"
+      : "X";
+
+    let message = "";
+    let detail = "";
+    if (type === "subscribe") {
+      message = `${username} subscribed on ${platName}!`;
+      detail = platform === "youtube" ? "Member • Tier 1" : "Prime Subscriber";
+    } else if (type === "like") {
+      message = `${username} liked the live stream on ${platName}!`;
+      detail = "Super Heart Reaction ❤️";
+    } else {
+      message = `${username} followed on ${platName}!`;
+      detail = "New Follower 🚀";
+    }
+
+    const alertDoc = {
+      id: "alt_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      type,
+      platform,
+      username,
+      message,
+      detail,
+      time: new Date().toISOString()
+    };
+
+    const userAlerts = getUserAlertsState(user.id);
+    userAlerts.alerts.unshift(alertDoc);
+    if (userAlerts.alerts.length > 100) userAlerts.alerts = userAlerts.alerts.slice(0, 100);
+    userAlerts.latestAlert = alertDoc;
+
+    return json(res, 201, { ok: true, alert: alertDoc, alerts: userAlerts.alerts });
+  }
+  if (req.method === "POST" && url.pathname === "/api/alerts") {
+    const body = await readBody(req);
+    const type = ["like", "subscribe", "follow"].includes(body.type) ? body.type : "follow";
+    const platform = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"].includes(body.platform) ? body.platform : "youtube";
+    const username = String(body.username || "Viewer").trim();
+    const detail = String(body.detail || "").trim();
+    const message = body.message ? String(body.message).trim() : `${username} ${type}d!`;
+
+    const alertDoc = {
+      id: "alt_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      type,
+      platform,
+      username,
+      message,
+      detail,
+      time: new Date().toISOString()
+    };
+
+    const userAlerts = getUserAlertsState(user.id);
+    userAlerts.alerts.unshift(alertDoc);
+    if (userAlerts.alerts.length > 100) userAlerts.alerts = userAlerts.alerts.slice(0, 100);
+    userAlerts.latestAlert = alertDoc;
+
+    return json(res, 201, { ok: true, alert: alertDoc, alerts: userAlerts.alerts });
+  }
+  if (req.method === "PUT" && url.pathname === "/api/alerts/config") {
+    const body = await readBody(req);
+    const userAlerts = getUserAlertsState(user.id);
+    userAlerts.config = {
+      ...userAlerts.config,
+      ...(body || {})
+    };
+    return json(res, 200, { ok: true, config: userAlerts.config });
+  }
   if (req.method === "PUT" && url.pathname === "/api/user/profile") {
     const body = await readBody(req);
     const name = String(body.name || "").trim();
