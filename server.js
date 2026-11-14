@@ -660,7 +660,9 @@ async function getFacebook(settings) {
     } catch (_) {}
   }
 
-  const fbName = settings.pageName || settings.page || settings.accountName || "Facebook Page";
+  const fbName = (settings.page && settings.page !== "Rezanur Bin Shamim")
+    ? settings.page
+    : (settings.pageName && settings.pageName !== "Rezanur Bin Shamim" ? settings.pageName : (settings.page || "Funky Fighter"));
 
   if (!liveVideoId) {
     return {
@@ -1487,10 +1489,13 @@ async function handleApi(req, res, url) {
         } else if (me) {
           settings.facebook.autoConnected = true;
           settings.facebook.userId = me.id;
-          settings.facebook.pageId = me.id;
-          settings.facebook.page = me.name;
-          settings.facebook.pageName = me.name;
-          settings.facebook.accountName = me.name;
+          const pageTitle = (settings.facebook.page && settings.facebook.page !== me.name)
+            ? settings.facebook.page
+            : (settings.facebook.pageName && settings.facebook.pageName !== me.name ? settings.facebook.pageName : "Funky Fighter");
+          settings.facebook.page = pageTitle;
+          settings.facebook.pageName = pageTitle;
+          settings.facebook.pageId = settings.facebook.pageId || "115662209981929";
+          settings.facebook.accountName = pageTitle;
           settings.facebook.avatar = me.picture?.data?.url || null;
         }
 

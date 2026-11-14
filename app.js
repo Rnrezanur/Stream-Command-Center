@@ -333,7 +333,9 @@ function renderDashboard(data) {
     if (handleEl) {
       if (isConn) {
         handleEl.classList.remove("muted");
-        const name = p.accountName || p.page || p.channel || p.handle || "Connected Account";
+        const name = (key === "facebook" && (p.page || p.pageName))
+          ? (p.page || p.pageName)
+          : (p.accountName || p.page || p.channel || p.handle || "Connected Account");
         handleEl.innerHTML = p.avatar
           ? `<span style="display:inline-flex; align-items:center; gap:6px;"><img src="${escapeHtml(p.avatar)}" style="width:16px; height:16px; border-radius:50%; object-fit:cover;"> ${escapeHtml(name)}</span>`
           : escapeHtml(name);
@@ -1565,22 +1567,31 @@ async function openPlatformConfigModal(platform) {
         </div>
       `;
     } else if (platform === "facebook") {
-      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.pageAccessToken || pData.page));
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.pageAccessToken || pData.page || pData.pageName));
+      const pageDisplayName = pData.page || pData.pageName || "Funky Fighter";
       bodyEl.innerHTML = `
         <div class="oauth-card">
           <div class="oauth-header">
-            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click Meta OAuth 2.0</span>
-            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.pageName || pData.page || "Facebook Page")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Meta OAuth 2.0 (Page Connected)</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected Page: ${escapeHtml(pageDisplayName)}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
-          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Meta to automatically select your Page and sync Facebook Live video comments.</p>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Connected to your authorized Meta profile. Posts, live videos, and audience comments syndicate to your Facebook Page.</p>
           <a href="/auth/facebook" class="btn-oauth facebook">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            <span>${isConnected ? "Reconnect Facebook with OAuth 2.0" : "Connect with Facebook Live (OAuth 2.0)"}</span>
+            <span>${isConnected ? "Re-authorize Meta Account" : "Connect Meta Account (OAuth 2.0)"}</span>
           </a>
         </div>
         <div class="form-group">
           <label class="form-label">Facebook Page Name</label>
-          <input type="text" class="form-input" name="page" placeholder="e.g. My Gaming Page" value="${escapeHtml(pData.page || "")}">
+          <input type="text" class="form-input" name="page" placeholder="e.g. Funky Fighter" value="${escapeHtml(pData.page || pData.pageName || "Funky Fighter")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Facebook Page ID</label>
+          <input type="text" class="form-input" name="pageId" placeholder="e.g. 115662209981929" value="${escapeHtml(pData.pageId || "115662209981929")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Facebook Live Stream Key <small style="color:var(--text-faint); font-weight:normal;">(from Page Live Producer)</small></label>
+          <input type="password" class="form-input" name="streamKey" placeholder="FB-••••••••" value="${escapeHtml(pData.streamKey || "")}">
         </div>
       `;
     } else if (platform === "kick") {
