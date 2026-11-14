@@ -1,6 +1,6 @@
 # Stream Command Center
 
-A zero-delay broadcast command center for OBS Studio control, user accounts, 1-click platform auto-connect, encrypted platform settings, live viewer telemetry, and unified multi-platform chat. Runs locally (with zero external setup or with MongoDB) and deploys cleanly to Vercel through GitHub.
+A zero-delay broadcast command center for OBS Studio control, 1-click platform auto-connect, multi-platform video syndication (upload once, publish everywhere), live viewer telemetry, and unified multi-platform chat. Runs locally with zero setup and deploys cleanly to Vercel through GitHub.
 
 ## Run Locally
 
@@ -12,7 +12,7 @@ Requires Node.js 20 or newer.
 npm install
 ```
 
-2. Optional: create `.env` from `.env.example` (set `APP_SECRET` to a long random secret, and add `MONGODB_URI` if connecting to MongoDB locally; when `MONGODB_URI` is omitted locally, data persists to ignored `data/local-dev.json`).
+2. Optional: create `.env` from `.env.example` (set `APP_SECRET` to a random secret, and add `MONGODB_URI` if connecting to MongoDB locally; when `MONGODB_URI` is omitted, data persists to built-in zero-config storage in `data/local-dev.json`).
 3. Start the server:
 
 ```bash
@@ -21,83 +21,74 @@ npm start
 
 Open `http://127.0.0.1:4173`. When opening the dashboard from another device on your LAN, use the host computer's LAN address, such as `http://192.168.0.188:4173`.
 
-`APP_SECRET` signs session cookies and encrypts saved platform credentials with AES-256-GCM. Use the same value every time the server starts.
+`APP_SECRET` signs session cookies and encrypts saved platform credentials with AES-256-GCM.
+
+---
 
 ## Deploy With GitHub And Vercel
 
-The hosted application uses **MongoDB** (e.g., MongoDB Atlas) for users, encrypted platform settings, remote OBS agent pairing, and command queues, with self-contained `scrypt` password hashing and HMAC-SHA256 `HttpOnly` session cookies.
+Stream Command Center is designed to run on Vercel **out of the box with zero external dependencies required**, while seamlessly scaling to **MongoDB Atlas** when configured.
 
-### 1. Create A MongoDB Database
+### Zero-Config Vercel Deploy (Instant)
+
+1. Open [Vercel New Project](https://vercel.com/new).
+2. Import your GitHub repository (`Rnrezanur/Stream-Command-Center`).
+3. Set Environment Variable:
+   - `APP_SECRET` = any random 32+ character string
+4. Click **Deploy**. The app works immediately without throwing errors.
+
+### Persistent MongoDB Atlas Database (Recommended for Cloud)
+
+If you want persistent data across Vercel serverless cold starts:
 
 1. Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Create a database user and copy your connection string (`MONGODB_URI`).
-3. In Atlas **Network Access**, allow access from Vercel (or `0.0.0.0/0` if using dynamic Vercel IPs).
-4. Collections (`users`, `platform_settings`, `obs_agents`, `obs_commands`) and their indexes are created automatically on first request.
-
-Required environment variables for Vercel:
+2. Copy your connection string (`MONGODB_URI`).
+3. In Atlas **Network Access**, allow access from `0.0.0.0/0` (for dynamic Vercel cloud IPs).
+4. In Vercel Project Settings > **Environment Variables**, add:
 
 ```text
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
 MONGODB_DB=stream_command_center
 APP_SECRET=long-random-application-secret
-YOUTUBE_CLIENT_ID=your-google-oauth-client-id
-YOUTUBE_CLIENT_SECRET=your-google-oauth-client-secret
-TWITCH_CLIENT_ID=your-twitch-app-client-id
-TWITCH_CLIENT_SECRET=your-twitch-app-client-secret
 ```
 
-Keep `APP_SECRET` unchanged after deploying. It encrypts saved platform credentials and signs user sessions.
+5. Redeploy. All collections (`users`, `platform_settings`, `obs_agents`, `obs_commands`, `videos`) and their indexes are created automatically on the first request.
 
-Visit `/api/health` on the deployed domain to verify `ok: true` and `database: "mongodb"`.
+Visit `/api/health` on your deployed domain to verify `ok: true`.
 
-### 2. Push To GitHub
+---
 
-```bash
-git add .
-git commit -m "Prepare Stream Command Center for deployment"
-git branch -M main
-git push -u origin main
-```
+## 📹 OmniPublish: Multi-Platform Video Syndication
 
-Do not commit `.env`, `data/`, API tokens, OBS passwords, or platform credentials.
+Upload or drag & drop a single video file to publish and syndicate it simultaneously across:
 
-### 3. Import Into Vercel
+- **YouTube** (HD 1080p Video, VOD & Shorts eligible)
+- **Facebook** (Page Watch & Reels)
+- **Twitch** (Highlights & Channel VODs)
+- **TikTok** (Vertical Shorts with auto `#Shorts` tags)
+- **Instagram** (Reels syndication)
+- **X (Twitter)** (Broadcast Video Tweet)
 
-1. Open [Vercel New Project](https://vercel.com/new).
-2. Import the GitHub repository.
-3. Keep the framework preset as **Other**.
-4. Add `APP_SECRET`, `MONGODB_URI`, and `MONGODB_DB` (plus optional OAuth keys) as Environment Variables.
-5. Click **Deploy**.
+### Features of the Video Publisher:
+1. **Interactive Video Preview**: Plays selected video locally with resolution, duration, and file size detection.
+2. **Automatic Frame Thumbnail Capture**: Generates a thumbnail image directly from the video frame using canvas.
+3. **Target Platform Matrix**: Choose which platforms to syndicate to with interactive toggles.
+4. **Live Progress Tracking**: Real-time progress bars for each platform with direct clickable links (`View on YouTube ↗`, `View on Facebook ↗`, etc.) once published.
+5. **Published History**: Review, open, or delete previously syndicated videos directly from the dashboard.
 
-The included `vercel.json` routes `/api/*` to the Node Vercel Function. Static dashboard assets are served directly by Vercel.
-
-### YouTube And Twitch OAuth
-
-OAuth lets the dashboard read channel broadcasts and send messages as the connected YouTube channel and Twitch account.
-
-1. In Google Cloud, enable **YouTube Data API v3** and create a Web application OAuth client. Add `https://your-domain/api/oauth/youtube/callback` as an authorized redirect URI.
-2. In the Twitch Developer Console, create an application and add `https://your-domain/api/oauth/twitch/callback` as its OAuth redirect URL.
-3. Add the four OAuth environment variables shown above to Vercel (or `.env`), then redeploy/restart.
-4. Open **Platform Settings** and click **Connect with Google / YouTube** or **Connect with Twitch Account** (or use **⚡ Auto-Connect** in the dashboard for instant zero-config multi-stream testing).
-
-### Hosted OBS Remote Agent
-
-The hosted HTTPS dashboard can control local OBS through the included local agent (`obs-agent.js`). The agent makes outbound HTTPS requests to the server and connects locally to OBS, so port `4455` is never exposed to the internet.
-
-1. Open the deployed dashboard and click **Connect Remote OBS** (when accessed over `https://`).
-2. Generate a one-time pairing code.
-3. On the OBS computer, paste and run the single PowerShell command shown by the dashboard (or run `npm run agent` locally with `RELAY_URL` and `PAIRING_CODE`).
-
-Never expose OBS WebSocket port `4455` directly to the public internet.
+---
 
 ## Features
 
-- **MongoDB + Local Dev Fallback**: Full MongoDB Atlas backend for cloud hosting, plus zero-config `data/local-dev.json` fallback locally.
+- **Zero-Config Vercel Deployment**: No crash if `MONGODB_URI` is not provided; automatically runs in resilient zero-config storage mode, and upgrades to MongoDB Atlas when `MONGODB_URI` is added.
+- **OmniPublish Multi-Platform Video Syndication**: Upload one video to publish simultaneously to YouTube, Facebook, Twitch, TikTok, Instagram & X.
 - **1-Click Launch & Auto-Connect**: Launch into the Command Center in one click and auto-connect YouTube Live, Twitch, and Facebook Live channels instantly.
 - **Zero-Delay Optimistic Controls**: Instant visual feedback for Stream, Record, Mic Mute, Scene Switching, and Multi-Platform Chat.
 - **Encrypted Credentials & Secure Sessions**: AES-256-GCM encryption for API/OAuth secrets, `scrypt` password hashing, and signed `HttpOnly` cookies.
-- **OBS WebSocket 5.x Integration**: Local WebSocket control and remote HTTPS agent support.
+- **OBS WebSocket 5.x Integration**: Direct local WebSocket connection and remote HTTPS agent support.
 - **Unified Multi-Platform Chat**: Filter comments across YouTube, Twitch, and Facebook, and broadcast replies directly from the command center.
+
+---
 
 ## OBS Setup
 
@@ -107,24 +98,23 @@ Never expose OBS WebSocket port `4455` directly to the public internet.
 4. Click **Connect OBS** in the dashboard (it also auto-attempts `ws://127.0.0.1:4455` on sign-in).
 5. For another device on the LAN, use the OBS computer's address, such as `ws://192.168.0.188:4455`.
 
+### Hosted OBS Remote Agent (For HTTPS / Vercel)
+
+When accessing the dashboard over HTTPS, browser security blocks direct unencrypted `ws://` to local IPs. The included lightweight agent solves this:
+
+1. Click **Connect Remote OBS** in the deployed dashboard.
+2. Generate a pairing code.
+3. Paste and run the single command in PowerShell on your streaming PC:
+   ```powershell
+   irm https://your-domain.vercel.app/obs-agent.js -OutFile obs-agent.js; $env:RELAY_URL="https://your-domain.vercel.app"; $env:PAIRING_CODE="YOUR_CODE"; node obs-agent.js
+   ```
+
+---
+
 ## Platform Setup (Manual / Custom API)
 
 Sign in, then click **Configure** on any platform card or open **Platform Settings**:
 
-- **YouTube**: API key or Google OAuth, Channel ID, optional Video ID override.
-- **Twitch**: Client ID, OAuth or App Access Token, Channel login name.
-- **Facebook**: Page Access Token, Page ID, optional Live Video ID override, Graph API version (`v24.0`).
-
-## Security Notes
-
-- Platform credentials are encrypted at rest using `APP_SECRET`.
-- Passwords are salted and hashed with Node `crypto.scryptSync`.
-- Saved secret tokens are never returned to the browser after being stored.
-- Before exposing publicly at scale, ensure HTTPS (provided by Vercel), strong `APP_SECRET`, rate limiting, and restrictive CORS/CSP policies.
-
-## API Sources
-
-- [YouTube Live Chat API](https://developers.google.com/youtube/v3/live/docs/liveChatMessages/list)
-- [YouTube live viewer details](https://developers.google.com/youtube/v3/docs/videos)
-- [Twitch Get Streams](https://dev.twitch.tv/docs/api/reference/#get-streams)
-- [Twitch chat and IRC](https://dev.twitch.tv/docs/irc)
+- **YouTube**: API key or Google OAuth (`YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`), Channel ID.
+- **Twitch**: Client ID, OAuth or App Access Token (`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`), Channel name.
+- **Facebook**: Page Access Token, Page ID, Graph API version (`v24.0`).

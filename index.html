@@ -132,6 +132,10 @@
           <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>
           <span class="nav-tooltip">Console</span>
         </button>
+        <button class="nav-item" id="sidebarUploadBtn" aria-label="Upload Video" title="Upload Video to All Platforms">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2 5 5h-5V4Zm-1 9v4h-2v-4H8l4-4 4 4h-2Z"/></svg>
+          <span class="nav-tooltip">Upload</span>
+        </button>
         <button class="nav-item" id="sidebarPlatformsBtn" aria-label="Platforms" title="Platforms">
           <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Z"/><path d="M12 6v6l4 2"/></svg>
           <span class="nav-tooltip">Platforms</span>
@@ -194,6 +198,11 @@
 
         <!-- HEADER ACTIONS -->
         <div class="header-actions">
+          <button class="upload-video-header-btn" id="headerUploadBtn" title="Upload one video to all platforms">
+            <span class="btn-spark">📹</span>
+            <span>Upload Video</span>
+          </button>
+
           <button class="auto-connect-all-btn" id="headerAutoConnectBtn" title="Auto-connect YouTube, Twitch & Facebook with one click">
             <span class="spark-icon">⚡</span>
             <span>Auto-Connect All</span>
@@ -517,6 +526,42 @@
               </article>
             </div>
           </section>
+
+          <!-- MULTI-PLATFORM VIDEO SYNDICATION PANEL -->
+          <section class="panel syndication-panel">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">OmniPublish // Multi-Platform Video Syndication</p>
+                <h2>One-Click Multi-Channel Upload</h2>
+              </div>
+              <button type="button" class="btn-open-upload" id="workspaceUploadBtn">
+                <span class="btn-spark">📹</span> Upload Video Everywhere
+              </button>
+            </div>
+            <div class="syndication-banner">
+              <div class="syndication-intro">
+                <div class="syndication-icon-glow">
+                  <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
+                </div>
+                <div>
+                  <strong>Upload once, publish across all platforms</strong>
+                  <p>Syndicate your stream clips, recordings, or videos to YouTube, Facebook, Twitch, TikTok, Instagram &amp; X simultaneously.</p>
+                </div>
+              </div>
+              <div class="syndication-pills">
+                <span class="syn-badge yt">▶ YouTube</span>
+                <span class="syn-badge fb">f Facebook</span>
+                <span class="syn-badge tw">◈ Twitch</span>
+                <span class="syn-badge tt">♪ TikTok</span>
+                <span class="syn-badge ig">📷 Instagram</span>
+                <span class="syn-badge x">𝕏 Post</span>
+              </div>
+            </div>
+            <!-- RECENT PUBLISHED VIDEOS PREVIEW -->
+            <div class="recent-uploads-bar" id="workspaceRecentUploads">
+              <span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>
+            </div>
+          </section>
         </section>
 
         <!-- RIGHT WORKSPACE: UNIFIED LIVE CHAT FEED -->
@@ -737,6 +782,195 @@
           <button type="submit" class="connect-button">Save Settings</button>
         </div>
       </form>
+    </div>
+
+    <!-- MULTI-PLATFORM VIDEO PUBLISHER MODAL -->
+    <div class="modal-backdrop" id="videoUploadModal" aria-hidden="true">
+      <div class="modal video-upload-modal">
+        <div class="modal-header-row">
+          <div>
+            <p class="eyebrow">OmniPublish &bull; Video Syndication</p>
+            <h2>Upload to All Platforms</h2>
+          </div>
+          <button type="button" id="cancelVideoUpload" class="icon-button modal-close-btn" aria-label="Close dialog" title="Close">&times;</button>
+        </div>
+        <p class="modal-subtext">Select one video to publish simultaneously across YouTube, Facebook, Twitch, TikTok, Instagram &amp; X.</p>
+
+        <!-- TABS: NEW UPLOAD / HISTORY -->
+        <div class="upload-modal-tabs">
+          <button type="button" class="tab-btn active" id="tabNewUploadBtn">New Upload</button>
+          <button type="button" class="tab-btn" id="tabUploadHistoryBtn">Published Videos (<span id="publishedVideosCount">0</span>)</button>
+        </div>
+
+        <!-- TAB 1: NEW UPLOAD VIEW -->
+        <div id="uploadTabNew" class="upload-tab-pane">
+          <form id="videoUploadForm">
+            <!-- DROPZONE -->
+            <div class="video-dropzone" id="videoDropzone">
+              <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" hidden>
+              <div class="dropzone-idle" id="dropzoneIdle">
+                <div class="dropzone-icon">
+                  <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
+                </div>
+                <strong>Drag &amp; drop video file here or click to browse</strong>
+                <p>Supports MP4, MOV, WEBM, MKV (or publish an instant highlight)</p>
+                <button type="button" class="btn-browse-file" id="btnBrowseVideo">Choose Video File</button>
+              </div>
+
+              <!-- FILE LOADED PREVIEW -->
+              <div class="dropzone-loaded" id="dropzoneLoaded" style="display: none;">
+                <div class="video-preview-wrapper">
+                  <video id="videoPreviewPlayer" controls playsinline preload="metadata"></video>
+                </div>
+                <div class="video-file-info">
+                  <div>
+                    <strong id="videoFileNameText">video.mp4</strong>
+                    <div class="video-file-meta-pills">
+                      <span id="videoFileSizeBadge" class="file-pill">0 MB</span>
+                      <span id="videoDurationBadge" class="file-pill">00:00</span>
+                      <span id="videoResolutionBadge" class="file-pill">1080p</span>
+                    </div>
+                  </div>
+                  <button type="button" class="text-button" id="btnChangeVideo">Change file</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- METADATA FORM -->
+            <div class="video-fields-grid">
+              <label class="field-label full-width">
+                <span>Video Title *</span>
+                <input id="videoUploadTitle" type="text" placeholder="e.g. Insane Highlights &amp; Best Moments | Stream #1" required maxlength="120">
+              </label>
+
+              <label class="field-label full-width">
+                <span>Description</span>
+                <textarea id="videoUploadDescription" rows="2" placeholder="Add description, links, hashtags (#Stream #Gaming)..."></textarea>
+              </label>
+
+              <label class="field-label">
+                <span>Tags (comma-separated)</span>
+                <input id="videoUploadTags" type="text" placeholder="e.g. stream, gaming, highlights, live">
+              </label>
+
+              <label class="field-label">
+                <span>Category</span>
+                <select id="videoUploadCategory" class="field-select">
+                  <option value="Gaming" selected>Gaming</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="People &amp; Blogs">People &amp; Blogs</option>
+                  <option value="Technology">Technology</option>
+                  <option value="Music">Music</option>
+                  <option value="Education">Education</option>
+                </select>
+              </label>
+
+              <label class="field-label">
+                <span>Visibility</span>
+                <select id="videoUploadPrivacy" class="field-select">
+                  <option value="public" selected>Public (Live to All)</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- TARGET PLATFORMS SELECTION -->
+            <div class="platforms-selector-section">
+              <span class="selector-title">Target Broadcast Platforms:</span>
+              <div class="target-platforms-grid">
+                <!-- YOUTUBE -->
+                <label class="platform-select-card active" data-target="youtube">
+                  <input type="checkbox" name="targetPlatform" value="youtube" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon yt"><svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg></span>
+                    <strong>YouTube</strong>
+                  </div>
+                  <small>HD Video &bull; Shorts eligible</small>
+                </label>
+
+                <!-- FACEBOOK -->
+                <label class="platform-select-card active" data-target="facebook">
+                  <input type="checkbox" name="targetPlatform" value="facebook" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon fb"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></span>
+                    <strong>Facebook</strong>
+                  </div>
+                  <small>Page Watch &bull; Reels</small>
+                </label>
+
+                <!-- TWITCH -->
+                <label class="platform-select-card active" data-target="twitch">
+                  <input type="checkbox" name="targetPlatform" value="twitch" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon twitch"><svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg></span>
+                    <strong>Twitch</strong>
+                  </div>
+                  <small>Channel VOD &bull; Highlights</small>
+                </label>
+
+                <!-- TIKTOK -->
+                <label class="platform-select-card active" data-target="tiktok">
+                  <input type="checkbox" name="targetPlatform" value="tiktok" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon tiktok"><svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></span>
+                    <strong>TikTok</strong>
+                  </div>
+                  <small>Shorts &bull; Vertical Feed</small>
+                </label>
+
+                <!-- INSTAGRAM -->
+                <label class="platform-select-card active" data-target="instagram">
+                  <input type="checkbox" name="targetPlatform" value="instagram" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon insta"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg></span>
+                    <strong>Instagram</strong>
+                  </div>
+                  <small>Reels Syndication</small>
+                </label>
+
+                <!-- X / TWITTER -->
+                <label class="platform-select-card active" data-target="x">
+                  <input type="checkbox" name="targetPlatform" value="x" checked>
+                  <div class="plat-card-header">
+                    <span class="plat-icon x-corp"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+                    <strong>X (Twitter)</strong>
+                  </div>
+                  <small>Video Broadcast Post</small>
+                </label>
+              </div>
+            </div>
+
+            <!-- UPLOAD PROGRESS MATRIX (Visible during/after upload) -->
+            <div class="upload-progress-matrix" id="uploadProgressMatrix" style="display: none;">
+              <div class="matrix-title">
+                <span class="live-pulse-green"></span>
+                <strong id="matrixStatusTitle">Syndicating Video Everywhere...</strong>
+              </div>
+              <div class="matrix-bars-list" id="matrixBarsList">
+                <!-- Dynamically populated per platform -->
+              </div>
+            </div>
+
+            <p class="connection-error" id="videoUploadError"></p>
+
+            <div class="modal-actions">
+              <button type="button" id="cancelUploadForm" class="secondary-button">Close</button>
+              <button type="submit" id="btnSubmitVideoUpload" class="connect-button btn-publish-action">
+                <span class="btn-spark">🚀</span>
+                <span id="btnSubmitVideoText">Upload to All Platforms</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- TAB 2: PUBLISHED HISTORY VIEW -->
+        <div id="uploadTabHistory" class="upload-tab-pane" style="display: none;">
+          <div class="history-list" id="publishedVideosList">
+            <p class="empty-state">No videos uploaded yet. Upload your first video to syndicate everywhere!</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- REMOTE OBS AGENT MODAL -->

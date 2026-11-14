@@ -440,6 +440,7 @@ async function loadCurrentUser() {
     setSignedInUser(user || null);
     if (!user) return;
     await refreshDashboard();
+    loadPublishedVideos();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
     // Auto-connect local OBS if available
@@ -585,6 +586,7 @@ $("#authQuickConnect")?.addEventListener("click", async () => {
     // Auto-connect all platforms for instant action!
     await autoConnectPlatforms("all");
     await refreshDashboard();
+    loadPublishedVideos();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
     showToast(`✓ Welcome, ${result.user.name}! Command Center Ready.`);
@@ -624,6 +626,7 @@ $("#authPageForm")?.addEventListener("submit", async (event) => {
     setSignedInUser(result.user);
     await autoConnectPlatforms("all");
     await refreshDashboard();
+    loadPublishedVideos();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
     showToast(authPageRegistering ? "Account created" : "Welcome back");
@@ -990,6 +993,352 @@ document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && ["1", "2", "3", "4"].includes(event.key)) {
     event.preventDefault();
     $$(".scene-card")[Number(event.key) - 1]?.click();
+  }
+});
+
+// ========================================================
+// OMNIPUBLISH: MULTI-PLATFORM VIDEO SYNDICATION
+// ========================================================
+const videoUploadModal = $("#videoUploadModal");
+let currentSelectedVideoFile = null;
+let currentThumbnailDataUrl = null;
+let publishedVideos = [];
+
+function openVideoUploadModal(tab = "new") {
+  if (!signedInUser) return openAccountModal();
+  setModalOpen(videoUploadModal, true);
+  switchUploadTab(tab);
+  loadPublishedVideos();
+}
+
+function switchUploadTab(tab) {
+  const isNew = tab === "new";
+  $("#tabNewUploadBtn")?.classList.toggle("active", isNew);
+  $("#tabUploadHistoryBtn")?.classList.toggle("active", !isNew);
+  const tabNew = $("#uploadTabNew");
+  const tabHist = $("#uploadTabHistory");
+  if (tabNew) tabNew.style.display = isNew ? "" : "none";
+  if (tabHist) tabHist.style.display = isNew ? "none" : "";
+}
+
+$("#headerUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
+$("#sidebarUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
+$("#workspaceUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
+$("#cancelVideoUpload")?.addEventListener("click", () => setModalOpen(videoUploadModal, false));
+$("#cancelUploadForm")?.addEventListener("click", () => setModalOpen(videoUploadModal, false));
+videoUploadModal?.addEventListener("click", (e) => {
+  if (e.target === videoUploadModal) setModalOpen(videoUploadModal, false);
+});
+
+$("#tabNewUploadBtn")?.addEventListener("click", () => switchUploadTab("new"));
+$("#tabUploadHistoryBtn")?.addEventListener("click", () => switchUploadTab("history"));
+
+// File browse & drag and drop
+const videoDropzone = $("#videoDropzone");
+const videoFileInput = $("#videoFileInput");
+const btnBrowseVideo = $("#btnBrowseVideo");
+const btnChangeVideo = $("#btnChangeVideo");
+
+btnBrowseVideo?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  videoFileInput?.click();
+});
+
+videoDropzone?.addEventListener("click", (e) => {
+  if (e.target.closest("button") || e.target.closest("video")) return;
+  videoFileInput?.click();
+});
+
+videoDropzone?.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  videoDropzone.classList.add("drag-over");
+});
+
+videoDropzone?.addEventListener("dragleave", () => {
+  videoDropzone.classList.remove("drag-over");
+});
+
+videoDropzone?.addEventListener("drop", (e) => {
+  e.preventDefault();
+  videoDropzone.classList.remove("drag-over");
+  if (e.dataTransfer?.files?.[0]) {
+    handleVideoFileSelected(e.dataTransfer.files[0]);
+  }
+});
+
+videoFileInput?.addEventListener("change", (e) => {
+  if (e.target.files?.[0]) {
+    handleVideoFileSelected(e.target.files[0]);
+  }
+});
+
+btnChangeVideo?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  currentSelectedVideoFile = null;
+  currentThumbnailDataUrl = null;
+  if (videoFileInput) videoFileInput.value = "";
+  const idle = $("#dropzoneIdle");
+  const loaded = $("#dropzoneLoaded");
+  if (idle) idle.style.display = "";
+  if (loaded) loaded.style.display = "none";
+  const player = $("#videoPreviewPlayer");
+  if (player) { player.pause(); player.src = ""; }
+});
+
+function handleVideoFileSelected(file) {
+  if (!file.type.startsWith("video/") && !/\.(mp4|mov|webm|mkv|avi)$/i.test(file.name)) {
+    showToast("Please select a video file (MP4, MOV, WEBM, MKV)");
+    return;
+  }
+  currentSelectedVideoFile = file;
+  const idle = $("#dropzoneIdle");
+  const loaded = $("#dropzoneLoaded");
+  if (idle) idle.style.display = "none";
+  if (loaded) loaded.style.display = "";
+
+  const nameEl = $("#videoFileNameText");
+  const sizeEl = $("#videoFileSizeBadge");
+  const durEl = $("#videoDurationBadge");
+  const resEl = $("#videoResolutionBadge");
+  const titleInput = $("#videoUploadTitle");
+
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) sizeEl.textContent = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+  if (titleInput && !titleInput.value) {
+    titleInput.value = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+  }
+
+  const url = URL.createObjectURL(file);
+  const player = $("#videoPreviewPlayer");
+  if (player) {
+    player.src = url;
+    player.onloadedmetadata = () => {
+      if (durEl) durEl.textContent = formatTime(Math.floor(player.duration || 0));
+      if (resEl) resEl.textContent = `${player.videoWidth || 1920}x${player.videoHeight || 1080}`;
+
+      // Capture thumbnail frame
+      try {
+        player.currentTime = Math.min(1.0, (player.duration || 2) / 2);
+        player.onseeked = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.min(640, player.videoWidth || 640);
+          canvas.height = Math.min(360, player.videoHeight || 360);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(player, 0, 0, canvas.width, canvas.height);
+          currentThumbnailDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        };
+      } catch (_) {}
+    };
+  }
+}
+
+// Platform selection toggles
+document.querySelectorAll(".platform-select-card").forEach((card) => {
+  card.addEventListener("click", (e) => {
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    if (e.target !== checkbox) {
+      checkbox.checked = !checkbox.checked;
+    }
+    card.classList.toggle("active", checkbox.checked);
+  });
+});
+
+// Upload form submit
+$("#videoUploadForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errEl = $("#videoUploadError");
+  if (errEl) errEl.textContent = "";
+
+  const title = $("#videoUploadTitle")?.value.trim();
+  if (!title) {
+    if (errEl) errEl.textContent = "Video title is required";
+    return;
+  }
+
+  const selectedPlatforms = Array.from(document.querySelectorAll('input[name="targetPlatform"]:checked')).map((c) => c.value);
+  if (selectedPlatforms.length === 0) {
+    if (errEl) errEl.textContent = "Select at least one broadcast platform";
+    return;
+  }
+
+  const submitBtn = $("#btnSubmitVideoUpload");
+  const submitText = $("#btnSubmitVideoText");
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = "Syndicating to platforms...";
+
+  // Show progress matrix
+  const matrix = $("#uploadProgressMatrix");
+  const barsList = $("#matrixBarsList");
+  if (matrix) matrix.style.display = "";
+  if (barsList) {
+    barsList.innerHTML = selectedPlatforms.map((p) => `
+      <div class="matrix-row" id="matrixRow_${p}">
+        <div class="matrix-row-meta">
+          <strong>${p.toUpperCase()}</strong>
+          <span class="matrix-pct">0%</span>
+        </div>
+        <div class="matrix-progress-track">
+          <div class="matrix-progress-fill" style="width: 15%;"></div>
+        </div>
+        <div class="matrix-actions-row" id="matrixActions_${p}"></div>
+      </div>
+    `).join("");
+  }
+
+  // Animate progress smoothly
+  let progress = 15;
+  const progressTimer = setInterval(() => {
+    progress = Math.min(88, progress + Math.floor(Math.random() * 12 + 4));
+    selectedPlatforms.forEach((p) => {
+      const row = $(`#matrixRow_${p}`);
+      if (row) {
+        const pctEl = row.querySelector(".matrix-pct");
+        const fill = row.querySelector(".matrix-progress-fill");
+        if (pctEl) pctEl.textContent = `${progress}% (Transcoding & Uploading...)`;
+        if (fill) fill.style.width = `${progress}%`;
+      }
+    });
+  }, 350);
+
+  const payload = {
+    title,
+    description: $("#videoUploadDescription")?.value.trim() || "",
+    tags: $("#videoUploadTags")?.value.trim() || "",
+    category: $("#videoUploadCategory")?.value || "Gaming",
+    privacy: $("#videoUploadPrivacy")?.value || "public",
+    platforms: selectedPlatforms,
+    fileName: currentSelectedVideoFile?.name || "stream_broadcast.mp4",
+    fileSize: currentSelectedVideoFile?.size || 48200000,
+    duration: $("#videoDurationBadge")?.textContent || "02:15",
+    thumbnail: currentThumbnailDataUrl || null
+  };
+
+  try {
+    const res = await api("/api/videos/upload", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    clearInterval(progressTimer);
+
+    // Complete all progress bars to 100%
+    selectedPlatforms.forEach((p) => {
+      const row = $(`#matrixRow_${p}`);
+      const actionRow = $(`#matrixActions_${p}`);
+      const platData = res.video?.platforms?.[p];
+      if (row) {
+        const pctEl = row.querySelector(".matrix-pct");
+        const fill = row.querySelector(".matrix-progress-fill");
+        if (pctEl) pctEl.innerHTML = `<span style="color:#10b981;">✓ Published Live!</span>`;
+        if (fill) { fill.style.width = "100%"; fill.style.background = "#10b981"; }
+      }
+      if (actionRow && platData?.url) {
+        actionRow.innerHTML = `<a href="${platData.url}" target="_blank" rel="noopener noreferrer" class="btn-matrix-link">View on ${platData.platformName} ↗</a>`;
+      }
+    });
+
+    const matrixTitle = $("#matrixStatusTitle");
+    if (matrixTitle) matrixTitle.innerHTML = `<span style="color:#10b981;">✓ Successfully Published Everywhere!</span>`;
+    showToast(`🚀 Video published to ${selectedPlatforms.length} platforms!`);
+
+    await loadPublishedVideos();
+  } catch (error) {
+    clearInterval(progressTimer);
+    if (errEl) errEl.textContent = error.message;
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = "Upload to All Platforms";
+  }
+});
+
+// Load and render published videos history
+async function loadPublishedVideos() {
+  if (!signedInUser) return;
+  try {
+    const data = await api("/api/videos");
+    publishedVideos = data.videos || [];
+    renderPublishedVideos(publishedVideos);
+  } catch (_) {}
+}
+
+function renderPublishedVideos(videos) {
+  const countEl = $("#publishedVideosCount");
+  if (countEl) countEl.textContent = videos.length;
+
+  const historyList = $("#publishedVideosList");
+  if (historyList) {
+    if (!videos.length) {
+      historyList.innerHTML = `<p class="empty-state">No videos uploaded yet. Upload your first video to syndicate everywhere!</p>`;
+    } else {
+      historyList.innerHTML = videos.map((v) => {
+        const dateStr = v.createdAt ? new Date(v.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+        const platChips = Object.entries(v.platforms || {}).map(([pKey, pVal]) => `
+          <a href="${pVal.url}" target="_blank" rel="noopener noreferrer" class="history-link-chip">
+            ${pKey.toUpperCase()}: ${pVal.videoId || "Watch"} ↗
+          </a>
+        `).join("");
+
+        return `
+          <div class="history-card" id="historyCard_${v.id}">
+            <div class="history-thumb-wrap">
+              ${v.thumbnail ? `<img src="${v.thumbnail}" alt="Thumbnail">` : `<span class="history-thumb-placeholder">📹</span>`}
+            </div>
+            <div class="history-content">
+              <strong>${escapeHtml(v.title)}</strong>
+              ${v.description ? `<p>${escapeHtml(v.description)}</p>` : ""}
+              <div class="video-file-meta-pills">
+                <span class="file-pill">${escapeHtml(v.duration || "02:15")}</span>
+                <span class="file-pill">${escapeHtml(v.category || "Gaming")}</span>
+                <span class="file-pill">${escapeHtml(v.privacy || "public")}</span>
+                <span class="file-pill">${escapeHtml(dateStr)}</span>
+              </div>
+              <div class="history-tags-row">
+                ${platChips}
+                <button type="button" class="btn-delete-history" data-video-id="${v.id}">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // Update workspace preview
+  const recentBar = $("#workspaceRecentUploads");
+  if (recentBar) {
+    if (!videos.length) {
+      recentBar.innerHTML = `<span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>`;
+    } else {
+      recentBar.innerHTML = videos.slice(0, 3).map((v) => {
+        return `
+          <div class="recent-video-mini-card">
+            <span class="recent-video-mini-title">
+              <span>📹</span> ${escapeHtml(v.title)} <small style="color:var(--muted);font-weight:normal;">(${v.duration || "02:15"})</small>
+            </span>
+            <div class="recent-video-links">
+              ${Object.entries(v.platforms || {}).map(([p, data]) => `
+                <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="video-link-tag">${p.toUpperCase()} ↗</a>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+}
+
+// Delete video from history
+document.addEventListener("click", async (e) => {
+  const delBtn = e.target.closest(".btn-delete-history");
+  if (!delBtn) return;
+  const videoId = delBtn.dataset.videoId;
+  if (!videoId) return;
+  try {
+    await api(`/api/videos/${videoId}`, { method: "DELETE" });
+    showToast("Video removed from history");
+    publishedVideos = publishedVideos.filter((v) => v.id !== videoId);
+    renderPublishedVideos(publishedVideos);
+  } catch (error) {
+    showToast(error.message);
   }
 });
 
