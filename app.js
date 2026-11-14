@@ -641,14 +641,16 @@ async function loadVideosHistory() {
 // ALERT BOX & OVERLAYS
 // =========================================================================
 function renderAlertsFeed(alerts) {
-  const container = $("#alertsActivityFeed");
-  if (!container) return;
+  const containers = [$("#alertsActivityFeed"), $("#chatAlertsActivityFeed")].filter(Boolean);
+  if (!containers.length) return;
   if (!alerts || !alerts.length) {
-    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-faint);">No recent alerts. Use the test buttons above to trigger preview alerts!</div>`;
+    containers.forEach((c) => {
+      c.innerHTML = `<div style="text-align:center; padding:24px 16px; color:var(--text-faint); font-size:12px;">No live alerts yet. Use the test buttons above to trigger live alerts!</div>`;
+    });
     return;
   }
 
-  container.innerHTML = alerts.map((a) => {
+  const html = alerts.map((a) => {
     const icon = a.type === "subscribe" ? "💎" : a.type === "like" ? "❤️" : "🚀";
     const timeStr = a.time ? new Date(a.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "now";
 
@@ -663,6 +665,8 @@ function renderAlertsFeed(alerts) {
       </div>
     `;
   }).join("");
+
+  containers.forEach((c) => (c.innerHTML = html));
 }
 
 // Test Alert Buttons
@@ -701,17 +705,26 @@ async function pollObsState() {
     const text = $("#headerObsText");
     const metric = $("#obsMetricState");
     const metricSub = $("#obsMetricSub");
+    const chatBadge = $("#chatObsStatusBadge");
 
     if (online) {
       if (pill) pill.className = "obs-status-pill online";
       if (text) text.textContent = "OBS Connected";
       if (metric) metric.textContent = "Connected";
       if (metricSub) metricSub.textContent = "WebSocket 4455 active";
+      if (chatBadge) {
+        chatBadge.className = "status-badge connected";
+        chatBadge.textContent = "Connected";
+      }
     } else {
       if (pill) pill.className = "obs-status-pill";
       if (text) text.textContent = "OBS Ready";
       if (metric) metric.textContent = "Ready";
       if (metricSub) metricSub.textContent = "Port 4455 standby";
+      if (chatBadge) {
+        chatBadge.className = "status-badge disconnected";
+        chatBadge.textContent = "Standby";
+      }
     }
 
     if (obsData) {
@@ -722,25 +735,42 @@ async function pollObsState() {
       const streamBtn = $("#btnObsStreamToggle");
       const recordBtn = $("#btnObsRecordToggle");
       const muteBtn = $("#btnObsMuteToggle");
+      const chatStreamBtn = $("#btnChatObsStream");
+      const chatRecordBtn = $("#btnChatObsRecord");
+      const chatMuteBtn = $("#btnChatObsMute");
 
       if (streamBtn) {
         streamBtn.classList.toggle("active", state.obsStreaming);
         $("#lblObsStream").textContent = state.obsStreaming ? "Stop Live Stream" : "Start Live Stream";
       }
+      if (chatStreamBtn) {
+        chatStreamBtn.classList.toggle("active", state.obsStreaming);
+        $("#lblChatObsStream").textContent = state.obsStreaming ? "Stop Stream" : "Start Stream";
+      }
+
       if (recordBtn) {
         recordBtn.classList.toggle("active", state.obsRecording);
         $("#lblObsRecord").textContent = state.obsRecording ? "Stop Recording" : "Start Recording";
       }
+      if (chatRecordBtn) {
+        chatRecordBtn.classList.toggle("active", state.obsRecording);
+        $("#lblChatObsRecord").textContent = state.obsRecording ? "Stop Record" : "Start Record";
+      }
+
       if (muteBtn) {
         muteBtn.classList.toggle("active", state.obsMuted);
         $("#lblObsMute").textContent = state.obsMuted ? "Unmute Mic" : "Mute Microphone";
+      }
+      if (chatMuteBtn) {
+        chatMuteBtn.classList.toggle("active", state.obsMuted);
+        $("#lblChatObsMute").textContent = state.obsMuted ? "Unmute Mic" : "Mute Mic";
       }
     }
   } catch (_) {}
 }
 
-// Studio Action Buttons
-$("#btnObsStreamToggle")?.addEventListener("click", async () => {
+// Studio Action Commands
+async function toggleObsStream() {
   const req = state.obsStreaming ? "StopStream" : "StartStream";
   try {
     await api("/api/obs/commands", { method: "POST", body: JSON.stringify({ requestType: req }) });
@@ -750,9 +780,9 @@ $("#btnObsStreamToggle")?.addEventListener("click", async () => {
   } catch (err) {
     showToast(err.message);
   }
-});
+}
 
-$("#btnObsRecordToggle")?.addEventListener("click", async () => {
+async function toggleObsRecord() {
   const req = state.obsRecording ? "StopRecord" : "StartRecord";
   try {
     await api("/api/obs/commands", { method: "POST", body: JSON.stringify({ requestType: req }) });
@@ -762,9 +792,9 @@ $("#btnObsRecordToggle")?.addEventListener("click", async () => {
   } catch (err) {
     showToast(err.message);
   }
-});
+}
 
-$("#btnObsMuteToggle")?.addEventListener("click", async () => {
+async function toggleObsMute() {
   const req = "SetInputMute";
   try {
     await api("/api/obs/commands", {
@@ -777,15 +807,26 @@ $("#btnObsMuteToggle")?.addEventListener("click", async () => {
   } catch (err) {
     showToast(err.message);
   }
-});
+}
 
-// Scene Switcher
+// Wire up OBS action buttons for both Tab 5 and Live Chat
+$("#btnObsStreamToggle")?.addEventListener("click", toggleObsStream);
+$("#btnChatObsStream")?.addEventListener("click", toggleObsStream);
+
+$("#btnObsRecordToggle")?.addEventListener("click", toggleObsRecord);
+$("#btnChatObsRecord")?.addEventListener("click", toggleObsRecord);
+
+$("#btnObsMuteToggle")?.addEventListener("click", toggleObsMute);
+$("#btnChatObsMute")?.addEventListener("click", toggleObsMute);
+
+// Scene Switcher (Synchronized across Tab 5 and Live Chat)
 document.addEventListener("click", async (e) => {
   const sceneBtn = e.target.closest(".btn-scene-select");
   if (sceneBtn && sceneBtn.dataset.scene) {
-    $$(".btn-scene-select").forEach((b) => b.classList.remove("active"));
-    sceneBtn.classList.add("active");
     const sceneName = sceneBtn.dataset.scene;
+    $$(".btn-scene-select").forEach((b) => {
+      b.classList.toggle("active", b.dataset.scene === sceneName);
+    });
     try {
       await api("/api/obs/commands", {
         method: "POST",

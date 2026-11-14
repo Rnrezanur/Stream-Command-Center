@@ -344,56 +344,119 @@
       <div class="section-header">
         <div class="section-title-wrap">
           <h2>Unified Audience Chat</h2>
-          <p class="section-desc">One centralized feed for comments from all 6 synchronized platforms.</p>
+          <p class="section-desc">One centralized feed for comments from all 6 synchronized platforms with live activity &amp; OBS control.</p>
         </div>
       </div>
 
-      <div class="chat-container">
-        <!-- Filter Tabs -->
-        <div class="chat-filter-bar">
-          <div class="chat-filter-pills" id="chatFilters">
-            <button type="button" class="chat-filter-pill active" data-filter="all">All Comments (<span id="chatCountSpan">0</span>)</button>
-            <button type="button" class="chat-filter-pill" data-filter="youtube">YouTube</button>
-            <button type="button" class="chat-filter-pill" data-filter="twitch">Twitch</button>
-            <button type="button" class="chat-filter-pill" data-filter="facebook">Facebook</button>
-            <button type="button" class="chat-filter-pill" data-filter="tiktok">TikTok</button>
-            <button type="button" class="chat-filter-pill" data-filter="instagram">Instagram</button>
-            <button type="button" class="chat-filter-pill" data-filter="x">X</button>
+      <div class="chat-studio-layout">
+        <!-- Main Chat Stream Column -->
+        <div class="chat-container">
+          <!-- Filter Tabs -->
+          <div class="chat-filter-bar">
+            <div class="chat-filter-pills" id="chatFilters">
+              <button type="button" class="chat-filter-pill active" data-filter="all">All Comments (<span id="chatCountSpan">0</span>)</button>
+              <button type="button" class="chat-filter-pill" data-filter="youtube">YouTube</button>
+              <button type="button" class="chat-filter-pill" data-filter="twitch">Twitch</button>
+              <button type="button" class="chat-filter-pill" data-filter="facebook">Facebook</button>
+              <button type="button" class="chat-filter-pill" data-filter="tiktok">TikTok</button>
+              <button type="button" class="chat-filter-pill" data-filter="instagram">Instagram</button>
+              <button type="button" class="chat-filter-pill" data-filter="x">X</button>
+            </div>
           </div>
+
+          <!-- Pinned Comment Bar (If any) -->
+          <div class="pinned-banner" id="chatPinnedBanner" style="display: none;">
+            <div class="pinned-left">
+              <span class="pinned-badge-icon">📌</span>
+              <span><strong class="pinned-author" id="pinnedAuthor">@User</strong>: <span class="pinned-text" id="pinnedMessage">Pinned comment text</span></span>
+            </div>
+            <button type="button" class="btn-unpin" id="btnUnpinMessage" title="Unpin message">&times; Unpin</button>
+          </div>
+
+          <!-- Messages Area -->
+          <div class="chat-messages-area" id="chatFeed">
+            <div class="empty-chat-state" id="emptyChatPlaceholder">
+              <div class="empty-chat-icon">💬</div>
+              <h3>Unified Chat Stream Ready</h3>
+              <p>When you start broadcasting or viewers comment on YouTube, Twitch, Facebook, TikTok, Instagram or X, messages will appear here in real time.</p>
+            </div>
+          </div>
+
+          <!-- Composer Form -->
+          <form class="chat-composer-box" id="chatComposeForm">
+            <div class="reply-target-preview" id="replyPreviewBar" style="display: none;">
+              <span class="reply-target-text">Replying to <strong id="replyAuthor">@Viewer</strong> on <span id="replyPlatformName">Facebook</span></span>
+              <button type="button" class="btn-cancel-reply-x" id="btnCancelReply">&times;</button>
+            </div>
+
+            <div class="chat-input-row">
+              <input type="text" class="chat-input-field" id="chatInputMessage" placeholder="Type a message to reply across all synchronized channels..." autocomplete="off">
+              <button type="submit" class="btn-primary" id="btnChatSend">
+                <span>Send</span>
+              </button>
+            </div>
+          </form>
         </div>
 
-        <!-- Pinned Comment Bar (If any) -->
-        <div class="pinned-banner" id="chatPinnedBanner" style="display: none;">
-          <div class="pinned-left">
-            <span class="pinned-badge-icon">📌</span>
-            <span><strong class="pinned-author" id="pinnedAuthor">@User</strong>: <span class="pinned-text" id="pinnedMessage">Pinned comment text</span></span>
+        <!-- Right Companion Studio Column: OBS Controls & Live Activity Feed -->
+        <div class="chat-companion-sidebar">
+          
+          <!-- OBS Studio Quick Controls Card -->
+          <div class="chat-companion-card">
+            <div class="companion-card-header">
+              <div class="companion-card-title">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>OBS Studio Control</span>
+              </div>
+              <span class="status-badge" id="chatObsStatusBadge">Ready</span>
+            </div>
+
+            <div class="chat-obs-actions-grid">
+              <button type="button" class="btn-chat-obs-action" id="btnChatObsStream" data-obs-action="stream">
+                <span class="chat-obs-icon">📡</span>
+                <span id="lblChatObsStream">Start Stream</span>
+              </button>
+              <button type="button" class="btn-chat-obs-action" id="btnChatObsRecord" data-obs-action="record">
+                <span class="chat-obs-icon">⏺️</span>
+                <span id="lblChatObsRecord">Start Record</span>
+              </button>
+              <button type="button" class="btn-chat-obs-action" id="btnChatObsMute" data-obs-action="mute">
+                <span class="chat-obs-icon">🎙️</span>
+                <span id="lblChatObsMute">Mute Mic</span>
+              </button>
+            </div>
+
+            <div class="chat-obs-scenes-wrap">
+              <span class="companion-sublbl">Switch Scene</span>
+              <div class="chat-scene-btns-grid">
+                <button type="button" class="btn-scene-select active" data-scene="Camera 1 - Main">Main Camera</button>
+                <button type="button" class="btn-scene-select" data-scene="Gameplay / Screen">Gameplay</button>
+                <button type="button" class="btn-scene-select" data-scene="Be Right Back">Be Right Back</button>
+                <button type="button" class="btn-scene-select" data-scene="Stream Ending">Stream Ending</button>
+              </div>
+            </div>
           </div>
-          <button type="button" class="btn-unpin" id="btnUnpinMessage" title="Unpin message">&times; Unpin</button>
+
+          <!-- Live Activity Feed Card -->
+          <div class="chat-companion-card">
+            <div class="companion-card-header">
+              <div class="companion-card-title">
+                <span class="status-dot-pulse"></span>
+                <span>Live Activity Feed</span>
+              </div>
+              <div class="companion-test-btns">
+                <button type="button" class="btn-test-alert-sm" data-test-alert="like" title="Simulate Like">❤️ Like</button>
+                <button type="button" class="btn-test-alert-sm" data-test-alert="subscribe" title="Simulate Subscriber">💎 Sub</button>
+                <button type="button" class="btn-test-alert-sm" data-test-alert="follow" title="Simulate Follower">🚀 Follow</button>
+              </div>
+            </div>
+
+            <div class="chat-activity-feed-area" id="chatAlertsActivityFeed">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+
         </div>
-
-        <!-- Messages Area -->
-        <div class="chat-messages-area" id="chatFeed">
-          <div class="empty-chat-state" id="emptyChatPlaceholder">
-            <div class="empty-chat-icon">💬</div>
-            <h3>Unified Chat Stream Ready</h3>
-            <p>When you start broadcasting or viewers comment on YouTube, Twitch, Facebook, TikTok, Instagram or X, messages will appear here in real time.</p>
-          </div>
-        </div>
-
-        <!-- Composer Form -->
-        <form class="chat-composer-box" id="chatComposeForm">
-          <div class="reply-target-preview" id="replyPreviewBar" style="display: none;">
-            <span class="reply-target-text">Replying to <strong id="replyAuthor">@Viewer</strong> on <span id="replyPlatformName">Facebook</span></span>
-            <button type="button" class="btn-cancel-reply-x" id="btnCancelReply">&times;</button>
-          </div>
-
-          <div class="chat-input-row">
-            <input type="text" class="chat-input-field" id="chatInputMessage" placeholder="Type a message to reply across all synchronized channels..." autocomplete="off">
-            <button type="submit" class="btn-primary" id="btnChatSend">
-              <span>Send</span>
-            </button>
-          </div>
-        </form>
       </div>
     </section>
 
