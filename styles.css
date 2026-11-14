@@ -961,6 +961,7 @@ a {
 .plat-dot.youtube { background: var(--color-yt); }
 .plat-dot.twitch { background: var(--color-twitch); }
 .plat-dot.facebook { background: var(--color-fb); }
+.plat-dot.kick { background: #53fc18; }
 .plat-dot.tiktok { background: var(--color-tiktok); }
 .plat-dot.instagram { background: var(--color-ig); }
 .plat-dot.x { background: var(--color-x); }
@@ -1176,8 +1177,62 @@ a {
 .comment-platform-pill.youtube { background: rgba(255, 0, 0, 0.15); color: var(--color-yt); }
 .comment-platform-pill.twitch { background: rgba(145, 70, 255, 0.15); color: var(--color-twitch); }
 .comment-platform-pill.facebook { background: rgba(24, 119, 242, 0.15); color: var(--color-fb); }
+.comment-platform-pill.kick { background: rgba(83, 252, 24, 0.15); color: #53fc18; }
 .comment-platform-pill.tiktok { background: rgba(0, 242, 254, 0.15); color: var(--color-tiktok); }
 .comment-platform-pill.instagram { background: rgba(225, 48, 108, 0.15); color: var(--color-ig); }
+.comment-platform-pill.x { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+
+/* 1-Click OAuth Connect Button Styles */
+.oauth-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.oauth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.oauth-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(16, 185, 129, 0.1);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.btn-oauth {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  width: 100%;
+}
+.btn-oauth.youtube { background: #ff0000; color: #fff; }
+.btn-oauth.youtube:hover { background: #cc0000; }
+.btn-oauth.twitch { background: #9146ff; color: #fff; }
+.btn-oauth.twitch:hover { background: #772ce8; }
+.btn-oauth.facebook { background: #1877f2; color: #fff; }
+.btn-oauth.facebook:hover { background: #0d65d9; }
+.btn-oauth.kick { background: #53fc18; color: #05080e; font-weight: 700; }
+.btn-oauth.kick:hover { background: #45d812; }
 .comment-platform-pill.x { background: rgba(255, 255, 255, 0.15); color: var(--color-x); }
 
 .comment-time {

@@ -10,7 +10,7 @@ const state = {
   user: null,
   dashboard: null,
   activeTab: "overview",
-  selectedPlatforms: new Set(["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]),
+  selectedPlatforms: new Set(["youtube", "twitch", "facebook", "kick", "tiktok", "instagram", "x"]),
   chatSearchQuery: "",
   replyTarget: null,
   pollTimer: null,
@@ -22,6 +22,40 @@ const state = {
   avatarBase64: null,
   authMode: "login" // "login" | "register"
 };
+
+// =========================================================================
+// REAL-TIME SOCKET.IO CLIENT
+// =========================================================================
+let socket = null;
+function initSocket() {
+  if (typeof io !== "function") return;
+  if (socket) return;
+  socket = io();
+  socket.on("connect", () => {
+    console.log("Socket.io live chat connected:", socket.id);
+    if (state.user?.id) {
+      socket.emit("join_user", { userId: state.user.id });
+    }
+  });
+  socket.on("chat_message", (comment) => {
+    appendLiveComment(comment);
+  });
+  socket.on("chat_history", (messages) => {
+    if (Array.isArray(messages) && messages.length > 0) {
+      state.dashboard = state.dashboard || {};
+      state.dashboard.comments = messages;
+      renderChatComments(messages);
+    }
+  });
+}
+
+function appendLiveComment(comment) {
+  if (!state.dashboard) state.dashboard = {};
+  state.dashboard.comments = state.dashboard.comments || [];
+  if (state.dashboard.comments.some((c) => c.id === comment.id)) return;
+  state.dashboard.comments.unshift(comment);
+  renderChatComments(state.dashboard.comments);
+}
 
 // =========================================================================
 // UTILITY FUNCTIONS
@@ -106,6 +140,10 @@ function setSignedIn(user) {
   const overlayUrl = `${window.location.origin}/alerts.html`;
   const urlEl = $("#alertOverlayUrl");
   if (urlEl) urlEl.textContent = overlayUrl;
+
+  // Initialize real-time Socket.io live chat
+  initSocket();
+  if (socket) socket.emit("join_user", { userId: user.id });
 
   // Start polling dashboard & OBS state
   refreshDashboard();
@@ -381,7 +419,7 @@ function renderChatComments(comments) {
   const countBadge = $("#chatCountBadge");
   if (!feed) return;
 
-  const allPlatforms = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+  const allPlatforms = ["youtube", "twitch", "facebook", "kick", "tiktok", "instagram", "x"];
 
   // Calculate per-platform counts
   const counts = { all: comments.length };
@@ -448,27 +486,33 @@ function renderChatComments(comments) {
   feed.innerHTML = filtered.map((c) => {
     const isHost = Boolean(c.isHost);
     const platform = c.platform || "youtube";
-    const timeStr = c.time ? new Date(c.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "now";
+    const authorName = c.username || c.author || "Viewer";
+    const timeStr = (c.timestamp || c.time) ? new Date(c.timestamp || c.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "now";
 
-    let avatarHtml = escapeHtml(getInitials(c.author));
+    let avatarHtml = escapeHtml(getInitials(authorName));
     if (isHost && state.user?.avatar) {
       avatarHtml = `<img src="${state.user.avatar}" alt="Avatar">`;
     } else if (c.avatar) {
       avatarHtml = `<img src="${c.avatar}" alt="Avatar">`;
     }
 
+    const badgesHtml = Array.isArray(c.badges) && c.badges.length > 0
+      ? c.badges.map((b) => `<span class="comment-platform-pill" style="opacity:0.85; font-size:9px; background:rgba(255,255,255,0.08);">${escapeHtml(b)}</span>`).join("")
+      : "";
+
     return `
       <div class="comment-item ${isHost ? "is-host" : ""}" data-comment-id="${escapeHtml(c.id)}" data-platform="${platform}">
         <div class="comment-avatar-circle">${avatarHtml}</div>
         <div class="comment-main">
           <div class="comment-header-row">
-            <span class="comment-author-name">${escapeHtml(c.author || "Viewer")}</span>
+            <span class="comment-author-name">${escapeHtml(authorName)}</span>
             <span class="comment-platform-pill ${platform}">${platform}</span>
+            ${badgesHtml}
             <span class="comment-time">${timeStr}</span>
           </div>
           <div class="comment-message">${escapeHtml(c.message || "")}</div>
           <div class="comment-actions-row">
-            <button type="button" class="btn-comment-action" data-action="reply-comment" data-author="${escapeHtml(c.author)}" data-platform="${platform}" data-id="${escapeHtml(c.id)}">↳ Reply</button>
+            <button type="button" class="btn-comment-action" data-action="reply-comment" data-author="${escapeHtml(authorName)}" data-platform="${platform}" data-id="${escapeHtml(c.id)}">↳ Reply</button>
             <button type="button" class="btn-comment-action" data-action="pin-comment" data-id="${escapeHtml(c.id)}">📌 Pin</button>
           </div>
         </div>
@@ -494,7 +538,7 @@ $("#chatFilters")?.addEventListener("click", (e) => {
   const pill = e.target.closest(".chat-filter-pill");
   if (!pill || !pill.dataset.filter) return;
   const target = pill.dataset.filter;
-  const allPlatforms = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+  const allPlatforms = ["youtube", "twitch", "facebook", "kick", "tiktok", "instagram", "x"];
 
   if (target === "all") {
     // Select all 6 platforms
@@ -1113,14 +1157,22 @@ document.addEventListener("click", async (e) => {
     const pData = settings[platform] || {};
 
     if (platform === "youtube") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.refreshToken || pData.accountName));
       bodyEl.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">YouTube Channel Name / Title</label>
-          <input type="text" class="form-input" name="channel" value="${escapeHtml(pData.channel || "Rezanur Live")}">
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.accountName || pData.channel || "YouTube")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with your Google account to automatically stream &amp; ingest YouTube live chat comments in real time.</p>
+          <a href="/auth/youtube" class="btn-oauth youtube">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            <span>${isConnected ? "Reconnect YouTube with OAuth 2.0" : "Connect with YouTube Live (OAuth 2.0)"}</span>
+          </a>
         </div>
         <div class="form-group">
-          <label class="form-label">API Key (Optional for private streams)</label>
-          <input type="text" class="form-input" name="apiKey" placeholder="AIzaSy..." value="${escapeHtml(pData.apiKey || "")}">
+          <label class="form-label">Channel Display Name</label>
+          <input type="text" class="form-input" name="channel" value="${escapeHtml(pData.channel || pData.accountName || "Rezanur Live")}">
         </div>
         <div class="form-group">
           <label class="form-label">Stream Key</label>
@@ -1128,7 +1180,19 @@ document.addEventListener("click", async (e) => {
         </div>
       `;
     } else if (platform === "twitch") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.refreshToken || pData.channel));
       bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: @${escapeHtml(pData.accountName || pData.channel || "Twitch")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Twitch OAuth to connect live stream IRC chat &amp; badges without manual keys.</p>
+          <a href="/auth/twitch" class="btn-oauth twitch">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+            <span>${isConnected ? "Reconnect Twitch with OAuth 2.0" : "Connect with Twitch (OAuth 2.0)"}</span>
+          </a>
+        </div>
         <div class="form-group">
           <label class="form-label">Twitch Channel Username</label>
           <input type="text" class="form-input" name="channel" value="${escapeHtml(pData.channel || "rezanur_live")}">
@@ -1139,16 +1203,55 @@ document.addEventListener("click", async (e) => {
         </div>
       `;
     } else if (platform === "facebook") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.pageAccessToken || pData.page));
       bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.pageName || pData.page || "Facebook Page")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Meta to automatically select your Page and sync Facebook Live video comments.</p>
+          <a href="/auth/facebook" class="btn-oauth facebook">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            <span>${isConnected ? "Reconnect Facebook with OAuth 2.0" : "Connect with Facebook Live (OAuth 2.0)"}</span>
+          </a>
+        </div>
         <div class="form-group">
           <label class="form-label">Facebook Page Name</label>
           <input type="text" class="form-input" name="page" value="${escapeHtml(pData.page || "Rezanur Gaming")}">
         </div>
-        <div class="form-group">
-          <label class="form-label">Page Access Token</label>
-          <input type="password" class="form-input" name="accessToken" placeholder="EAA..." value="${escapeHtml(pData.accessToken || "")}">
+      `;
+    } else if (platform === "kick") {
+      const isConnected = Boolean(pData.autoConnected && pData.channel);
+      bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Pusher WebSocket Gateway</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: @${escapeHtml(pData.channel)}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Connect to Kick's live stream chat via real-time Pusher WebSockets. No password or API keys required.</p>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <input type="text" class="form-input" id="kickChannelInput" placeholder="Kick channel handle (e.g. xqc)" value="${escapeHtml(pData.channel || "")}">
+            <button type="button" class="btn-oauth kick" id="btnKickConnectModal" style="width:auto; white-space:nowrap;">
+              ${isConnected ? "Reconnect Kick" : "Connect Kick"}
+            </button>
+          </div>
         </div>
       `;
+      setTimeout(() => {
+        $("#btnKickConnectModal")?.addEventListener("click", async () => {
+          const ch = $("#kickChannelInput")?.value.trim();
+          if (!ch) return showToast("Enter a Kick channel username");
+          try {
+            await api("/api/kick/connect", { method: "POST", body: JSON.stringify({ channel: ch }) });
+            showToast(`✓ Connected to Kick channel @${ch}`);
+            closeModal("platformModal");
+            refreshDashboard();
+          } catch (err) {
+            showToast(err.message);
+          }
+        });
+      }, 50);
     } else {
       bodyEl.innerHTML = `
         <div class="form-group">
@@ -1193,5 +1296,16 @@ $("#platformConfigForm")?.addEventListener("submit", async (e) => {
 // INITIALIZE APPLICATION
 // =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
+  // Check OAuth callback parameters in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("connected") === "1") {
+    const plat = urlParams.get("oauth") || "platform";
+    showToast(`✓ Successfully connected ${capitalize(plat)} via OAuth 2.0!`);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else if (urlParams.get("error")) {
+    showToast(`OAuth Notice: ${urlParams.get("error")}`);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   checkSession();
 });

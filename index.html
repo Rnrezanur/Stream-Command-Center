@@ -375,6 +375,11 @@
                   <span>Facebook</span>
                   <span class="filter-count" id="filterCount_facebook">0</span>
                 </button>
+                <button type="button" class="chat-filter-pill active" data-filter="kick">
+                  <span class="plat-dot kick"></span>
+                  <span>Kick</span>
+                  <span class="filter-count" id="filterCount_kick">0</span>
+                </button>
                 <button type="button" class="chat-filter-pill active" data-filter="tiktok">
                   <span class="plat-dot tiktok"></span>
                   <span>TikTok</span>
@@ -828,6 +833,8 @@
   <!-- Toast Notification -->
   <div class="toast-notice" id="toastNotice"></div>
 
+  <!-- Socket.io Real-Time Live Streaming -->
+  <script src="/socket.io/socket.io.js"></script>
   <!-- Application Script -->
   <script src="app.js"></script>
 </body>

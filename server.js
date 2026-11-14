@@ -7,6 +7,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { MongoClient } = require("mongodb");
+const { Server: SocketServer } = require("socket.io");
+const { chatAggregator } = require("./chat-aggregator");
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 4173);
@@ -238,7 +240,8 @@ function applyDefaultSettings(settings) {
     facebook: { autoConnected: false, page: "Rezanur Gaming", pageName: "Rezanur Gaming" },
     tiktok: { autoConnected: false, handle: "@rezanur_live", accountName: "TikTok Creator" },
     instagram: { autoConnected: false, handle: "@rezanur.studio", accountName: "Instagram Reels" },
-    x: { autoConnected: false, handle: "@rezanur_live", accountName: "X Video" }
+    x: { autoConnected: false, handle: "@rezanur_live", accountName: "X Video" },
+    kick: { autoConnected: false, channel: "streamer", accountName: "Kick Channel", handle: "@streamer" }
   };
   const result = structuredClone(settings || {});
   for (const [platform, def] of Object.entries(defaults)) {
@@ -288,7 +291,7 @@ function normalizeUser(user) {
 
 function safeSettings(settings) {
   const masked = structuredClone(settings);
-  for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
+  for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
     for (const field of ["apiKey", "accessToken", "refreshToken", "clientSecret", "apiSecret", "clientKey"]) {
       if (masked[platform]?.[field]) {
         masked[platform][field] = "";
@@ -317,6 +320,24 @@ function requestOrigin(req) {
 async function refreshOAuthToken(platform, settings) {
   const current = settings[platform] || {};
   if (current.accessToken && Number(current.tokenExpiresAt || 0) > Date.now() + 60000) return current.accessToken;
+
+  if (platform === "facebook") {
+    const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
+    const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
+    if (!fbAppId || !fbSecret || !current.accessToken) return current.accessToken;
+    try {
+      const token = await apiFetch(
+        `https://graph.facebook.com/v24.0/oauth/access_token?grant_type=fb_extend_sso_token&client_id=${fbAppId}&client_secret=${fbSecret}&fb_exchange_token=${encodeURIComponent(current.accessToken)}`
+      );
+      if (token.access_token) {
+        current.accessToken = token.access_token;
+        current.tokenExpiresAt = Date.now() + Number(token.expires_in || 5184000) * 1000;
+        settings.facebook = current;
+      }
+    } catch (_) {}
+    return current.accessToken;
+  }
+
   if (!current.refreshToken) throw new Error(`${platform} account needs to be reconnected`);
   const params = new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken });
   let endpoint;
@@ -655,6 +676,19 @@ function getX(settings) {
   };
 }
 
+function getKick(settings) {
+  const connected = Boolean(settings.autoConnected);
+  return {
+    connected,
+    viewers: 0,
+    channel: settings.channel || "streamer",
+    handle: settings.handle || (settings.channel ? `@${settings.channel}` : "@streamer"),
+    accountName: settings.accountName || settings.channel || "Kick Channel",
+    status: connected ? "Connected - Pusher Live Chat Active" : "Disconnected",
+    eligibleForSyndication: true
+  };
+}
+
 async function dashboard(user) {
   const settings = await getSettings(user.id);
   let changed = false;
@@ -665,15 +699,20 @@ async function dashboard(user) {
     }
   }
   if (changed) await saveSettings(user.id, settings);
+
+  // Sync background unified chat aggregator workers
+  chatAggregator.syncUserPlatforms(user.id, settings);
+
   const results = await Promise.allSettled([
     getYouTube(settings.youtube || {}),
     getTwitch(settings.twitch || {}, user.id),
     getFacebook(settings.facebook || {}),
     getTikTok(settings.tiktok || {}),
     getInstagram(settings.instagram || {}),
-    getX(settings.x || {})
+    getX(settings.x || {}),
+    getKick(settings.kick || {})
   ]);
-  const names = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+  const names = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"];
   const platforms = {};
   const comments = [];
   results.forEach((result, index) => {
@@ -682,17 +721,33 @@ async function dashboard(user) {
     delete platforms[names[index]].comments;
   });
 
+  // Pull normalized comments from chatAggregator engine
+  const aggChat = chatAggregator.getUserChat(user.id);
+  if (Array.isArray(aggChat.comments)) {
+    comments.push(...aggChat.comments);
+  }
+
   const userChat = getUserChatState(user.id);
   if (Array.isArray(userChat.comments)) {
     comments.push(...userChat.comments);
   }
 
-  comments.sort((a, b) => new Date(b.time) - new Date(a.time));
+  // Deduplicate comments by id
+  const seenCommentIds = new Set();
+  const dedupedComments = [];
+  for (const c of comments) {
+    if (!seenCommentIds.has(c.id)) {
+      seenCommentIds.add(c.id);
+      dedupedComments.push(c);
+    }
+  }
+
+  dedupedComments.sort((a, b) => new Date(b.timestamp || b.time || 0) - new Date(a.timestamp || a.time || 0));
   const userAlerts = getUserAlertsState(user.id);
   return {
     platforms,
-    comments: comments.slice(0, 200),
-    pinnedComment: userChat.pinnedComment || null,
+    comments: dedupedComments.slice(0, 200),
+    pinnedComment: aggChat.pinnedComment || userChat.pinnedComment || null,
     totalViewers: Object.values(platforms).reduce((sum, item) => sum + (Number(item.viewers) || 0), 0),
     alerts: userAlerts.alerts.slice(0, 50),
     latestAlert: userAlerts.latestAlert || (userAlerts.alerts[0] || null),
@@ -709,7 +764,9 @@ async function handleApi(req, res, url) {
     };
     const oauthConfigured = {
       youtube: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
-      twitch: Boolean(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET)
+      twitch: Boolean(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET),
+      facebook: Boolean((process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID) && (process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)),
+      kick: true
     };
     return json(res, 200, {
       ok: true,
@@ -1082,73 +1139,179 @@ async function handleApi(req, res, url) {
     const sessionToken = signSession(cleanUser);
     return json(res, 200, { ok: true, user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
   }
-  const oauthStart = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/start$/);
+  const oauthStart = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook)(?:\/start)?$/);
   if (req.method === "GET" && oauthStart) {
     const platform = oauthStart[1];
     const origin = requestOrigin(req);
-    const state = signState({ platform, userId: user.id, expiresAt: Date.now() + 10 * 60000 });
+    const callbackPath = url.pathname.startsWith("/auth/") ? `/auth/${platform}/callback` : `/api/oauth/${platform}/callback`;
+    const state = signState({ platform, userId: user.id, callbackPath, expiresAt: Date.now() + 10 * 60000 });
+
     if (platform === "youtube") {
-      if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) return redirect(res, `/?oauth=youtube&error=${encodeURIComponent("YouTube OAuth is not configured. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env")}`);
+      if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) {
+        return redirect(res, `/?oauth=youtube&error=${encodeURIComponent("YouTube OAuth is not configured. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env")}`);
+      }
       const params = new URLSearchParams({
-        client_id: process.env.YOUTUBE_CLIENT_ID, redirect_uri: `${origin}/api/oauth/youtube/callback`,
-        response_type: "code", scope: "https://www.googleapis.com/auth/youtube.force-ssl",
-        access_type: "offline", prompt: "consent", include_granted_scopes: "true", state
+        client_id: process.env.YOUTUBE_CLIENT_ID,
+        redirect_uri: `${origin}${callbackPath}`,
+        response_type: "code",
+        scope: "https://www.googleapis.com/auth/youtube.force-ssl",
+        access_type: "offline",
+        prompt: "consent",
+        include_granted_scopes: "true",
+        state
       });
       return redirect(res, `https://accounts.google.com/o/oauth2/v2/auth?${params}`);
     }
-    if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) return redirect(res, `/?oauth=twitch&error=${encodeURIComponent("Twitch OAuth is not configured. Add TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env")}`);
-    const params = new URLSearchParams({
-      client_id: process.env.TWITCH_CLIENT_ID, redirect_uri: `${origin}/api/oauth/twitch/callback`,
-      response_type: "code", scope: "user:write:chat", force_verify: "true", state
-    });
-    return redirect(res, `https://id.twitch.tv/oauth2/authorize?${params}`);
+
+    if (platform === "twitch") {
+      if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) {
+        return redirect(res, `/?oauth=twitch&error=${encodeURIComponent("Twitch OAuth is not configured. Add TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env")}`);
+      }
+      const params = new URLSearchParams({
+        client_id: process.env.TWITCH_CLIENT_ID,
+        redirect_uri: `${origin}${callbackPath}`,
+        response_type: "code",
+        scope: "user:read:chat user:write:chat chat:read chat:edit",
+        force_verify: "true",
+        state
+      });
+      return redirect(res, `https://id.twitch.tv/oauth2/authorize?${params}`);
+    }
+
+    if (platform === "facebook") {
+      const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
+      const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
+      if (!fbAppId || !fbSecret) {
+        return redirect(res, `/?oauth=facebook&error=${encodeURIComponent("Facebook OAuth is not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env")}`);
+      }
+      const params = new URLSearchParams({
+        client_id: fbAppId,
+        redirect_uri: `${origin}${callbackPath}`,
+        response_type: "code",
+        scope: "pages_show_list,pages_read_engagement,pages_manage_posts,public_profile",
+        state
+      });
+      return redirect(res, `https://www.facebook.com/v24.0/dialog/oauth?${params}`);
+    }
   }
-  const oauthCallback = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/callback$/);
+
+  const oauthCallback = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook)\/callback$/);
   if (req.method === "GET" && oauthCallback) {
     const platform = oauthCallback[1];
     const state = verifyState(url.searchParams.get("state"));
     if (!state || state.platform !== platform || state.userId !== user.id) return redirect(res, `/?oauth=${platform}&error=invalid_state`);
     if (url.searchParams.get("error")) return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(url.searchParams.get("error"))}`);
+
     try {
       const origin = requestOrigin(req);
-      const params = new URLSearchParams({
-        code: url.searchParams.get("code") || "", grant_type: "authorization_code",
-        redirect_uri: `${origin}/api/oauth/${platform}/callback`
-      });
-      let endpoint;
+      const callbackPath = state.callbackPath || (url.pathname.startsWith("/auth/") ? `/auth/${platform}/callback` : `/api/oauth/${platform}/callback`);
+      const redirectUri = `${origin}${callbackPath}`;
+
+      let token = {};
       if (platform === "youtube") {
-        endpoint = "https://oauth2.googleapis.com/token";
-        params.set("client_id", process.env.YOUTUBE_CLIENT_ID || "");
-        params.set("client_secret", process.env.YOUTUBE_CLIENT_SECRET || "");
-      } else {
-        endpoint = "https://id.twitch.tv/oauth2/token";
-        params.set("client_id", process.env.TWITCH_CLIENT_ID || "");
-        params.set("client_secret", process.env.TWITCH_CLIENT_SECRET || "");
+        const params = new URLSearchParams({
+          code: url.searchParams.get("code") || "",
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri,
+          client_id: process.env.YOUTUBE_CLIENT_ID || "",
+          client_secret: process.env.YOUTUBE_CLIENT_SECRET || ""
+        });
+        token = await apiFetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: params
+        });
+      } else if (platform === "twitch") {
+        const params = new URLSearchParams({
+          code: url.searchParams.get("code") || "",
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri,
+          client_id: process.env.TWITCH_CLIENT_ID || "",
+          client_secret: process.env.TWITCH_CLIENT_SECRET || ""
+        });
+        token = await apiFetch("https://id.twitch.tv/oauth2/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: params
+        });
+      } else if (platform === "facebook") {
+        const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
+        const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
+        const params = new URLSearchParams({
+          code: url.searchParams.get("code") || "",
+          redirect_uri: redirectUri,
+          client_id: fbAppId,
+          client_secret: fbSecret
+        });
+        token = await apiFetch(`https://graph.facebook.com/v24.0/oauth/access_token?${params}`);
       }
-      const token = await apiFetch(endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params });
+
       const settings = await getSettings(user.id);
       settings[platform] ||= {};
       settings[platform].autoConnected = true;
       Object.assign(settings[platform], {
-        accessToken: token.access_token, refreshToken: token.refresh_token || settings[platform].refreshToken,
+        accessToken: token.access_token,
+        refreshToken: token.refresh_token || settings[platform].refreshToken,
         tokenExpiresAt: Date.now() + Number(token.expires_in || 3600) * 1000
       });
+
       if (platform === "youtube") {
-        const channels = await apiFetch("https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", { headers: { Authorization: `Bearer ${token.access_token}` } });
+        const channels = await apiFetch("https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true", {
+          headers: { Authorization: `Bearer ${token.access_token}` }
+        });
         settings.youtube.channelId = channels.items?.[0]?.id || settings.youtube.channelId;
-        settings.youtube.accountName = channels.items?.[0]?.snippet?.title || "YouTube";
-      } else {
+        settings.youtube.accountName = channels.items?.[0]?.snippet?.title || "YouTube Live";
+        settings.youtube.avatar = channels.items?.[0]?.snippet?.thumbnails?.default?.url || null;
+      } else if (platform === "twitch") {
         settings.twitch.clientId = process.env.TWITCH_CLIENT_ID;
-        const users = await apiFetch("https://api.twitch.tv/helix/users", { headers: { "Client-ID": process.env.TWITCH_CLIENT_ID, Authorization: `Bearer ${token.access_token}` } });
+        const users = await apiFetch("https://api.twitch.tv/helix/users", {
+          headers: { "Client-ID": process.env.TWITCH_CLIENT_ID, Authorization: `Bearer ${token.access_token}` }
+        });
         settings.twitch.userId = users.data?.[0]?.id;
         settings.twitch.channel = users.data?.[0]?.login;
         settings.twitch.accountName = users.data?.[0]?.display_name || "Twitch";
+        settings.twitch.avatar = users.data?.[0]?.profile_image_url || null;
+      } else if (platform === "facebook") {
+        const pagesRes = await apiFetch(`https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,picture&access_token=${encodeURIComponent(token.access_token)}`);
+        const firstPage = pagesRes.data?.[0];
+        if (firstPage) {
+          settings.facebook.pageId = firstPage.id;
+          settings.facebook.page = firstPage.name;
+          settings.facebook.pageName = firstPage.name;
+          settings.facebook.pageAccessToken = firstPage.access_token;
+          settings.facebook.accountName = firstPage.name;
+          settings.facebook.avatar = firstPage.picture?.data?.url || null;
+        }
       }
+
       await saveSettings(user.id, settings);
+      chatAggregator.syncUserPlatforms(user.id, settings);
       return redirect(res, `/?oauth=${platform}&connected=1`);
     } catch (error) {
       return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(error.message)}`);
     }
+  }
+  if (req.method === "POST" && url.pathname === "/api/kick/connect") {
+    const body = await readBody(req);
+    const channel = String(body.channel || "").trim().toLowerCase().replace(/^@/, "");
+    if (!channel) return json(res, 400, { error: "Kick channel username is required" });
+    const settings = await getSettings(user.id);
+    settings.kick = settings.kick || {};
+    settings.kick.channel = channel;
+    settings.kick.handle = `@${channel}`;
+    settings.kick.accountName = channel;
+    settings.kick.autoConnected = true;
+    if (body.chatroomId) settings.kick.chatroomId = body.chatroomId;
+    await saveSettings(user.id, settings);
+    chatAggregator.syncUserPlatforms(user.id, settings);
+    return json(res, 200, { ok: true, kick: settings.kick });
+  }
+  if (req.method === "POST" && url.pathname === "/api/kick/disconnect") {
+    const settings = await getSettings(user.id);
+    if (settings.kick) settings.kick.autoConnected = false;
+    await saveSettings(user.id, settings);
+    chatAggregator.stopWorker(user.id, "kick");
+    return json(res, 200, { ok: true, kick: settings.kick });
   }
   if (req.method === "POST" && url.pathname === "/api/obs/pairing-code") {
     const pairingCode = crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -1231,7 +1394,7 @@ async function handleApi(req, res, url) {
   if (req.method === "PUT" && url.pathname === "/api/settings") {
     const incoming = await readBody(req);
     const current = await getSettings(user.id);
-    for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
+    for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
       incoming[platform] = { ...(current[platform] || {}), ...(incoming[platform] || {}) };
       for (const secret of ["apiKey", "accessToken", "refreshToken", "clientSecret", "apiSecret", "clientKey"]) {
         if (!incoming[platform][secret]) incoming[platform][secret] = current[platform]?.[secret] || "";
@@ -1281,7 +1444,15 @@ async function handleApi(req, res, url) {
       settings.x.handle = settings.x.handle || "@rezanur_live";
       settings.x.accountName = settings.x.accountName || "X Video";
     }
+    if (target === "all" || target === "kick") {
+      settings.kick = settings.kick || {};
+      settings.kick.autoConnected = true;
+      settings.kick.channel = settings.kick.channel || "streamer";
+      settings.kick.handle = settings.kick.handle || `@${settings.kick.channel}`;
+      settings.kick.accountName = settings.kick.accountName || settings.kick.channel;
+    }
     await saveSettings(user.id, settings);
+    chatAggregator.syncUserPlatforms(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
   if (req.method === "POST" && url.pathname === "/api/platforms/disconnect") {
@@ -1289,13 +1460,14 @@ async function handleApi(req, res, url) {
     const target = body.platform || "all";
     const settings = await getSettings(user.id);
     if (target === "all") {
-      for (const p of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
+      for (const p of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
         if (settings[p]) settings[p].autoConnected = false;
       }
     } else if (settings[target]) {
       settings[target].autoConnected = false;
     }
     await saveSettings(user.id, settings);
+    chatAggregator.syncUserPlatforms(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
   if (req.method === "GET" && url.pathname === "/api/chat/pin") {
@@ -1583,7 +1755,7 @@ const mime = {
 async function requestHandler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
-    if (url.pathname.startsWith("/api/")) return await handleApi(req, res, url);
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) return await handleApi(req, res, url);
     const target = path.join(ROOT, url.pathname === "/" ? "index.html" : url.pathname);
     if (!target.startsWith(ROOT) || !fs.existsSync(target) || fs.statSync(target).isDirectory()) return json(res, 404, { error: "Not found" });
     res.writeHead(200, { "content-type": mime[path.extname(target)] || "application/octet-stream" });
@@ -1598,6 +1770,41 @@ module.exports = requestHandler;
 
 if (require.main === module) {
   const server = http.createServer(requestHandler);
+  const io = new SocketServer(server, { cors: { origin: "*" } });
+  chatAggregator.setSocketIO(io);
+
+  chatAggregator.setCallbacks({
+    refreshOAuth: refreshOAuthToken,
+    saveSettings: saveSettings
+  });
+
+  io.on("connection", (socket) => {
+    const cookieHeader = socket.handshake.headers.cookie || "";
+    let userId = null;
+    for (const item of cookieHeader.split(";")) {
+      const [k, v] = item.trim().split("=");
+      if (k === "relay_access" && v) {
+        const u = verifySession(decodeURIComponent(v));
+        if (u?.id) userId = u.id;
+      }
+    }
+
+    socket.on("join_user", (data) => {
+      const uid = data?.userId || userId;
+      if (uid) {
+        socket.join(`user:${uid}`);
+        const userChat = chatAggregator.getUserChat(uid);
+        socket.emit("chat_history", userChat.comments || []);
+      }
+    });
+
+    if (userId) {
+      socket.join(`user:${userId}`);
+      const userChat = chatAggregator.getUserChat(userId);
+      socket.emit("chat_history", userChat.comments || []);
+    }
+  });
+
   server.on("error", (error) => {
     if (error.code === "EADDRINUSE") {
       console.error(`Port ${PORT} is already in use. Stop the existing server or run: $env:PORT=4174; npm start`);
