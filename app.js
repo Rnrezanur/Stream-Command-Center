@@ -366,9 +366,9 @@ function renderDashboard(data) {
           facebook: "Connect with Facebook (OAuth 2.0)",
           kick: "Connect Kick Live Chat",
           twitch: "Connect with Twitch (OAuth 2.0)",
-          tiktok: "Connect TikTok Handle",
-          instagram: "Connect Instagram Handle",
-          x: "Connect X (Twitter) Handle"
+          tiktok: "Connect with TikTok (OAuth 2.0)",
+          instagram: "Connect with Instagram (OAuth 2.0)",
+          x: "Connect with X (OAuth 2.0)"
         };
         toggleBtn.textContent = labels[key] || "Connect";
       }
@@ -424,13 +424,22 @@ document.addEventListener("click", async (e) => {
 
   // Trigger Real Connection Flow
   if (platform === "youtube") {
-    showToast("Redirecting to Google OAuth...");
+    showToast("Redirecting to Google OAuth 2.0...");
     window.location.href = "/auth/youtube";
   } else if (platform === "facebook") {
-    showToast("Redirecting to Facebook OAuth...");
+    showToast("Redirecting to Facebook OAuth 2.0...");
     window.location.href = "/auth/facebook";
+  } else if (platform === "instagram") {
+    showToast("Redirecting to Instagram / Meta OAuth 2.0...");
+    window.location.href = "/auth/instagram";
+  } else if (platform === "x") {
+    showToast("Redirecting to X (Twitter) OAuth 2.0...");
+    window.location.href = "/auth/x";
+  } else if (platform === "tiktok") {
+    showToast("Redirecting to TikTok OAuth 2.0...");
+    window.location.href = "/auth/tiktok";
   } else if (platform === "twitch") {
-    showToast("Redirecting to Twitch OAuth...");
+    showToast("Redirecting to Twitch OAuth 2.0...");
     window.location.href = "/auth/twitch";
   } else if (platform === "kick") {
     const ch = prompt("Enter your Kick channel username (e.g. xqc, ninja, or your channel):");
@@ -438,22 +447,6 @@ document.addEventListener("click", async (e) => {
     try {
       await api("/api/kick/connect", { method: "POST", body: JSON.stringify({ channel: ch.trim() }) });
       showToast(`✓ Connected Kick channel @${ch.trim()}`);
-      refreshDashboard();
-    } catch (err) {
-      showToast(err.message);
-    }
-  } else if (["tiktok", "instagram", "x"].includes(platform)) {
-    const handle = prompt(`Enter your ${capitalize(platform)} username / handle (e.g. @yourname):`);
-    if (!handle || !handle.trim()) return;
-    try {
-      const res = await api("/api/settings");
-      const current = res.settings || {};
-      current[platform] = current[platform] || {};
-      current[platform].handle = handle.trim();
-      current[platform].accountName = handle.trim();
-      current[platform].autoConnected = true;
-      await api("/api/settings", { method: "PUT", body: JSON.stringify(current) });
-      showToast(`✓ Connected ${capitalize(platform)} as ${handle.trim()}`);
       refreshDashboard();
     } catch (err) {
       showToast(err.message);
@@ -1602,6 +1595,79 @@ document.addEventListener("click", async (e) => {
           }
         });
       }, 50);
+    } else if (platform === "instagram") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.pageAccessToken || pData.handle || pData.igUserId));
+      bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Meta / Instagram Graph OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.handle || pData.accountName || "Instagram")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Meta to automatically connect your linked Instagram Professional / Creator account for publishing posts and stories.</p>
+          <a href="/auth/instagram" class="btn-oauth instagram">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            <span>${isConnected ? "Reconnect Instagram via Meta" : "Connect Instagram via Meta (OAuth 2.0)"}</span>
+          </a>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instagram Handle / Username</label>
+          <input type="text" class="form-input" name="handle" placeholder="e.g. @your_instagram" value="${escapeHtml(pData.handle || "")}">
+        </div>
+      `;
+    } else if (platform === "x") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.handle));
+      bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click Twitter / X OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.handle || pData.accountName || "X Account")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize directly with X to publish live tweets, status updates, and broadcast streams automatically.</p>
+          <a href="/auth/x" class="btn-oauth x">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span>${isConnected ? "Reconnect X (Twitter) with OAuth 2.0" : "Connect with X (Twitter OAuth 2.0)"}</span>
+          </a>
+        </div>
+        <div class="form-group">
+          <label class="form-label">X Handle / Username</label>
+          <input type="text" class="form-input" name="handle" placeholder="e.g. @username" value="${escapeHtml(pData.handle || "")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client ID (OAuth 2.0) <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <input type="text" class="form-input" name="clientId" placeholder="Twitter Developer Client ID" value="${escapeHtml(pData.clientId || "")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional for PKCE public clients)</small></label>
+          <input type="password" class="form-input" name="clientSecret" placeholder="••••••••" value="${escapeHtml(pData.clientSecret || "")}">
+        </div>
+      `;
+    } else if (platform === "tiktok") {
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.handle));
+      bodyEl.innerHTML = `
+        <div class="oauth-card">
+          <div class="oauth-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click TikTok OAuth 2.0</span>
+            ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.handle || pData.accountName || "TikTok Account")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with TikTok Login Kit v2 to publish videos, stories, and sync creator status.</p>
+          <a href="/auth/tiktok" class="btn-oauth tiktok">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298 0 .59.043.87.126V9.4a6.34 6.34 0 0 0-.87-.06 6.34 6.34 0 1 0 6.34 6.33V8.34a8.28 8.28 0 0 0 4.84 1.56V6.45a4.83 4.83 0 0 1-1.07-.32z"/></svg>
+            <span>${isConnected ? "Reconnect TikTok with OAuth 2.0" : "Connect with TikTok (OAuth 2.0)"}</span>
+          </a>
+        </div>
+        <div class="form-group">
+          <label class="form-label">TikTok Creator Handle</label>
+          <input type="text" class="form-input" name="handle" placeholder="e.g. @yourtiktok" value="${escapeHtml(pData.handle || "")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">TikTok Client Key <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <input type="text" class="form-input" name="clientKey" placeholder="awxxxxxxxxxxxxxx" value="${escapeHtml(pData.clientKey || "")}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">TikTok Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <input type="password" class="form-input" name="clientSecret" placeholder="••••••••" value="${escapeHtml(pData.clientSecret || "")}">
+        </div>
+      `;
     } else {
       bodyEl.innerHTML = `
         <div class="form-group">

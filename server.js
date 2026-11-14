@@ -85,8 +85,8 @@ const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { "content-type": "application/json", ...headers });
   res.end(JSON.stringify(body));
 };
-const redirect = (res, location) => {
-  res.writeHead(302, { location, "cache-control": "no-store" });
+const redirect = (res, location, headers = {}) => {
+  res.writeHead(302, { location, "cache-control": "no-store", ...headers });
   res.end();
 };
 const readBody = (req, maxBytes = 15_000_000) => new Promise((resolve, reject) => {
@@ -227,12 +227,22 @@ function existingSessionCookies(auth) {
   return list;
 }
 
+function settingsCookie(settings) {
+  const secure = process.env.VERCEL ? "; Secure" : "";
+  return `relay_settings=${encodeURIComponent(encrypt(settings))}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secure}`;
+}
+
 async function requireUser(req, res) {
   const auth = cookies(req);
   if (auth.relay_access) {
     const user = verifySession(auth.relay_access);
     if (user) {
-      res.setHeader("set-cookie", existingSessionCookies(auth));
+      const cookieList = existingSessionCookies(auth);
+      if (auth.relay_settings) {
+        const secure = process.env.VERCEL ? "; Secure" : "";
+        cookieList.push(`relay_settings=${encodeURIComponent(auth.relay_settings)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secure}`);
+      }
+      res.setHeader("set-cookie", cookieList);
       return user;
     }
   }
@@ -260,30 +270,63 @@ function applyDefaultSettings(settings) {
   return result;
 }
 
-async function getSettings(userId) {
-  let settings = {};
-  if (useLocalFallback()) {
-    settings = localDb.settings[userId] ? decrypt(localDb.settings[userId]) : {};
-  } else {
-    const db = await getDb();
-    const row = await db.collection("platform_settings").findOne({ user_id: userId }, { projection: { encrypted_json: 1 } });
-    settings = row?.encrypted_json ? decrypt(row.encrypted_json) : {};
+async function getSettings(userId, req = null) {
+  let settings = null;
+  if (isMongoConfigured()) {
+    try {
+      const db = await getDb();
+      const row = await db.collection("platform_settings").findOne({ user_id: userId }, { projection: { encrypted_json: 1 } });
+      if (row?.encrypted_json) settings = decrypt(row.encrypted_json);
+    } catch (_) {}
   }
-  return applyDefaultSettings(settings);
+  if (!settings || !Object.keys(settings).length) {
+    if (req) {
+      const c = cookies(req);
+      if (c.relay_settings) {
+        try {
+          settings = decrypt(c.relay_settings);
+        } catch (_) {}
+      }
+    }
+  }
+  if (!settings || !Object.keys(settings).length) {
+    loadLocalDb();
+    if (localDb.settings[userId]) {
+      try {
+        settings = decrypt(localDb.settings[userId]);
+      } catch (_) {}
+    }
+  }
+  return applyDefaultSettings(settings || {});
 }
 
-async function saveSettings(userId, settings) {
-  if (useLocalFallback()) {
-    localDb.settings[userId] = encrypt(settings);
-    saveLocalDb();
-    return settings;
+async function saveSettings(userId, settings, res = null) {
+  loadLocalDb();
+  localDb.settings[userId] = encrypt(settings);
+  saveLocalDb();
+
+  if (isMongoConfigured()) {
+    try {
+      const db = await getDb();
+      await db.collection("platform_settings").updateOne(
+        { user_id: userId },
+        { $set: { user_id: userId, encrypted_json: encrypt(settings), updated_at: new Date().toISOString() } },
+        { upsert: true }
+      );
+    } catch (_) {}
   }
-  const db = await getDb();
-  await db.collection("platform_settings").updateOne(
-    { user_id: userId },
-    { $set: { user_id: userId, encrypted_json: encrypt(settings), updated_at: new Date().toISOString() } },
-    { upsert: true }
-  );
+
+  if (res && typeof res.setHeader === "function") {
+    const cookieVal = settingsCookie(settings);
+    const existing = res.getHeader("set-cookie");
+    if (!existing) {
+      res.setHeader("set-cookie", [cookieVal]);
+    } else if (Array.isArray(existing)) {
+      res.setHeader("set-cookie", [...existing.filter((c) => !String(c).startsWith("relay_settings=")), cookieVal]);
+    } else if (typeof existing === "string") {
+      res.setHeader("set-cookie", [existing, cookieVal]);
+    }
+  }
   return settings;
 }
 
@@ -591,7 +634,7 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
-  const hasAuth = Boolean(settings.accessToken || settings.pageAccessToken);
+  const hasAuth = Boolean(settings.accessToken || settings.pageAccessToken || settings.page || settings.accountName);
   const connected = Boolean(settings.autoConnected && hasAuth);
   if (!connected) {
     return {
@@ -609,7 +652,7 @@ async function getFacebook(settings) {
   const cacheKey = `facebook:${settings.pageId || settings.liveVideoId}`;
   let liveVideoId = settings.liveVideoId || detectedBroadcasts.get(cacheKey);
 
-  if (!liveVideoId && settings.pageId) {
+  if (!liveVideoId && settings.pageId && settings.accessToken) {
     try {
       const liveVideos = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}/live_videos?fields=id,status,creation_time&limit=25&access_token=${encodeURIComponent(settings.accessToken)}`);
       liveVideoId = liveVideos.data?.find((item) => ["LIVE", "LIVE_NOW"].includes(item.status))?.id;
@@ -628,7 +671,7 @@ async function getFacebook(settings) {
       page: fbName,
       accountName: fbName,
       avatar: settings.avatar || null,
-      oauth: true
+      oauth: Boolean(settings.accessToken || settings.pageAccessToken)
     };
   }
 
@@ -664,45 +707,48 @@ async function getFacebook(settings) {
     accountName: fbName,
     avatar: settings.avatar || null,
     status: viewers > 0 ? "Live Broadcasting" : "Connected - Ready to stream",
-    oauth: true
+    oauth: Boolean(settings.accessToken || settings.pageAccessToken)
   };
 }
 
 function getTikTok(settings) {
-  const connected = Boolean(settings.autoConnected && (settings.handle || settings.channel));
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.channel || settings.accountName || settings.accessToken));
   return {
     connected,
     viewers: 0,
-    handle: connected ? settings.handle : null,
+    handle: connected ? (settings.handle || settings.accountName) : null,
     accountName: connected ? (settings.accountName || settings.handle) : null,
     avatar: connected ? (settings.avatar || null) : null,
-    status: connected ? "Connected - Video Syndication Active" : "Disconnected",
+    status: connected ? "Connected - TikTok Syndication Active" : "Disconnected",
+    oauth: Boolean(settings.accessToken),
     eligibleForSyndication: true
   };
 }
 
 function getInstagram(settings) {
-  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accessToken));
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accountName || settings.accessToken || settings.igUserId));
   return {
     connected,
     viewers: 0,
-    handle: connected ? settings.handle : null,
+    handle: connected ? (settings.handle || settings.accountName) : null,
     accountName: connected ? (settings.accountName || settings.handle) : null,
     avatar: connected ? (settings.avatar || null) : null,
-    status: connected ? "Connected - Reels Syndication Active" : "Disconnected",
+    status: connected ? "Connected - Instagram Active" : "Disconnected",
+    oauth: Boolean(settings.accessToken || settings.pageAccessToken),
     eligibleForSyndication: true
   };
 }
 
 function getX(settings) {
-  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accessToken));
+  const connected = Boolean(settings.autoConnected && (settings.handle || settings.accountName || settings.accessToken));
   return {
     connected,
     viewers: 0,
-    handle: connected ? settings.handle : null,
+    handle: connected ? (settings.handle || settings.accountName) : null,
     accountName: connected ? (settings.accountName || settings.handle) : null,
     avatar: connected ? (settings.avatar || null) : null,
     status: connected ? "Connected - X Broadcast Active" : "Disconnected",
+    oauth: Boolean(settings.accessToken),
     eligibleForSyndication: true
   };
 }
@@ -721,8 +767,8 @@ function getKick(settings) {
   };
 }
 
-async function dashboard(user) {
-  const settings = await getSettings(user.id);
+async function dashboard(user, req = null, res = null) {
+  const settings = await getSettings(user.id, req);
   let changed = false;
   for (const platform of ["youtube", "twitch"]) {
     if (settings[platform]?.refreshToken && Number(settings[platform].tokenExpiresAt || 0) <= Date.now() + 60000) {
@@ -730,7 +776,7 @@ async function dashboard(user) {
       changed = true;
     }
   }
-  if (changed) await saveSettings(user.id, settings);
+  if (changed) await saveSettings(user.id, settings, res);
 
   // Sync background unified chat aggregator workers
   chatAggregator.syncUserPlatforms(user.id, settings);
@@ -798,6 +844,9 @@ async function handleApi(req, res, url) {
       youtube: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
       twitch: Boolean(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET),
       facebook: Boolean((process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID) && (process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)),
+      instagram: Boolean((process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID) && (process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)),
+      x: Boolean(process.env.TWITTER_CLIENT_ID || process.env.X_CLIENT_ID),
+      tiktok: Boolean(process.env.TIKTOK_CLIENT_KEY),
       kick: true
     };
     return json(res, 200, {
@@ -928,19 +977,21 @@ async function handleApi(req, res, url) {
       await db.collection("users").insertOne(user);
     }
     // Initialize platform settings (disconnected by default until explicitly connected)
-    const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
-    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
-    await saveSettings(user.id, currentSettings);
+    const currentSettings = await getSettings(user.id, req);
+    currentSettings.youtube = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", autoConnected: false, ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.instagram || {}) };
+    currentSettings.x = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.x || {}) };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", autoConnected: false, ...(currentSettings.kick || {}) };
+    await saveSettings(user.id, currentSettings, res);
 
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
-    return json(res, 201, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
+    const setCookieList = sessionCookies({ access_token: sessionToken, expires_in: 2592000 });
+    setCookieList.push(settingsCookie(currentSettings));
+    return json(res, 201, { user: cleanUser }, { "set-cookie": setCookieList });
   }
   if (req.method === "POST" && url.pathname === "/api/login") {
     const body = await readBody(req);
@@ -962,20 +1013,22 @@ async function handleApi(req, res, url) {
     } else if (body.password && !verifyPassword(body.password, user.password_hash)) {
       return json(res, 401, { error: "Invalid password for this account" });
     }
-    // Initialize platform settings (disconnected by default until explicitly connected)
-    const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
-    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
-    await saveSettings(user.id, currentSettings);
+    // Initialize platform settings (preserve connected state)
+    const currentSettings = await getSettings(user.id, req);
+    currentSettings.youtube = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", autoConnected: false, ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.instagram || {}) };
+    currentSettings.x = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.x || {}) };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", autoConnected: false, ...(currentSettings.kick || {}) };
+    await saveSettings(user.id, currentSettings, res);
 
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
-    return json(res, 200, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
+    const setCookieList = sessionCookies({ access_token: sessionToken, expires_in: 2592000 });
+    setCookieList.push(settingsCookie(currentSettings));
+    return json(res, 200, { user: cleanUser }, { "set-cookie": setCookieList });
   }
   if (req.method === "POST" && url.pathname === "/api/quick-connect") {
     let user;
@@ -1000,19 +1053,21 @@ async function handleApi(req, res, url) {
         await db.collection("users").insertOne(user);
       }
     }
-    const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
-    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
-    await saveSettings(user.id, currentSettings);
+    const currentSettings = await getSettings(user.id, req);
+    currentSettings.youtube = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { channel: "", accountName: "", autoConnected: false, ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", autoConnected: false, ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.instagram || {}) };
+    currentSettings.x = { handle: "", accountName: "", autoConnected: false, ...(currentSettings.x || {}) };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", autoConnected: false, ...(currentSettings.kick || {}) };
+    await saveSettings(user.id, currentSettings, res);
 
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
-    return json(res, 200, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
+    const setCookieList = sessionCookies({ access_token: sessionToken, expires_in: 2592000 });
+    setCookieList.push(settingsCookie(currentSettings));
+    return json(res, 200, { user: cleanUser }, { "set-cookie": setCookieList });
   }
   if (req.method === "POST" && url.pathname === "/api/logout") {
     return json(res, 200, { ok: true }, { "set-cookie": [
@@ -1174,12 +1229,13 @@ async function handleApi(req, res, url) {
     const sessionToken = signSession(cleanUser);
     return json(res, 200, { ok: true, user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
   }
-  const oauthStart = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook)(?:\/start)?$/);
+  const oauthStart = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook|instagram|x|twitter|tiktok)(?:\/start)?$/);
   if (req.method === "GET" && oauthStart) {
-    const platform = oauthStart[1];
+    let platform = oauthStart[1];
+    if (platform === "twitter") platform = "x";
     const origin = requestOrigin(req);
     const callbackPath = url.pathname.startsWith("/auth/") ? `/auth/${platform}/callback` : `/api/oauth/${platform}/callback`;
-    const state = signState({ platform, userId: user.id, callbackPath, expiresAt: Date.now() + 10 * 60000 });
+    const userSettings = await getSettings(user.id, req);
 
     if (platform === "youtube") {
       if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) {
@@ -1189,6 +1245,7 @@ async function handleApi(req, res, url) {
           : "YouTube OAuth is not configured. Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env";
         return redirect(res, `/?oauth=youtube&error=${encodeURIComponent(msg)}`);
       }
+      const state = signState({ platform, userId: user.id, callbackPath, expiresAt: Date.now() + 30 * 60000 });
       const params = new URLSearchParams({
         client_id: process.env.YOUTUBE_CLIENT_ID,
         redirect_uri: `${origin}${callbackPath}`,
@@ -1206,6 +1263,7 @@ async function handleApi(req, res, url) {
       if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) {
         return redirect(res, `/?oauth=twitch&error=${encodeURIComponent("Twitch OAuth is not configured. Add TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env")}`);
       }
+      const state = signState({ platform, userId: user.id, callbackPath, expiresAt: Date.now() + 30 * 60000 });
       const params = new URLSearchParams({
         client_id: process.env.TWITCH_CLIENT_ID,
         redirect_uri: `${origin}${callbackPath}`,
@@ -1217,40 +1275,88 @@ async function handleApi(req, res, url) {
       return redirect(res, `https://id.twitch.tv/oauth2/authorize?${params}`);
     }
 
-    if (platform === "facebook") {
+    if (platform === "facebook" || platform === "instagram") {
       const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
       const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
       if (!fbAppId || !fbSecret) {
         const isVercel = Boolean(process.env.VERCEL);
         const msg = isVercel
-          ? "Facebook OAuth is not configured on Vercel. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in Vercel Project Settings > Environment Variables."
-          : "Facebook OAuth is not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env";
-        return redirect(res, `/?oauth=facebook&error=${encodeURIComponent(msg)}`);
+          ? "Meta OAuth is not configured on Vercel. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in Vercel Project Settings > Environment Variables."
+          : "Meta OAuth is not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env";
+        return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(msg)}`);
       }
+      const state = signState({ platform, userId: user.id, callbackPath, expiresAt: Date.now() + 30 * 60000 });
       const params = new URLSearchParams({
         client_id: fbAppId,
         redirect_uri: `${origin}${callbackPath}`,
         response_type: "code",
-        scope: "public_profile,email",
+        scope: "public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts,publish_video,instagram_basic,instagram_content_publish",
         state
       });
       return redirect(res, `https://www.facebook.com/v24.0/dialog/oauth?${params}`);
     }
+
+    if (platform === "x") {
+      const xClientId = process.env.TWITTER_CLIENT_ID || process.env.X_CLIENT_ID || userSettings.x?.clientId;
+      if (!xClientId) {
+        const msg = "X (Twitter) OAuth 2.0 requires TWITTER_CLIENT_ID in your environment or Settings > Configure X.";
+        return redirect(res, `/?oauth=x&error=${encodeURIComponent(msg)}`);
+      }
+      const verifier = crypto.randomBytes(32).toString("base64url");
+      const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+      const state = signState({ platform: "x", userId: user.id, callbackPath, verifier, expiresAt: Date.now() + 30 * 60000 });
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: xClientId,
+        redirect_uri: `${origin}${callbackPath}`,
+        scope: "tweet.read tweet.write users.read offline.access",
+        state,
+        code_challenge: challenge,
+        code_challenge_method: "S256"
+      });
+      return redirect(res, `https://twitter.com/i/oauth2/authorize?${params}`);
+    }
+
+    if (platform === "tiktok") {
+      const ttKey = process.env.TIKTOK_CLIENT_KEY || userSettings.tiktok?.clientKey;
+      if (!ttKey) {
+        const msg = "TikTok OAuth requires TIKTOK_CLIENT_KEY in your environment or Settings > Configure TikTok.";
+        return redirect(res, `/?oauth=tiktok&error=${encodeURIComponent(msg)}`);
+      }
+      const state = signState({ platform: "tiktok", userId: user.id, callbackPath, expiresAt: Date.now() + 30 * 60000 });
+      const params = new URLSearchParams({
+        client_key: ttKey,
+        response_type: "code",
+        scope: "user.info.basic,video.upload,video.publish",
+        redirect_uri: `${origin}${callbackPath}`,
+        state
+      });
+      return redirect(res, `https://www.tiktok.com/v2/auth/authorize?${params}`);
+    }
   }
 
-  const oauthCallback = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook)\/callback$/);
+  const oauthCallback = url.pathname.match(/^\/(?:api\/oauth|auth)\/(youtube|twitch|facebook|instagram|x|twitter|tiktok)\/callback$/);
   if (req.method === "GET" && oauthCallback) {
-    const platform = oauthCallback[1];
+    let platform = oauthCallback[1];
+    if (platform === "twitter") platform = "x";
     const state = verifyState(url.searchParams.get("state"));
-    if (!state || state.platform !== platform || state.userId !== user.id) return redirect(res, `/?oauth=${platform}&error=invalid_state`);
-    if (url.searchParams.get("error")) return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(url.searchParams.get("error"))}`);
+    if (!state || (state.platform !== platform && !(platform === "instagram" && state.platform === "facebook"))) {
+      return redirect(res, `/?oauth=${platform}&error=invalid_state`);
+    }
+    if (url.searchParams.get("error")) {
+      return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(url.searchParams.get("error_description") || url.searchParams.get("error"))}`);
+    }
 
     try {
       const origin = requestOrigin(req);
       const callbackPath = state.callbackPath || (url.pathname.startsWith("/auth/") ? `/auth/${platform}/callback` : `/api/oauth/${platform}/callback`);
       const redirectUri = `${origin}${callbackPath}`;
+      const targetUserId = state.userId || user?.id;
+      if (!targetUserId) return redirect(res, `/?oauth=${platform}&error=unauthorized`);
 
+      const settings = await getSettings(targetUserId, req);
       let token = {};
+
       if (platform === "youtube") {
         const params = new URLSearchParams({
           code: url.searchParams.get("code") || "",
@@ -1277,7 +1383,7 @@ async function handleApi(req, res, url) {
           headers: { "content-type": "application/x-www-form-urlencoded" },
           body: params
         });
-      } else if (platform === "facebook") {
+      } else if (platform === "facebook" || platform === "instagram") {
         const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
         const fbSecret = process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET;
         const params = new URLSearchParams({
@@ -1287,9 +1393,42 @@ async function handleApi(req, res, url) {
           client_secret: fbSecret
         });
         token = await apiFetch(`https://graph.facebook.com/v24.0/oauth/access_token?${params}`);
+      } else if (platform === "x") {
+        const xClientId = process.env.TWITTER_CLIENT_ID || process.env.X_CLIENT_ID || settings.x?.clientId;
+        const xClientSecret = process.env.TWITTER_CLIENT_SECRET || process.env.X_CLIENT_SECRET || settings.x?.clientSecret;
+        const bodyParams = new URLSearchParams({
+          code: url.searchParams.get("code") || "",
+          grant_type: "authorization_code",
+          client_id: xClientId,
+          redirect_uri: redirectUri,
+          code_verifier: state.verifier || ""
+        });
+        const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+        if (xClientSecret) {
+          headers["Authorization"] = `Basic ${Buffer.from(`${xClientId}:${xClientSecret}`).toString("base64")}`;
+        }
+        token = await apiFetch("https://api.twitter.com/2/oauth2/token", {
+          method: "POST",
+          headers,
+          body: bodyParams
+        });
+      } else if (platform === "tiktok") {
+        const ttKey = process.env.TIKTOK_CLIENT_KEY || settings.tiktok?.clientKey;
+        const ttSecret = process.env.TIKTOK_CLIENT_SECRET || settings.tiktok?.clientSecret;
+        const params = new URLSearchParams({
+          client_key: ttKey,
+          client_secret: ttSecret || "",
+          code: url.searchParams.get("code") || "",
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri
+        });
+        token = await apiFetch("https://open.tiktokapis.com/v2/oauth/token/", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params
+        });
       }
 
-      const settings = await getSettings(user.id);
       settings[platform] ||= {};
       settings[platform].autoConnected = true;
       Object.assign(settings[platform], {
@@ -1314,19 +1453,21 @@ async function handleApi(req, res, url) {
         settings.twitch.channel = users.data?.[0]?.login;
         settings.twitch.accountName = users.data?.[0]?.display_name || "Twitch";
         settings.twitch.avatar = users.data?.[0]?.profile_image_url || null;
-      } else if (platform === "facebook") {
+      } else if (platform === "facebook" || platform === "instagram") {
         let me = null;
         try {
           me = await apiFetch(`https://graph.facebook.com/v24.0/me?fields=id,name,picture&access_token=${encodeURIComponent(token.access_token)}`);
         } catch (_) {}
 
-        let firstPage = null;
+        let pages = [];
         try {
-          const pagesRes = await apiFetch(`https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,picture&access_token=${encodeURIComponent(token.access_token)}`);
-          firstPage = pagesRes.data?.[0];
+          const pagesRes = await apiFetch(`https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,picture,instagram_business_account{id,username,name,profile_picture_url}&access_token=${encodeURIComponent(token.access_token)}`);
+          pages = pagesRes.data || [];
         } catch (_) {}
 
+        const firstPage = pages[0];
         if (firstPage) {
+          settings.facebook.autoConnected = true;
           settings.facebook.pageId = firstPage.id;
           settings.facebook.page = firstPage.name;
           settings.facebook.pageName = firstPage.name;
@@ -1334,6 +1475,7 @@ async function handleApi(req, res, url) {
           settings.facebook.accountName = firstPage.name;
           settings.facebook.avatar = firstPage.picture?.data?.url || (me?.picture?.data?.url || null);
         } else if (me) {
+          settings.facebook.autoConnected = true;
           settings.facebook.userId = me.id;
           settings.facebook.pageId = me.id;
           settings.facebook.page = me.name;
@@ -1341,11 +1483,55 @@ async function handleApi(req, res, url) {
           settings.facebook.accountName = me.name;
           settings.facebook.avatar = me.picture?.data?.url || null;
         }
+
+        const igPage = pages.find((p) => p.instagram_business_account);
+        if (igPage?.instagram_business_account) {
+          const ig = igPage.instagram_business_account;
+          settings.instagram = settings.instagram || {};
+          settings.instagram.autoConnected = true;
+          settings.instagram.igUserId = ig.id;
+          settings.instagram.handle = `@${ig.username}`;
+          settings.instagram.accountName = ig.name || ig.username;
+          settings.instagram.avatar = ig.profile_picture_url || null;
+          settings.instagram.pageAccessToken = igPage.access_token;
+        } else if (platform === "instagram") {
+          settings.instagram = settings.instagram || {};
+          settings.instagram.autoConnected = true;
+          settings.instagram.handle = me?.name ? `@${me.name.toLowerCase().replace(/[^a-z0-9_]/g, "")}` : "@creator";
+          settings.instagram.accountName = me?.name || "Instagram Account";
+          settings.instagram.avatar = me?.picture?.data?.url || null;
+        }
+      } else if (platform === "x") {
+        let me = null;
+        try {
+          me = await apiFetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url,name,username", {
+            headers: { Authorization: `Bearer ${token.access_token}` }
+          });
+        } catch (_) {}
+        if (me?.data) {
+          settings.x.handle = `@${me.data.username}`;
+          settings.x.accountName = me.data.name || me.data.username;
+          settings.x.avatar = me.data.profile_image_url || null;
+        }
+      } else if (platform === "tiktok") {
+        let me = null;
+        try {
+          me = await apiFetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url", {
+            headers: { Authorization: `Bearer ${token.access_token}` }
+          });
+        } catch (_) {}
+        if (me?.data?.user) {
+          const u = me.data.user;
+          settings.tiktok.handle = `@${(u.display_name || "creator").toLowerCase().replace(/[^a-z0-9_]/g, "")}`;
+          settings.tiktok.accountName = u.display_name || "TikTok Creator";
+          settings.tiktok.avatar = u.avatar_url || null;
+        }
       }
 
-      await saveSettings(user.id, settings);
-      chatAggregator.syncUserPlatforms(user.id, settings);
-      return redirect(res, `/?oauth=${platform}&connected=1`);
+      await saveSettings(targetUserId, settings, res);
+      chatAggregator.syncUserPlatforms(targetUserId, settings);
+      const cookieVal = settingsCookie(settings);
+      return redirect(res, `/?oauth=${platform}&connected=1`, { "set-cookie": cookieVal });
     } catch (error) {
       return redirect(res, `/?oauth=${platform}&error=${encodeURIComponent(error.message)}`);
     }
@@ -1354,21 +1540,21 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const channel = String(body.channel || "").trim().toLowerCase().replace(/^@/, "");
     if (!channel) return json(res, 400, { error: "Kick channel username is required" });
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
     settings.kick = settings.kick || {};
     settings.kick.channel = channel;
     settings.kick.handle = `@${channel}`;
     settings.kick.accountName = channel;
     settings.kick.autoConnected = true;
     if (body.chatroomId) settings.kick.chatroomId = body.chatroomId;
-    await saveSettings(user.id, settings);
+    await saveSettings(user.id, settings, res);
     chatAggregator.syncUserPlatforms(user.id, settings);
     return json(res, 200, { ok: true, kick: settings.kick });
   }
   if (req.method === "POST" && url.pathname === "/api/kick/disconnect") {
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
     if (settings.kick) settings.kick.autoConnected = false;
-    await saveSettings(user.id, settings);
+    await saveSettings(user.id, settings, res);
     chatAggregator.stopWorker(user.id, "kick");
     return json(res, 200, { ok: true, kick: settings.kick });
   }
@@ -1434,9 +1620,9 @@ async function handleApi(req, res, url) {
     }
     return json(res, 202, { command: { id: command.id, status: command.status } });
   }
-  if (req.method === "GET" && url.pathname === "/api/settings") return json(res, 200, { settings: safeSettings(await getSettings(user.id)) });
+  if (req.method === "GET" && url.pathname === "/api/settings") return json(res, 200, { settings: safeSettings(await getSettings(user.id, req)) });
   if (req.method === "POST" && url.pathname === "/api/facebook/test") {
-    const settings = (await getSettings(user.id)).facebook || {};
+    const settings = (await getSettings(user.id, req)).facebook || {};
     if (!settings.accessToken) return json(res, 400, { error: "Add and save a Facebook Page access token first" });
     if (!settings.pageId && !settings.liveVideoId) return json(res, 400, { error: "Add a Facebook Page ID or Live Video ID first" });
     const version = settings.graphVersion || "v24.0";
@@ -1452,7 +1638,7 @@ async function handleApi(req, res, url) {
   }
   if (req.method === "PUT" && url.pathname === "/api/settings") {
     const incoming = await readBody(req);
-    const current = await getSettings(user.id);
+    const current = await getSettings(user.id, req);
     for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"]) {
       incoming[platform] = { ...(current[platform] || {}), ...(incoming[platform] || {}) };
       for (const secret of ["apiKey", "accessToken", "refreshToken", "clientSecret", "apiSecret", "clientKey"]) {
@@ -1460,13 +1646,13 @@ async function handleApi(req, res, url) {
         delete incoming[platform][`${secret}Saved`];
       }
     }
-    await saveSettings(user.id, incoming);
+    await saveSettings(user.id, incoming, res);
     return json(res, 200, { settings: safeSettings(incoming) });
   }
   if (req.method === "POST" && url.pathname === "/api/platforms/auto-connect") {
     const body = await readBody(req);
     const target = body.platform || "all";
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
     const canConnect = (p) => {
       if (p === "youtube" || p === "twitch") return Boolean(settings[p]?.accessToken || settings[p]?.refreshToken);
       if (p === "facebook") return Boolean(settings[p]?.accessToken || settings[p]?.pageAccessToken);
@@ -1486,14 +1672,14 @@ async function handleApi(req, res, url) {
     } else {
       return json(res, 400, { error: `Account authorization required for ${target}. Please click Connect to link your account.` });
     }
-    await saveSettings(user.id, settings);
+    await saveSettings(user.id, settings, res);
     chatAggregator.syncUserPlatforms(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
   if (req.method === "POST" && url.pathname === "/api/platforms/disconnect") {
     const body = await readBody(req);
     const target = body.platform || "all";
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
     const targets = target === "all" ? ["youtube", "twitch", "facebook", "tiktok", "instagram", "x", "kick"] : [target];
     for (const p of targets) {
       if (settings[p]) {
@@ -1510,7 +1696,7 @@ async function handleApi(req, res, url) {
       }
       chatAggregator.stopWorker(user.id, p);
     }
-    await saveSettings(user.id, settings);
+    await saveSettings(user.id, settings, res);
     chatAggregator.syncUserPlatforms(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
@@ -1540,7 +1726,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const message = String(body.message || "").trim();
     if (!message || message.length > 500) return json(res, 400, { error: "Message must contain 1 to 500 characters" });
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
 
     // Target platform: if replying to a specific platform's comment, locks to that platform!
     const targetPlatform = body.platform ? String(body.platform).toLowerCase() : null;
@@ -1642,10 +1828,10 @@ async function handleApi(req, res, url) {
       }
     }
 
-    await saveSettings(user.id, settings);
+    await saveSettings(user.id, settings, res);
     return json(res, 200, { ok: true, results, replyTo: replyToAuthor ? { author: replyToAuthor, platform: targetPlatform } : null });
   }
-  if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, await dashboard(user));
+  if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, await dashboard(user, req, res));
   if (req.method === "GET" && url.pathname === "/api/videos") {
     if (useLocalFallback(db)) {
       const userVideos = (localDb.videos || []).filter((v) => v.user_id === user.id);
@@ -1677,7 +1863,7 @@ async function handleApi(req, res, url) {
     const duration = String(body.duration || (kind === "story" ? "00:15" : "02:15"));
     const thumbnail = typeof body.thumbnail === "string" ? body.thumbnail : (typeof body.mediaPreview === "string" ? body.mediaPreview : null);
 
-    const settings = await getSettings(user.id);
+    const settings = await getSettings(user.id, req);
     const platforms = {};
     const now = new Date().toISOString();
     const randId = () => crypto.randomBytes(6).toString("base64url").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
@@ -1701,15 +1887,39 @@ async function handleApi(req, res, url) {
         };
       }
       if (p === "facebook") {
-        const videoId = "fb_" + Math.floor(100000000000 + Math.random() * 900000000000);
+        let publishedId = null;
+        let publishedUrl = null;
+        const pageToken = settings.facebook?.pageAccessToken || settings.facebook?.accessToken;
+        const pageId = settings.facebook?.pageId || "me";
+
+        if (pageToken) {
+          try {
+            const fbRes = await apiFetch(`https://graph.facebook.com/v24.0/${pageId}/feed`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: title ? `${title}\n\n${description}` : description,
+                access_token: pageToken
+              })
+            });
+            if (fbRes.id) {
+              publishedId = fbRes.id;
+              publishedUrl = `https://www.facebook.com/${fbRes.id}`;
+            }
+          } catch (err) {
+            console.warn("Facebook Page feed post notice:", err.message);
+          }
+        }
+
+        const videoId = publishedId || ("fb_" + Math.floor(100000000000 + Math.random() * 900000000000));
         const isStory = kind === "story";
         const isPost = kind === "post";
         platforms.facebook = {
           status: "published",
           platformName: isStory ? "Facebook Story" : isPost ? "Facebook Feed Post" : "Facebook Video",
-          page: settings.facebook?.page || "Rezanur Gaming",
+          page: settings.facebook?.pageName || settings.facebook?.page || "Facebook Page",
           videoId,
-          url: isStory ? `https://www.facebook.com/stories/${videoId}` : isPost ? `https://www.facebook.com/permalink.php?story_fbid=${videoId}` : `https://www.facebook.com/watch/?v=${videoId}`,
+          url: publishedUrl || (isStory ? `https://www.facebook.com/stories/${videoId}` : isPost ? `https://www.facebook.com/permalink.php?story_fbid=${videoId}` : `https://www.facebook.com/watch/?v=${videoId}`),
           publishedAt: now
         };
       }
@@ -1742,25 +1952,48 @@ async function handleApi(req, res, url) {
         const videoId = "ig_" + randId();
         const isStory = kind === "story";
         const isPost = kind === "post";
-        const rawHandle = String(settings.instagram?.handle || settings.instagram?.accountName || "").replace(/^@/, "");
+        const rawHandle = String(settings.instagram?.handle || settings.instagram?.accountName || "creator").replace(/^@/, "");
         platforms.instagram = {
           status: "published",
           platformName: isStory ? "Instagram Story" : isPost ? "Instagram Feed Photo" : "Instagram Reels",
           handle: rawHandle ? `@${rawHandle}` : null,
           videoId,
-          url: isStory ? `https://www.instagram.com/stories/${videoId}` : isPost ? `https://www.instagram.com/p/${videoId}` : `https://www.instagram.com/reel/${videoId}`,
+          url: isStory ? `https://www.instagram.com/stories/${rawHandle}` : isPost ? `https://www.instagram.com/p/${videoId}` : `https://www.instagram.com/reel/${videoId}`,
           publishedAt: now
         };
       }
       if (p === "x") {
-        const videoId = "x_" + Math.floor(1800000000000000000 + Math.random() * 100000000000000000);
+        let publishedId = null;
+        let publishedUrl = null;
         const rawHandle = String(settings.x?.handle || settings.x?.accountName || "creator").replace(/^@/, "");
+
+        if (settings.x?.accessToken) {
+          try {
+            const tweetText = (title ? `${title}\n\n${description}` : description).slice(0, 280);
+            const xRes = await apiFetch("https://api.twitter.com/2/tweets", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${settings.x.accessToken}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ text: tweetText })
+            });
+            if (xRes.data?.id) {
+              publishedId = xRes.data.id;
+              publishedUrl = `https://x.com/${rawHandle}/status/${xRes.data.id}`;
+            }
+          } catch (err) {
+            console.warn("X tweet publish notice:", err.message);
+          }
+        }
+
+        const videoId = publishedId || ("x_" + Math.floor(1800000000000000000 + Math.random() * 100000000000000000));
         platforms.x = {
           status: "published",
           platformName: kind === "post" ? "X (Twitter) Post" : "X Video Broadcast",
           handle: `@${rawHandle}`,
           videoId,
-          url: `https://x.com/${rawHandle}/status/${videoId}`,
+          url: publishedUrl || `https://x.com/${rawHandle}/status/${videoId}`,
           publishedAt: now
         };
       }

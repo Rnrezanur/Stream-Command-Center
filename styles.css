@@ -1240,6 +1240,12 @@ a {
 .btn-oauth.twitch:hover { background: #772ce8; }
 .btn-oauth.facebook { background: #1877f2; color: #fff; }
 .btn-oauth.facebook:hover { background: #0d65d9; }
+.btn-oauth.instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: #fff; }
+.btn-oauth.instagram:hover { opacity: 0.92; filter: brightness(1.08); }
+.btn-oauth.x { background: #0f1419; color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); }
+.btn-oauth.x:hover { background: #1d2226; }
+.btn-oauth.tiktok { background: #000000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.18); }
+.btn-oauth.tiktok:hover { background: #161823; }
 .btn-oauth.kick { background: #53fc18; color: #05080e; font-weight: 700; }
 .btn-oauth.kick:hover { background: #45d812; }
 .comment-platform-pill.x { background: rgba(255, 255, 255, 0.15); color: var(--color-x); }
