@@ -1300,7 +1300,7 @@ async function handleApi(req, res, url) {
         client_id: fbAppId,
         redirect_uri: `${origin}${callbackPath}`,
         response_type: "code",
-        scope: "public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts,publish_video,instagram_basic,instagram_content_publish",
+        scope: "public_profile,email",
         state
       });
       return redirect(res, `https://www.facebook.com/v24.0/dialog/oauth?${params}`);
