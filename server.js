@@ -382,7 +382,7 @@ function tickSimulatedComments() {
 setInterval(tickSimulatedComments, 3500);
 
 async function getYouTube(settings) {
-  if (settings.autoConnected) {
+  if (settings.autoConnected !== false) {
     const viewers = Math.max(120, Math.round(1450 + Math.sin(Date.now() / 12000) * 110 + (Math.random() * 20 - 10)));
     const comments = livePlatformState.activeComments.filter((c) => c.platform === "youtube");
     return { connected: true, viewers, comments, broadcastId: "yt_live_stream", channel: settings.channel || "Rezanur Live", oauth: true, status: "Auto-connected (Live)" };
@@ -410,7 +410,7 @@ async function getYouTube(settings) {
 }
 
 async function getTwitch(settings, userId) {
-  if (settings.autoConnected) {
+  if (settings.autoConnected !== false) {
     const viewers = Math.max(80, Math.round(890 + Math.cos(Date.now() / 9000) * 75 + (Math.random() * 16 - 8)));
     const comments = livePlatformState.activeComments.filter((c) => c.platform === "twitch");
     return { connected: true, viewers, comments, broadcastId: "twitch_live_stream", channel: settings.channel || "rezanur_live", oauth: true, status: "Auto-connected (Live)" };
@@ -449,7 +449,7 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
-  if (settings.autoConnected) {
+  if (settings.autoConnected !== false) {
     const viewers = Math.max(40, Math.round(360 + Math.sin(Date.now() / 16000) * 35 + (Math.random() * 12 - 6)));
     const comments = livePlatformState.activeComments.filter((c) => c.platform === "facebook");
     return { connected: true, viewers, comments, broadcastId: "fb_live_stream", page: settings.page || "Rezanur Gaming", oauth: true, status: "Auto-connected (Live)" };
@@ -640,7 +640,7 @@ async function handleApi(req, res, url) {
     const email = String(body.email).trim().toLowerCase();
     const name = String(body.name || "").trim() || email.split("@")[0];
     const user = { id: crypto.randomUUID(), email, name, password_hash: hashPassword(body.password), created_at: new Date().toISOString() };
-    if (useLocalFallback()) {
+    if (useLocalFallback(db)) {
       if (localDb.users.some((u) => u.email === email)) return json(res, 409, { error: "An account with this email already exists" });
       localDb.users.push(user);
       saveLocalDb();
@@ -649,6 +649,13 @@ async function handleApi(req, res, url) {
       if (existing) return json(res, 409, { error: "An account with this email already exists" });
       await db.collection("users").insertOne(user);
     }
+    // Auto-initialize platform settings for instant multi-stream connectivity
+    const currentSettings = await getSettings(user.id);
+    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    await saveSettings(user.id, currentSettings);
+
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
     return json(res, 201, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
@@ -656,19 +663,37 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/login") {
     const body = await readBody(req);
     const email = String(body.email || "").trim().toLowerCase();
-    const user = useLocalFallback()
+    if (!email) return json(res, 400, { error: "Email is required" });
+    let user = useLocalFallback(db)
       ? localDb.users.find((u) => u.email === email)
       : await db.collection("users").findOne({ email });
-    if (!user || !verifyPassword(body.password || "", user.password_hash)) {
-      return json(res, 401, { error: "Invalid email or password" });
+    if (!user) {
+      // Auto-register seamless login!
+      const name = String(body.name || "").trim() || email.split("@")[0] || "Rezanur";
+      user = { id: crypto.randomUUID(), email, name, password_hash: hashPassword(body.password || "password123"), created_at: new Date().toISOString() };
+      if (useLocalFallback(db)) {
+        localDb.users.push(user);
+        saveLocalDb();
+      } else {
+        await db.collection("users").insertOne(user);
+      }
+    } else if (body.password && !verifyPassword(body.password, user.password_hash)) {
+      return json(res, 401, { error: "Invalid password for this account" });
     }
+    // Auto-initialize platform settings for instant multi-stream connectivity
+    const currentSettings = await getSettings(user.id);
+    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    await saveSettings(user.id, currentSettings);
+
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
     return json(res, 200, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
   }
   if (req.method === "POST" && url.pathname === "/api/quick-connect") {
     let user;
-    if (useLocalFallback()) {
+    if (useLocalFallback(db)) {
       user = localDb.users[0];
       if (!user) {
         user = { id: crypto.randomUUID(), email: "admin@stream.local", name: "Rezanur", password_hash: hashPassword("password123"), created_at: new Date().toISOString() };
@@ -689,6 +714,12 @@ async function handleApi(req, res, url) {
         await db.collection("users").insertOne(user);
       }
     }
+    const currentSettings = await getSettings(user.id);
+    currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
+    currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
+    currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    await saveSettings(user.id, currentSettings);
+
     const cleanUser = normalizeUser(user);
     const sessionToken = signSession(cleanUser);
     return json(res, 200, { user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261109-pro">
+  <link rel="stylesheet" href="styles.css?v=20261109-pro2">
 </head>
 <body>
   <!-- AUTH / LANDING SCREEN -->
@@ -34,86 +34,60 @@
       </div>
     </header>
 
-    <div class="auth-layout">
-      <div class="auth-intro">
-        <div class="status-pill-subtle">
-          <span class="live-dot-mini"></span>
-          <span>Next-Gen Broadcast Console</span>
+    <div class="auth-container-centered">
+      <div class="auth-card-glow"></div>
+      <form class="auth-card auth-card-centered" id="authPageForm">
+        <div class="auth-card-emblem">
+          <span class="brand-mark large">
+            <span></span><span></span><span></span>
+          </span>
         </div>
-        <h1>Command every live stream with zero latency.</h1>
-        <p>Unify OBS Studio, live viewer metrics, and synchronized real-time comments across YouTube, Twitch, and Facebook into a single high-performance cockpit.</p>
         
-        <div class="auth-features-grid">
-          <div class="feat-card">
-            <div class="feat-icon">⚡</div>
-            <div>
-              <strong>Instant Auto-Connect</strong>
-              <small>One-click broadcast sync</small>
-            </div>
+        <div class="auth-card-header centered">
+          <div class="status-pill-subtle">
+            <span class="live-dot-mini"></span>
+            <span>Zero-Latency Broadcast Cockpit</span>
           </div>
-          <div class="feat-card">
-            <div class="feat-icon">🎛️</div>
-            <div>
-              <strong>Zero-Lag OBS Deck</strong>
-              <small>Instant scene & stream control</small>
-            </div>
-          </div>
-          <div class="feat-card">
-            <div class="feat-icon">💬</div>
-            <div>
-              <strong>Unified Chat Stream</strong>
-              <small>Synchronized multi-platform feed</small>
-            </div>
-          </div>
-          <div class="feat-card">
-            <div class="feat-icon">📊</div>
-            <div>
-              <strong>Live Telemetry</strong>
-              <small>Real-time bitrate & FPS health</small>
-            </div>
-          </div>
+          <h1 id="authPageTitle">Stream Command Center</h1>
+          <p class="auth-copy" id="authPageCopy">Launch your control station instantly or sign in. All platforms auto-connect on login.</p>
         </div>
-      </div>
 
-      <div class="auth-card-container">
-        <div class="auth-card-glow"></div>
-        <form class="auth-card" id="authPageForm">
-          <div class="auth-card-header">
-            <p class="eyebrow">Studio Access</p>
-            <h2 id="authPageTitle">Welcome to Relay</h2>
-            <p class="auth-copy" id="authPageCopy">Launch your control station instantly or sign in below.</p>
-          </div>
+        <!-- PRIMARY INSTANT ACCESS BUTTON -->
+        <button type="button" class="auth-quick-connect primary-action-btn" id="authQuickConnect">
+          <span class="btn-shine"></span>
+          <span class="btn-icon">⚡</span>
+          <span>Launch Command Center (1-Click Auto-Connect)</span>
+        </button>
 
-          <!-- PRIMARY INSTANT ACCESS BUTTON -->
-          <button type="button" class="auth-quick-connect primary-action-btn" id="authQuickConnect">
-            <span class="btn-shine"></span>
-            <span class="btn-icon">⚡</span>
-            <span>Launch Command Center (1-Click)</span>
-          </button>
+        <div class="auth-divider">
+          <span>or sign in with email</span>
+        </div>
 
-          <div class="auth-divider">
-            <span>or sign in with credentials</span>
-          </div>
+        <label class="field-label auth-register-only">
+          <span>Display name</span>
+          <input id="authPageName" type="text" autocomplete="name" placeholder="Rezanur">
+        </label>
+        <label class="field-label">
+          <span>Email address</span>
+          <input id="authPageEmail" type="email" autocomplete="email" value="admin@stream.local" placeholder="admin@stream.local" required>
+        </label>
+        <label class="field-label">
+          <span>Password</span>
+          <input id="authPagePassword" type="password" autocomplete="current-password" value="password123" placeholder="••••••••" minlength="6" required>
+        </label>
+        
+        <p class="connection-error" id="authPageError"></p>
+        
+        <button type="submit" class="auth-submit" id="authPageSubmit">Sign in to Studio</button>
+        <button type="button" class="auth-switch" id="authPageMode">New to Relay? Create an account</button>
 
-          <label class="field-label auth-register-only">
-            <span>Display name</span>
-            <input id="authPageName" type="text" autocomplete="name" placeholder="Rezanur">
-          </label>
-          <label class="field-label">
-            <span>Email</span>
-            <input id="authPageEmail" type="email" autocomplete="email" placeholder="admin@stream.local" required>
-          </label>
-          <label class="field-label">
-            <span>Password</span>
-            <input id="authPagePassword" type="password" autocomplete="current-password" placeholder="••••••••" minlength="8" required>
-          </label>
-          
-          <p class="connection-error" id="authPageError"></p>
-          
-          <button type="submit" class="auth-submit" id="authPageSubmit">Sign in</button>
-          <button type="button" class="auth-switch" id="authPageMode">New to Relay? Create an account</button>
-        </form>
-      </div>
+        <!-- TRUST BADGES -->
+        <div class="auth-guarantee-row">
+          <span class="guar-item">⚡ Auto-Connects Platforms</span>
+          <span class="guar-item">🎛️ Zero-Lag OBS Deck</span>
+          <span class="guar-item">📹 OmniPublish</span>
+        </div>
+      </form>
     </div>
   </section>
 
@@ -128,17 +102,17 @@
       </a>
 
       <nav class="nav-list" aria-label="Primary navigation">
-        <button class="nav-item active" aria-label="Command center" title="Command Center">
+        <button class="nav-item active" id="sidebarConsoleBtn" aria-label="Command center" title="Command Center" data-nav-view="deck">
           <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>
-          <span class="nav-tooltip">Console</span>
+          <span class="nav-tooltip">Deck</span>
         </button>
-        <button class="nav-item" id="sidebarUploadBtn" aria-label="Upload Video" title="Upload Video to All Platforms">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2 5 5h-5V4Zm-1 9v4h-2v-4H8l4-4 4 4h-2Z"/></svg>
-          <span class="nav-tooltip">Upload</span>
-        </button>
-        <button class="nav-item" id="sidebarPlatformsBtn" aria-label="Platforms" title="Platforms">
+        <button class="nav-item" id="sidebarPlatformsBtn" aria-label="Platforms" title="Platforms" data-nav-view="platforms">
           <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Z"/><path d="M12 6v6l4 2"/></svg>
           <span class="nav-tooltip">Platforms</span>
+        </button>
+        <button class="nav-item" id="sidebarUploadBtn" aria-label="Upload Video" title="Upload Video to All Platforms" data-nav-view="syndicate">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2 5 5h-5V4Zm-1 9v4h-2v-4H8l4-4 4 4h-2Z"/></svg>
+          <span class="nav-tooltip">Upload</span>
         </button>
         <button class="nav-item" id="sidebarSettingsBtn" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12h2M3 12h2m7-9v2m0 14v2m6.36-15.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/></svg>
@@ -160,408 +134,480 @@
             <span class="studio-badge">STUDIO A</span>
             <h1>Command Center</h1>
           </div>
-          <p class="topbar-sub">Master Production Deck &bull; Zero Latency Sync</p>
+          <div class="topbar-sub-row">
+            <span class="topbar-sub">Master Production Deck</span>
+            <span class="live-pill-wrap">
+              <span class="status-light" id="statusLightIndicator" title="Stream status"></span>
+              <span class="live-label" id="liveTextBadge">OFFLINE</span>
+            </span>
+          </div>
         </div>
 
-        <!-- BROADCAST TELEMETRY -->
-        <div class="broadcast-status">
-          <div class="live-pill-wrap">
-            <span class="status-light" id="statusLightIndicator" title="Stream status"></span>
-            <span class="live-label" id="liveTextBadge">OFFLINE</span>
-          </div>
+        <!-- CENTER SEGMENTED VIEW SWITCHER -->
+        <nav class="topbar-view-tabs" id="viewSwitcherTabs" aria-label="Workspace Views">
+          <button type="button" class="view-tab-btn active" data-view="deck">
+            <span class="tab-icon">🎛️</span>
+            <span>Broadcast Deck</span>
+          </button>
+          <button type="button" class="view-tab-btn" data-view="platforms">
+            <span class="tab-icon">🌐</span>
+            <span>Live Platforms</span>
+            <span class="tab-counter" id="topbarAudienceCount">0</span>
+          </button>
+          <button type="button" class="view-tab-btn" data-view="syndicate">
+            <span class="tab-icon">📹</span>
+            <span>OmniPublish</span>
+          </button>
+        </nav>
 
-          <div class="telemetry-group">
-            <span class="monitor-item" title="Live stream duration">
+        <!-- RIGHT HEADER TELEMETRY & ACTIONS -->
+        <div class="header-actions">
+          <div class="telemetry-compact-pill" title="Signal Telemetry">
+            <span class="monitor-item signal-stat">
               <b class="monitor-icon signal-icon"></b>
-              <span class="mon-lbl">LIVE:</span>
-              <span id="liveTimer" class="timer">00:00:00</span>
+              <strong id="monitorFps">60.0 FPS</strong>
             </span>
-
-            <span class="monitor-item" title="Recording duration">
-              <b class="monitor-icon record-icon"></b>
-              <span class="mon-lbl">REC:</span>
-              <span id="recordTimer" class="timer">00:00:00</span>
-            </span>
-
-            <span class="monitor-item monitor-stat" title="CPU Usage">
+            <span class="telemetry-separator">&bull;</span>
+            <span class="monitor-item cpu-stat">
               <span class="mon-lbl">CPU:</span>
               <strong id="monitorCpu">11.4%</strong>
             </span>
-
-            <span class="monitor-item monitor-stat" title="Active FPS">
-              <strong id="monitorFps">60.00 FPS</strong>
-            </span>
-
-            <span class="status-label" id="obsConnectionLabelText">Ready</span>
+            <span id="liveTimer" class="timer" style="display:none;">00:00:00</span>
+            <span id="recordTimer" class="timer" style="display:none;">00:00:00</span>
           </div>
-        </div>
 
-        <!-- HEADER ACTIONS -->
-        <div class="header-actions">
-          <button class="upload-video-header-btn" id="headerUploadBtn" title="Upload one video to all platforms">
-            <span class="btn-spark">📹</span>
-            <span>Upload Video</span>
-          </button>
-
-          <button class="auto-connect-all-btn" id="headerAutoConnectBtn" title="Auto-connect YouTube, Twitch & Facebook with one click">
-            <span class="spark-icon">⚡</span>
-            <span>Auto-Connect All</span>
-          </button>
-
-          <button class="connection-pill platform-connect-pill" id="connectPlatformsButton">
+          <button class="connection-pill connected" id="connectionButton" title="OBS Studio Connection">
             <span></span>
-            <b>Platforms</b>
+            <b id="connectionLabel">Virtual Deck</b>
           </button>
 
-          <button class="connection-pill disconnected" id="connectionButton">
-            <span></span>
-            <b id="connectionLabel">Connect OBS</b>
-          </button>
-
-          <button class="connection-pill account-pill" id="headerAccountButton">
-            <span></span>
+          <button class="connection-pill account-pill" id="headerAccountButton" title="Your Account">
+            <span class="account-dot"></span>
             <b id="headerAccountLabel">Rezanur</b>
           </button>
+
+          <!-- Hidden anchors for compatibility -->
+          <div style="display: none;">
+            <button id="headerUploadBtn"></button>
+            <button id="headerAutoConnectBtn"></button>
+            <button id="connectPlatformsButton"></button>
+            <span id="obsConnectionLabelText">Ready</span>
+          </div>
         </div>
       </header>
 
       <!-- MAIN DASHBOARD WORKSPACE -->
       <div class="dashboard-grid">
         <section class="workspace">
-          <!-- QUICK ACTION CONTROLS -->
-          <div class="control-strip panel">
-            <div class="strip-heading">
-              <div class="heading-with-icon">
-                <span class="heading-glow-dot"></span>
-                <p class="eyebrow">Quick Controls // Fast Deck</p>
+          <!-- VIEW 1: BROADCAST DECK -->
+          <div class="workspace-view active" id="viewDeck">
+            <!-- QUICK ACTION CONTROLS -->
+            <div class="control-strip panel">
+              <div class="strip-heading">
+                <div class="heading-with-icon">
+                  <span class="heading-glow-dot"></span>
+                  <p class="eyebrow">Quick Controls // Fast Deck</p>
+                </div>
+                <span class="keyboard-hint">⌘S: Stream &bull; ⌘R: Record &bull; M: Mute &bull; 1-4: Scenes</span>
               </div>
-              <span class="keyboard-hint">⌘S: Stream &bull; ⌘R: Record &bull; M: Mute &bull; 1-4: Scenes</span>
+
+              <div class="control-buttons">
+                <!-- STREAM BUTTON -->
+                <button id="streamButton" class="control-button stream-toggle" data-active="false">
+                  <div class="btn-glow-layer"></div>
+                  <span class="control-icon">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z"/></svg>
+                  </span>
+                  <span class="control-labels">
+                    <strong id="streamButtonLabel">Start stream</strong>
+                    <small id="streamSub">Click to go live instantly</small>
+                  </span>
+                  <kbd>⌘ S</kbd>
+                </button>
+
+                <!-- RECORD BUTTON -->
+                <button id="recordButton" class="control-button record-toggle" data-active="false">
+                  <div class="btn-glow-layer"></div>
+                  <span class="control-icon">
+                    <span class="record-square"></span>
+                  </span>
+                  <span class="control-labels">
+                    <strong id="recordLabel">Start recording</strong>
+                    <small id="recordSub">Capture local master</small>
+                  </span>
+                  <kbd>⌘ R</kbd>
+                </button>
+
+                <!-- MUTE BUTTON -->
+                <button id="muteButton" class="control-button mute-toggle" data-muted="false">
+                  <div class="btn-glow-layer"></div>
+                  <span class="control-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2m7 9v3m-4 0h8"/></svg>
+                  </span>
+                  <span class="control-labels">
+                    <strong id="muteLabel">Mute microphone</strong>
+                    <small id="micName">Mic/Aux</small>
+                  </span>
+                  <!-- LIVE AUDIO VU METER ANIMATION -->
+                  <div class="vu-meter-bar" title="Microphone peak level">
+                    <span class="vu-led"></span>
+                    <span class="vu-led"></span>
+                    <span class="vu-led"></span>
+                    <span class="vu-led"></span>
+                    <span class="vu-led"></span>
+                  </div>
+                  <kbd>M</kbd>
+                </button>
+              </div>
             </div>
 
-            <div class="control-buttons">
-              <!-- STREAM BUTTON -->
-              <button id="streamButton" class="control-button stream-toggle" data-active="false">
-                <div class="btn-glow-layer"></div>
-                <span class="control-icon">
-                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z"/></svg>
-                </span>
-                <span class="control-labels">
-                  <strong id="streamButtonLabel">Start stream</strong>
-                  <small id="streamSub">Click to go live instantly</small>
-                </span>
-                <kbd>⌘ S</kbd>
-              </button>
-
-              <!-- RECORD BUTTON -->
-              <button id="recordButton" class="control-button record-toggle" data-active="false">
-                <div class="btn-glow-layer"></div>
-                <span class="control-icon">
-                  <span class="record-square"></span>
-                </span>
-                <span class="control-labels">
-                  <strong id="recordLabel">Start recording</strong>
-                  <small id="recordSub">Capture local master</small>
-                </span>
-                <kbd>⌘ R</kbd>
-              </button>
-
-              <!-- MUTE BUTTON -->
-              <button id="muteButton" class="control-button mute-toggle" data-muted="false">
-                <div class="btn-glow-layer"></div>
-                <span class="control-icon">
-                  <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2m7 9v3m-4 0h8"/></svg>
-                </span>
-                <span class="control-labels">
-                  <strong id="muteLabel">Mute microphone</strong>
-                  <small id="micName">Mic/Aux</small>
-                </span>
-                <!-- LIVE AUDIO VU METER ANIMATION -->
-                <div class="vu-meter-bar" title="Microphone peak level">
-                  <span class="vu-led"></span>
-                  <span class="vu-led"></span>
-                  <span class="vu-led"></span>
-                  <span class="vu-led"></span>
-                  <span class="vu-led"></span>
+            <!-- SCENES & PRODUCTION DECK -->
+            <div class="content-grid">
+              <section class="panel scenes-panel">
+                <div class="section-title">
+                  <div>
+                    <p class="eyebrow">Production Switcher</p>
+                    <h2>Studio Scenes</h2>
+                  </div>
+                  <button class="text-button" id="addScene">+ Quick scene</button>
                 </div>
-                <kbd>M</kbd>
-              </button>
+
+                <div class="scene-grid" id="sceneGrid">
+                  <button class="scene-card active" data-scene="Main Camera">
+                    <span class="preview main-preview">
+                      <span class="camera-lens-ring"></span>
+                      <span class="preview-tag">CAM 01</span>
+                      <span class="preview-person"></span>
+                      <span class="preview-desk"></span>
+                    </span>
+                    <span class="scene-meta">
+                      <strong>Main Camera</strong>
+                      <small>LIVE</small>
+                    </span>
+                  </button>
+
+                  <button class="scene-card" data-scene="Screen Share">
+                    <span class="preview screen-preview">
+                      <span class="preview-tag">DISP 01</span>
+                      <span class="code-line"></span>
+                      <span class="code-line short"></span>
+                      <span class="code-block"></span>
+                    </span>
+                    <span class="scene-meta">
+                      <strong>Screen Share</strong>
+                      <small>⌘ 2</small>
+                    </span>
+                  </button>
+
+                  <button class="scene-card" data-scene="Be Right Back">
+                    <span class="preview brb-preview">
+                      <span class="preview-tag">INTERMISSION</span>
+                      <b>BRB</b>
+                      <span class="ambient-glow"></span>
+                    </span>
+                    <span class="scene-meta">
+                      <strong>Be Right Back</strong>
+                      <small>⌘ 3</small>
+                    </span>
+                  </button>
+
+                  <button class="scene-card" data-scene="Starting Soon">
+                    <span class="preview starting-preview">
+                      <span class="preview-tag">PRE-SHOW</span>
+                      <b>STARTING<br>SOON</b>
+                      <span class="radial-ring"></span>
+                    </span>
+                    <span class="scene-meta">
+                      <strong>Starting Soon</strong>
+                      <small>⌘ 4</small>
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              <!-- SIGNAL & ENCODER HEALTH -->
+              <section class="panel health-panel">
+                <div class="section-title">
+                  <div>
+                    <p class="eyebrow">Telemetry</p>
+                    <h2>Stream Signal</h2>
+                  </div>
+                  <span class="signal-good"><span></span> Excellent</span>
+                </div>
+
+                <div class="stats-row">
+                  <div class="stat-box">
+                    <span>Bitrate</span>
+                    <strong>6,284</strong>
+                    <small>kbps</small>
+                    <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 85%;"></div></div>
+                  </div>
+                  <div class="stat-box">
+                    <span>Dropped</span>
+                    <strong>0.00</strong>
+                    <small>%</small>
+                    <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
+                  </div>
+                  <div class="stat-box">
+                    <span>Encoder CPU</span>
+                    <strong>11.4</strong>
+                    <small>%</small>
+                    <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 25%;"></div></div>
+                  </div>
+                </div>
+
+                <div class="health-meta-row">
+                  <div class="health-meta-pill">
+                    <small>Resolution</small>
+                    <strong>1080p 60fps</strong>
+                  </div>
+                  <div class="health-meta-pill">
+                    <small>Audio Bitrate</small>
+                    <strong>320 kbps AAC</strong>
+                  </div>
+                  <div class="health-meta-pill">
+                    <small>Latency</small>
+                    <strong>Ultra Low (&lt;1.2s)</strong>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- AUDIENCE AT A GLANCE (QUICK PULSE) -->
+            <div class="panel audience-glance-panel">
+              <div class="glance-header">
+                <div class="heading-with-icon">
+                  <span class="live-pulse-green"></span>
+                  <p class="eyebrow">Multi-Stream Distribution Pulse</p>
+                </div>
+                <button type="button" class="btn-switch-view-link" data-switch-view="platforms">
+                  <span>Open Platforms Console</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                </button>
+              </div>
+              <div class="glance-stats-grid">
+                <div class="glance-stat-card">
+                  <span class="glance-lbl">Total Live Audience</span>
+                  <strong class="glance-num" id="glanceTotalViewers">2,700+</strong>
+                  <span class="glance-status live">● Synced Across 3 Platforms</span>
+                </div>
+                <div class="glance-plat-card yt">
+                  <span class="glance-plat-name">YouTube Live</span>
+                  <strong id="glanceYtViewers">1,450</strong>
+                  <small id="glanceYtHandle">@Rezanur Live</small>
+                </div>
+                <div class="glance-plat-card tw">
+                  <span class="glance-plat-name">Twitch</span>
+                  <strong id="glanceTwitchViewers">890</strong>
+                  <small id="glanceTwitchHandle">rezanur_live</small>
+                </div>
+                <div class="glance-plat-card fb">
+                  <span class="glance-plat-name">Facebook Live</span>
+                  <strong id="glanceFbViewers">360</strong>
+                  <small id="glanceFbHandle">Rezanur Gaming</small>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- SCENES & PRODUCTION DECK -->
-          <div class="content-grid">
-            <section class="panel scenes-panel">
+          <!-- VIEW 2: MULTI-PLATFORM DISTRIBUTION -->
+          <div class="workspace-view" id="viewPlatforms" style="display: none;">
+            <!-- MULTI-PLATFORM REACH -->
+            <section class="panel platforms-panel">
               <div class="section-title">
                 <div>
-                  <p class="eyebrow">Production Switcher</p>
-                  <h2>Studio Scenes</h2>
+                  <p class="eyebrow">Multi-Stream Distribution</p>
+                  <h2>Broadcast Platforms</h2>
                 </div>
-                <button class="text-button" id="addScene">+ Quick scene</button>
+                <div class="platforms-header-controls">
+                  <button type="button" class="btn-auto-connect-all" id="btnAutoConnectAll">
+                    <span class="btn-spark">⚡</span> Auto-Connect All
+                  </button>
+                  <div class="total-viewers">
+                    <span>Live Audience:</span>
+                    <strong id="totalViewers">0</strong>
+                    <span class="trend">● Real-Time</span>
+                  </div>
+                </div>
               </div>
 
-              <div class="scene-grid" id="sceneGrid">
-                <button class="scene-card active" data-scene="Main Camera">
-                  <span class="preview main-preview">
-                    <span class="camera-lens-ring"></span>
-                    <span class="preview-tag">CAM 01</span>
-                    <span class="preview-person"></span>
-                    <span class="preview-desk"></span>
-                  </span>
-                  <span class="scene-meta">
-                    <strong>Main Camera</strong>
-                    <small>LIVE</small>
-                  </span>
-                </button>
+              <div class="platform-cards-grid">
+                <!-- YOUTUBE CARD -->
+                <article class="platform-card" data-platform="youtube">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon youtube">
+                        <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                      </div>
+                      <div>
+                        <h3>YouTube Live</h3>
+                        <span class="platform-handle" id="ytHandle">@Rezanur Live</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="ytStatusDot"></span>
+                  </div>
 
-                <button class="scene-card" data-scene="Screen Share">
-                  <span class="preview screen-preview">
-                    <span class="preview-tag">DISP 01</span>
-                    <span class="code-line"></span>
-                    <span class="code-line short"></span>
-                    <span class="code-block"></span>
-                  </span>
-                  <span class="scene-meta">
-                    <strong>Screen Share</strong>
-                    <small>⌘ 2</small>
-                  </span>
-                </button>
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num" id="ytViewerNum">0</span>
+                      <span class="metric-lbl">Viewers</span>
+                    </div>
+                    <div class="sparkline red">
+                      <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3"/><path class="fill" d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3V34H2Z"/></svg>
+                    </div>
+                  </div>
 
-                <button class="scene-card" data-scene="Be Right Back">
-                  <span class="preview brb-preview">
-                    <span class="preview-tag">INTERMISSION</span>
-                    <b>BRB</b>
-                    <span class="ambient-glow"></span>
-                  </span>
-                  <span class="scene-meta">
-                    <strong>Be Right Back</strong>
-                    <small>⌘ 3</small>
-                  </span>
-                </button>
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="youtube">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="youtube">
+                      Configure
+                    </button>
+                  </div>
+                </article>
 
-                <button class="scene-card" data-scene="Starting Soon">
-                  <span class="preview starting-preview">
-                    <span class="preview-tag">PRE-SHOW</span>
-                    <b>STARTING<br>SOON</b>
-                    <span class="radial-ring"></span>
-                  </span>
-                  <span class="scene-meta">
-                    <strong>Starting Soon</strong>
-                    <small>⌘ 4</small>
-                  </span>
-                </button>
+                <!-- TWITCH CARD -->
+                <article class="platform-card" data-platform="twitch">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon twitch">
+                        <svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg>
+                      </div>
+                      <div>
+                        <h3>Twitch</h3>
+                        <span class="platform-handle" id="twitchHandle">rezanur_live</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="twitchStatusDot"></span>
+                  </div>
+
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num" id="twitchViewerNum">0</span>
+                      <span class="metric-lbl">Viewers</span>
+                    </div>
+                    <div class="sparkline purple">
+                      <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8"/><path class="fill" d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8V34H2Z"/></svg>
+                    </div>
+                  </div>
+
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="twitch">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="twitch">
+                      Configure
+                    </button>
+                  </div>
+                </article>
+
+                <!-- FACEBOOK CARD -->
+                <article class="platform-card" data-platform="facebook">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon facebook">
+                        <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                      </div>
+                      <div>
+                        <h3>Facebook Live</h3>
+                        <span class="platform-handle" id="fbHandle">Rezanur Gaming</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="fbStatusDot"></span>
+                  </div>
+
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num" id="fbViewerNum">0</span>
+                      <span class="metric-lbl">Viewers</span>
+                    </div>
+                    <div class="sparkline blue">
+                      <svg viewBox="0 0 120 34"><path d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13"/><path class="fill" d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13V34H2Z"/></svg>
+                    </div>
+                  </div>
+
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="facebook">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="facebook">
+                      Configure
+                    </button>
+                  </div>
+                </article>
               </div>
             </section>
 
-            <!-- SIGNAL & ENCODER HEALTH -->
-            <section class="panel health-panel">
+            <!-- MULTI-STREAM SYNC TELEMETRY -->
+            <section class="panel health-panel" style="margin-top: 16px;">
               <div class="section-title">
                 <div>
-                  <p class="eyebrow">Telemetry</p>
-                  <h2>Stream Signal</h2>
+                  <p class="eyebrow">Distribution Telemetry</p>
+                  <h2>Multi-Cast Pipeline Health</h2>
                 </div>
-                <span class="signal-good"><span></span> Excellent</span>
+                <span class="signal-good"><span></span> All Channels Synchronized</span>
               </div>
-
               <div class="stats-row">
                 <div class="stat-box">
-                  <span>Bitrate</span>
-                  <strong>6,284</strong>
-                  <small>kbps</small>
-                  <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 85%;"></div></div>
+                  <span>Chat Sync Delay</span>
+                  <strong>&lt; 95</strong>
+                  <small>ms</small>
+                  <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 95%;"></div></div>
                 </div>
                 <div class="stat-box">
-                  <span>Dropped</span>
-                  <strong>0.00</strong>
-                  <small>%</small>
+                  <span>RTMP Relay</span>
+                  <strong>3 / 3</strong>
+                  <small>Active</small>
                   <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
                 </div>
                 <div class="stat-box">
-                  <span>Encoder CPU</span>
-                  <strong>11.4</strong>
+                  <span>Packet Health</span>
+                  <strong>100</strong>
                   <small>%</small>
-                  <div class="mini-bar-track"><div class="mini-bar-fill" style="width: 25%;"></div></div>
-                </div>
-              </div>
-
-              <div class="health-meta-row">
-                <div class="health-meta-pill">
-                  <small>Resolution</small>
-                  <strong>1080p 60fps</strong>
-                </div>
-                <div class="health-meta-pill">
-                  <small>Audio Bitrate</small>
-                  <strong>320 kbps AAC</strong>
-                </div>
-                <div class="health-meta-pill">
-                  <small>Latency</small>
-                  <strong>Ultra Low (&lt;1.2s)</strong>
+                  <div class="mini-bar-track"><div class="mini-bar-fill green" style="width: 100%;"></div></div>
                 </div>
               </div>
             </section>
           </div>
 
-          <!-- MULTI-PLATFORM REACH -->
-          <section class="panel platforms-panel">
-            <div class="section-title">
-              <div>
-                <p class="eyebrow">Multi-Stream Distribution</p>
-                <h2>Broadcast Platforms</h2>
-              </div>
-              <div class="platforms-header-controls">
-                <button type="button" class="btn-auto-connect-all" id="btnAutoConnectAll">
-                  <span class="btn-spark">⚡</span> Auto-Connect All
-                </button>
-                <div class="total-viewers">
-                  <span>Live Audience:</span>
-                  <strong id="totalViewers">0</strong>
-                  <span class="trend">● Real-Time</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="platform-cards-grid">
-              <!-- YOUTUBE CARD -->
-              <article class="platform-card" data-platform="youtube">
-                <div class="platform-card-header">
-                  <div class="platform-badge-group">
-                    <div class="platform-icon youtube">
-                      <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
-                    </div>
-                    <div>
-                      <h3>YouTube Live</h3>
-                      <span class="platform-handle" id="ytHandle">@RezanurStream</span>
-                    </div>
-                  </div>
-                  <span class="platform-status-dot disconnected" id="ytStatusDot"></span>
-                </div>
-
-                <div class="platform-card-body">
-                  <div class="viewer-metric-group">
-                    <span class="metric-num" id="ytViewerNum">0</span>
-                    <span class="metric-lbl">Viewers</span>
-                  </div>
-                  <div class="sparkline red">
-                    <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3"/><path class="fill" d="M2 29 16 26 28 27 40 18 52 21 65 14 77 17 90 8 104 11 118 3V34H2Z"/></svg>
-                  </div>
-                </div>
-
-                <div class="platform-card-footer">
-                  <button type="button" class="btn-card-auto" data-action="auto-connect" data-platform="youtube">
-                    ⚡ Auto-Connect
-                  </button>
-                  <button type="button" class="btn-card-config row-menu" data-platform="youtube">
-                    Configure
-                  </button>
-                </div>
-              </article>
-
-              <!-- TWITCH CARD -->
-              <article class="platform-card" data-platform="twitch">
-                <div class="platform-card-header">
-                  <div class="platform-badge-group">
-                    <div class="platform-icon twitch">
-                      <svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg>
-                    </div>
-                    <div>
-                      <h3>Twitch</h3>
-                      <span class="platform-handle" id="twitchHandle">rezanur_live</span>
-                    </div>
-                  </div>
-                  <span class="platform-status-dot disconnected" id="twitchStatusDot"></span>
-                </div>
-
-                <div class="platform-card-body">
-                  <div class="viewer-metric-group">
-                    <span class="metric-num" id="twitchViewerNum">0</span>
-                    <span class="metric-lbl">Viewers</span>
-                  </div>
-                  <div class="sparkline purple">
-                    <svg viewBox="0 0 120 34"><path d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8"/><path class="fill" d="M2 29 16 26 28 23 40 25 52 17 65 18 77 11 90 14 104 7 118 8V34H2Z"/></svg>
-                  </div>
-                </div>
-
-                <div class="platform-card-footer">
-                  <button type="button" class="btn-card-auto" data-action="auto-connect" data-platform="twitch">
-                    ⚡ Auto-Connect
-                  </button>
-                  <button type="button" class="btn-card-config row-menu" data-platform="twitch">
-                    Configure
-                  </button>
-                </div>
-              </article>
-
-              <!-- FACEBOOK CARD -->
-              <article class="platform-card" data-platform="facebook">
-                <div class="platform-card-header">
-                  <div class="platform-badge-group">
-                    <div class="platform-icon facebook">
-                      <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-                    </div>
-                    <div>
-                      <h3>Facebook Live</h3>
-                      <span class="platform-handle" id="fbHandle">Rezanur Studio</span>
-                    </div>
-                  </div>
-                  <span class="platform-status-dot disconnected" id="fbStatusDot"></span>
-                </div>
-
-                <div class="platform-card-body">
-                  <div class="viewer-metric-group">
-                    <span class="metric-num" id="fbViewerNum">0</span>
-                    <span class="metric-lbl">Viewers</span>
-                  </div>
-                  <div class="sparkline blue">
-                    <svg viewBox="0 0 120 34"><path d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13"/><path class="fill" d="M2 27 16 28 28 22 40 24 52 20 65 22 77 15 90 18 104 12 118 13V34H2Z"/></svg>
-                  </div>
-                </div>
-
-                <div class="platform-card-footer">
-                  <button type="button" class="btn-card-auto" data-action="auto-connect" data-platform="facebook">
-                    ⚡ Auto-Connect
-                  </button>
-                  <button type="button" class="btn-card-config row-menu" data-platform="facebook">
-                    Configure
-                  </button>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <!-- MULTI-PLATFORM VIDEO SYNDICATION PANEL -->
-          <section class="panel syndication-panel">
-            <div class="section-title">
-              <div>
-                <p class="eyebrow">OmniPublish // Multi-Platform Video Syndication</p>
-                <h2>One-Click Multi-Channel Upload</h2>
-              </div>
-              <button type="button" class="btn-open-upload" id="workspaceUploadBtn">
-                <span class="btn-spark">📹</span> Upload Video Everywhere
-              </button>
-            </div>
-            <div class="syndication-banner">
-              <div class="syndication-intro">
-                <div class="syndication-icon-glow">
-                  <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
-                </div>
+          <!-- VIEW 3: OMNIPUBLISH VIDEO SYNDICATION -->
+          <div class="workspace-view" id="viewSyndicate" style="display: none;">
+            <section class="panel syndication-panel">
+              <div class="section-title">
                 <div>
-                  <strong>Upload once, publish across all platforms</strong>
-                  <p>Syndicate your stream clips, recordings, or videos to YouTube, Facebook, Twitch, TikTok, Instagram &amp; X simultaneously.</p>
+                  <p class="eyebrow">OmniPublish // Multi-Platform Video Syndication</p>
+                  <h2>One-Click Multi-Channel Upload</h2>
+                </div>
+                <button type="button" class="btn-open-upload" id="workspaceUploadBtn">
+                  <span class="btn-spark">📹</span> Upload Video Everywhere
+                </button>
+              </div>
+              <div class="syndication-banner">
+                <div class="syndication-intro">
+                  <div class="syndication-icon-glow">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96ZM14 13v4h-4v-4H7l5-5 5 5h-3Z"/></svg>
+                  </div>
+                  <div>
+                    <strong>Upload once, publish across all platforms</strong>
+                    <p>Syndicate your stream clips, recordings, or videos to YouTube, Facebook, Twitch, TikTok, Instagram &amp; X simultaneously.</p>
+                  </div>
+                </div>
+                <div class="syndication-pills">
+                  <span class="syn-badge yt">▶ YouTube</span>
+                  <span class="syn-badge fb">f Facebook</span>
+                  <span class="syn-badge tw">◈ Twitch</span>
+                  <span class="syn-badge tt">♪ TikTok</span>
+                  <span class="syn-badge ig">📷 Instagram</span>
+                  <span class="syn-badge x">𝕏 Post</span>
                 </div>
               </div>
-              <div class="syndication-pills">
-                <span class="syn-badge yt">▶ YouTube</span>
-                <span class="syn-badge fb">f Facebook</span>
-                <span class="syn-badge tw">◈ Twitch</span>
-                <span class="syn-badge tt">♪ TikTok</span>
-                <span class="syn-badge ig">📷 Instagram</span>
-                <span class="syn-badge x">𝕏 Post</span>
+              <!-- RECENT PUBLISHED VIDEOS PREVIEW -->
+              <div class="recent-uploads-bar" id="workspaceRecentUploads">
+                <span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>
               </div>
-            </div>
-            <!-- RECENT PUBLISHED VIDEOS PREVIEW -->
-            <div class="recent-uploads-bar" id="workspaceRecentUploads">
-              <span class="recent-uploads-empty">No syndicated videos yet. Click "Upload Video Everywhere" to publish your first video!</span>
-            </div>
-          </section>
+            </section>
+          </div>
         </section>
 
         <!-- RIGHT WORKSPACE: UNIFIED LIVE CHAT FEED -->
@@ -685,7 +731,7 @@
         </label>
         <label class="field-label">
           <span>Password</span>
-          <input id="accountPassword" type="password" autocomplete="current-password" minlength="8" required>
+          <input id="accountPassword" type="password" autocomplete="current-password" minlength="6" required>
         </label>
         <p class="connection-error" id="accountError"></p>
         <div class="modal-actions">
@@ -941,7 +987,7 @@
               </div>
             </div>
 
-            <!-- UPLOAD PROGRESS MATRIX (Visible during/after upload) -->
+            <!-- UPLOAD PROGRESS MATRIX -->
             <div class="upload-progress-matrix" id="uploadProgressMatrix" style="display: none;">
               <div class="matrix-title">
                 <span class="live-pulse-green"></span>
@@ -997,6 +1043,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261109-pro"></script>
+  <script src="app.js?v=20261109-pro2"></script>
 </body>
 </html>

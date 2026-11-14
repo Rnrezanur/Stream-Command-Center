@@ -125,18 +125,21 @@ function setConnectionState(state) {
   const light = $("#statusLightIndicator");
   const statusTxt = $("#obsConnectionLabelText");
 
-  button?.classList.remove("connected", "connecting", "disconnected");
-  button?.classList.add(state);
+  button?.classList.remove("connected", "connecting", "disconnected", "virtual");
+  button?.classList.add(state === "virtual" ? "connected" : state);
 
   if (state === "connected") {
     if (label) label.textContent = "OBS Connected";
     if (statusTxt) statusTxt.textContent = "OBS Ready";
     showToast("✓ Connected to OBS Studio");
+  } else if (state === "virtual") {
+    if (label) label.textContent = "Virtual Deck";
+    if (statusTxt) statusTxt.textContent = "Virtual Deck";
   } else if (state === "connecting") {
     if (label) label.textContent = "Connecting...";
     if (statusTxt) statusTxt.textContent = "Syncing...";
   } else {
-    if (label) label.textContent = location.protocol === "https:" ? "Connect Remote OBS" : "Connect OBS";
+    if (label) label.textContent = location.protocol === "https:" ? "Connect Remote OBS" : "Virtual Deck";
     if (statusTxt) statusTxt.textContent = "Virtual Deck";
   }
 }
@@ -349,16 +352,27 @@ async function refreshDashboard() {
 }
 
 function renderDashboard(data) {
-  const totalViewers = $("#totalViewers");
-  if (totalViewers) totalViewers.textContent = Number(data.totalViewers || 0).toLocaleString();
+  const total = Number(data.totalViewers || 0);
+  const totalFormatted = total.toLocaleString();
 
-  // Update platform cards
+  const totalViewers = $("#totalViewers");
+  if (totalViewers) totalViewers.textContent = totalFormatted;
+
+  const topbarAudienceBadge = $("#topbarAudienceBadge");
+  if (topbarAudienceBadge) topbarAudienceBadge.textContent = totalFormatted;
+
+  const glanceTotalViewers = $("#glanceTotalViewers");
+  if (glanceTotalViewers) glanceTotalViewers.textContent = total > 0 ? `${totalFormatted}+` : "0";
+
+  // Update platform cards & glance strip
   for (const name of ["youtube", "twitch", "facebook"]) {
     const card = $(`.platform-card[data-platform="${name}"]`);
     const platform = data.platforms?.[name] || { connected: false, viewers: 0 };
+    const vFormatted = Number(platform.viewers || 0).toLocaleString();
+
     if (card) {
       const numEl = card.querySelector(".metric-num");
-      if (numEl) numEl.textContent = Number(platform.viewers || 0).toLocaleString();
+      if (numEl) numEl.textContent = vFormatted;
 
       const dot = card.querySelector(".platform-status-dot");
       if (dot) dot.className = `platform-status-dot ${platform.connected ? "connected" : "disconnected"}`;
@@ -374,6 +388,24 @@ function renderDashboard(data) {
         if (platform.channel) handle.textContent = platform.channel;
         else if (platform.page) handle.textContent = platform.page;
       }
+    }
+
+    // Update glance strip in Deck view
+    if (name === "youtube") {
+      const gNum = $("#glanceYtViewers");
+      if (gNum) gNum.textContent = vFormatted;
+      const gH = $("#glanceYtHandle");
+      if (gH && platform.channel) gH.textContent = platform.channel;
+    } else if (name === "twitch") {
+      const gNum = $("#glanceTwitchViewers");
+      if (gNum) gNum.textContent = vFormatted;
+      const gH = $("#glanceTwitchHandle");
+      if (gH && platform.channel) gH.textContent = platform.channel;
+    } else if (name === "facebook") {
+      const gNum = $("#glanceFbViewers");
+      if (gNum) gNum.textContent = vFormatted;
+      const gH = $("#glanceFbHandle");
+      if (gH && platform.page) gH.textContent = platform.page;
     }
   }
 
@@ -439,6 +471,8 @@ async function loadCurrentUser() {
     const { user } = await api("/api/me");
     setSignedInUser(user || null);
     if (!user) return;
+    // Auto-connect all platforms immediately on login / page load
+    await autoConnectPlatforms("all");
     await refreshDashboard();
     loadPublishedVideos();
     clearInterval(dashboardTimer);
@@ -466,8 +500,38 @@ async function autoConnectLocalOBS() {
     setConnectionState("connected");
     statsTimer = setInterval(updateStats, 2000);
   } catch (_) {
-    setConnectionState("disconnected");
+    // Graceful fallback to Virtual Deck mode for zero lag
+    setConnectionState("virtual");
   }
+}
+
+// WORKSPACE VIEW SWITCHER (DECK // PLATFORMS // SYNDICATE)
+function switchWorkspaceView(view = "deck") {
+  const views = {
+    deck: $("#viewDeck"),
+    platforms: $("#viewPlatforms"),
+    syndicate: $("#viewSyndicate")
+  };
+
+  Object.entries(views).forEach(([key, el]) => {
+    if (el) {
+      el.style.display = key === view ? "" : "none";
+      el.classList.toggle("active", key === view);
+    }
+  });
+
+  $$(".view-tab-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === view);
+  });
+
+  const sidebarDeck = $("#sidebarConsoleBtn") || $(".nav-item[data-nav-view='deck']");
+  const sidebarPlat = $("#sidebarPlatformsBtn");
+  const sidebarUpload = $("#sidebarUploadBtn");
+
+  $$(".sidebar .nav-item").forEach((b) => b.classList.remove("active"));
+  if (view === "deck" && sidebarDeck) sidebarDeck.classList.add("active");
+  if (view === "platforms" && sidebarPlat) sidebarPlat.classList.add("active");
+  if (view === "syndicate" && sidebarUpload) sidebarUpload.classList.add("active");
 }
 
 // EVENT LISTENERS //
@@ -555,7 +619,23 @@ $("#chatFilters")?.addEventListener("click", (event) => {
   applyChatFilter();
 });
 
-// 4. AUTO-CONNECT BUTTONS
+// 4. WORKSPACE VIEW SWITCHER
+$$(".view-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => switchWorkspaceView(btn.dataset.view));
+});
+
+$("#sidebarConsoleBtn")?.addEventListener("click", () => switchWorkspaceView("deck"));
+$("#sidebarPlatformsBtn")?.addEventListener("click", () => switchWorkspaceView("platforms"));
+$("#sidebarUploadBtn")?.addEventListener("click", () => switchWorkspaceView("syndicate"));
+
+document.addEventListener("click", (e) => {
+  const switchLink = e.target.closest("[data-switch-view]");
+  if (switchLink) {
+    switchWorkspaceView(switchLink.dataset.switchView);
+  }
+});
+
+// 5. AUTO-CONNECT BUTTONS
 $("#headerAutoConnectBtn")?.addEventListener("click", () => autoConnectPlatforms("all"));
 $("#btnAutoConnectAll")?.addEventListener("click", () => autoConnectPlatforms("all"));
 
@@ -960,7 +1040,9 @@ $("#accountForm")?.addEventListener("submit", async (e) => {
     });
     setSignedInUser(result.user);
     setModalOpen(accountModal, false);
+    await autoConnectPlatforms("all");
     await refreshDashboard();
+    loadPublishedVideos();
     clearInterval(dashboardTimer);
     dashboardTimer = setInterval(refreshDashboard, 1200);
     showToast(accountModalRegistering ? `Account created: ${result.user.name}` : `Signed in as ${result.user.name}`);
@@ -1021,8 +1103,8 @@ function switchUploadTab(tab) {
   if (tabHist) tabHist.style.display = isNew ? "none" : "";
 }
 
-$("#headerUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
-$("#sidebarUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
+$("#headerUploadBtn")?.addEventListener("click", () => switchWorkspaceView("syndicate"));
+$("#sidebarUploadBtn")?.addEventListener("click", () => switchWorkspaceView("syndicate"));
 $("#workspaceUploadBtn")?.addEventListener("click", () => openVideoUploadModal("new"));
 $("#cancelVideoUpload")?.addEventListener("click", () => setModalOpen(videoUploadModal, false));
 $("#cancelUploadForm")?.addEventListener("click", () => setModalOpen(videoUploadModal, false));
