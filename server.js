@@ -929,12 +929,13 @@ async function handleApi(req, res, url) {
     }
     // Initialize platform settings (disconnected by default until explicitly connected)
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -963,12 +964,13 @@ async function handleApi(req, res, url) {
     }
     // Initialize platform settings (disconnected by default until explicitly connected)
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
