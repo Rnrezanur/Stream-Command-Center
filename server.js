@@ -1001,12 +1001,13 @@ async function handleApi(req, res, url) {
       }
     }
     const currentSettings = await getSettings(user.id);
-    currentSettings.youtube = { channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}), autoConnected: false };
-    currentSettings.twitch = { channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}), autoConnected: false };
-    currentSettings.facebook = { page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}), autoConnected: false };
-    currentSettings.tiktok = { handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}), autoConnected: false };
-    currentSettings.instagram = { handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}), autoConnected: false };
-    currentSettings.x = { handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.youtube = { channel: "", accountName: "", ...(currentSettings.youtube || {}), autoConnected: false };
+    currentSettings.twitch = { channel: "", accountName: "", ...(currentSettings.twitch || {}), autoConnected: false };
+    currentSettings.facebook = { page: "", pageName: "", accountName: "", ...(currentSettings.facebook || {}), autoConnected: false };
+    currentSettings.tiktok = { handle: "", accountName: "", ...(currentSettings.tiktok || {}), autoConnected: false };
+    currentSettings.instagram = { handle: "", accountName: "", ...(currentSettings.instagram || {}), autoConnected: false };
+    currentSettings.x = { handle: "", accountName: "", ...(currentSettings.x || {}), autoConnected: false };
+    currentSettings.kick = { channel: "", accountName: "", handle: "", ...(currentSettings.kick || {}), autoConnected: false };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -1717,7 +1718,7 @@ async function handleApi(req, res, url) {
         platforms.twitch = {
           status: "published",
           platformName: "Twitch Highlights & VODs",
-          channel: settings.twitch?.channel || "rezanur_live",
+          channel: settings.twitch?.accountName || settings.twitch?.channel || "Twitch Channel",
           videoId,
           url: `https://www.twitch.tv/videos/${videoId}`,
           publishedAt: now
@@ -1727,12 +1728,13 @@ async function handleApi(req, res, url) {
         const videoId = "tt_" + Math.floor(7000000000000000000 + Math.random() * 1000000000000000000);
         const isStory = kind === "story";
         const isPost = kind === "post";
+        const rawHandle = String(settings.tiktok?.handle || settings.tiktok?.accountName || "creator").replace(/^@/, "");
         platforms.tiktok = {
           status: "published",
           platformName: isStory ? "TikTok Story" : isPost ? "TikTok Photo Mode" : "TikTok Shorts",
-          handle: `@${settings.twitch?.channel || "rezanur_live"}`,
+          handle: `@${rawHandle}`,
           videoId,
-          url: isStory ? `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/story/${videoId}` : isPost ? `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/photo/${videoId}` : `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/video/${videoId}`,
+          url: isStory ? `https://www.tiktok.com/@${rawHandle.toLowerCase()}/story/${videoId}` : isPost ? `https://www.tiktok.com/@${rawHandle.toLowerCase()}/photo/${videoId}` : `https://www.tiktok.com/@${rawHandle.toLowerCase()}/video/${videoId}`,
           publishedAt: now
         };
       }
@@ -1740,9 +1742,11 @@ async function handleApi(req, res, url) {
         const videoId = "ig_" + randId();
         const isStory = kind === "story";
         const isPost = kind === "post";
+        const rawHandle = String(settings.instagram?.handle || settings.instagram?.accountName || "").replace(/^@/, "");
         platforms.instagram = {
           status: "published",
           platformName: isStory ? "Instagram Story" : isPost ? "Instagram Feed Photo" : "Instagram Reels",
+          handle: rawHandle ? `@${rawHandle}` : null,
           videoId,
           url: isStory ? `https://www.instagram.com/stories/${videoId}` : isPost ? `https://www.instagram.com/p/${videoId}` : `https://www.instagram.com/reel/${videoId}`,
           publishedAt: now
@@ -1750,11 +1754,13 @@ async function handleApi(req, res, url) {
       }
       if (p === "x") {
         const videoId = "x_" + Math.floor(1800000000000000000 + Math.random() * 100000000000000000);
+        const rawHandle = String(settings.x?.handle || settings.x?.accountName || "creator").replace(/^@/, "");
         platforms.x = {
           status: "published",
           platformName: kind === "post" ? "X (Twitter) Post" : "X Video Broadcast",
+          handle: `@${rawHandle}`,
           videoId,
-          url: `https://x.com/${settings.twitch?.channel || "rezanur_live"}/status/${videoId}`,
+          url: `https://x.com/${rawHandle}/status/${videoId}`,
           publishedAt: now
         };
       }

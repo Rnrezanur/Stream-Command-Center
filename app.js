@@ -963,7 +963,10 @@ function switchPreviewTab(platform) {
   if ($("#mockupMeta")) {
     if (platform === "facebook") $("#mockupMeta").textContent = "Just now • 🌐 Public";
     else if (platform === "instagram") $("#mockupMeta").textContent = "Original audio • Sponsored";
-    else if (platform === "x") $("#mockupMeta").textContent = "@rezanur_live • 2m";
+    else if (platform === "x") {
+      const handle = state.dashboard?.platforms?.x?.handle || state.user?.name?.toLowerCase().replace(/\s+/g, "") || "streamer";
+      $("#mockupMeta").textContent = `@${handle.replace(/^@/, "")} • 2m`;
+    }
     else $("#mockupMeta").textContent = "Just now • Public";
   }
   updateLivePreview();
@@ -972,7 +975,7 @@ function switchPreviewTab(platform) {
 function updateLivePreview() {
   const text = uploadDesc?.value.trim() || "What's happening? Share stream news, highlights, or links...";
   const user = state.user || {};
-  const userName = user.name || "Rezanur Live";
+  const userName = user.name || "Streamer";
   const avatarLetter = userName.charAt(0).toUpperCase();
 
   if ($("#mockupName")) $("#mockupName").textContent = userName;
@@ -1542,7 +1545,7 @@ document.addEventListener("click", async (e) => {
         </div>
         <div class="form-group">
           <label class="form-label">Twitch Channel Username</label>
-          <input type="text" class="form-input" name="channel" value="${escapeHtml(pData.channel || "rezanur_live")}">
+          <input type="text" class="form-input" name="channel" placeholder="e.g. your_channel" value="${escapeHtml(pData.channel || "")}">
         </div>
         <div class="form-group">
           <label class="form-label">Stream Key</label>
@@ -1565,7 +1568,7 @@ document.addEventListener("click", async (e) => {
         </div>
         <div class="form-group">
           <label class="form-label">Facebook Page Name</label>
-          <input type="text" class="form-input" name="page" value="${escapeHtml(pData.page || "Rezanur Gaming")}">
+          <input type="text" class="form-input" name="page" placeholder="e.g. My Gaming Page" value="${escapeHtml(pData.page || "")}">
         </div>
       `;
     } else if (platform === "kick") {
@@ -1603,7 +1606,7 @@ document.addEventListener("click", async (e) => {
       bodyEl.innerHTML = `
         <div class="form-group">
           <label class="form-label">${capitalize(platform)} Account Handle</label>
-          <input type="text" class="form-input" name="handle" value="${escapeHtml(pData.handle || `@rezanur_live`)}">
+          <input type="text" class="form-input" name="handle" placeholder="e.g. @yourname" value="${escapeHtml(pData.handle || "")}">
         </div>
         <div class="form-group">
           <label class="form-label">Syndication RTMP Key</label>
