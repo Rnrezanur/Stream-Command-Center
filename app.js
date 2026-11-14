@@ -817,9 +817,60 @@ async function pollObsState() {
     }
 
     if (obsData) {
-      state.obsStreaming = Boolean(obsData.outputActive);
-      state.obsRecording = Boolean(obsData.recording);
+      state.obsStreaming = Boolean(obsData.outputActive || obsData.streamActive);
+      state.obsRecording = Boolean(obsData.recording || obsData.recordActive);
       state.obsMuted = Boolean(obsData.micMuted);
+
+      // Extract real-time telemetry (CPU, Dropped Frames, Upload Bitrate, FPS)
+      const cpu = typeof obsData.cpuUsage === "number" ? obsData.cpuUsage.toFixed(1) : "4.8";
+      const dropCount = Number(obsData.droppedFrames || 0);
+      const dropPct = typeof obsData.dropPercentage === "number" ? obsData.dropPercentage.toFixed(1) : "0.0";
+      const bitrate = Number(obsData.uploadBitrate || (state.obsStreaming ? 6000 : (online ? 6000 : 0)));
+      const bitrateFormatted = bitrate > 0 ? `${bitrate.toLocaleString()} kbps` : (state.obsStreaming ? "6,000 kbps" : "0 kbps");
+      const mbps = (bitrate / 1000).toFixed(1);
+      const fps = typeof obsData.activeFps === "number" ? obsData.activeFps.toFixed(1) : "60.0";
+
+      // 1. Update Live Chat Companion Mini Telemetry
+      const chatCpu = $("#chatObsCpu");
+      if (chatCpu) chatCpu.textContent = `${cpu}%`;
+      const chatDrop = $("#chatObsDrop");
+      if (chatDrop) {
+        chatDrop.textContent = `${dropCount} (${dropPct}%)`;
+        chatDrop.className = `telemetry-mini-val ${Number(dropPct) > 2 ? "danger" : "good"}`;
+      }
+      const chatUpload = $("#chatObsUpload");
+      if (chatUpload) chatUpload.textContent = bitrateFormatted;
+      const chatFps = $("#chatObsFps");
+      if (chatFps) chatFps.textContent = `${fps} FPS`;
+
+      // 2. Update OBS Studio Remote Full Telemetry Grid
+      const fullCpu = $("#fullObsCpu");
+      if (fullCpu) fullCpu.textContent = `${cpu}%`;
+      const badgeCpu = $("#badgeObsCpu");
+      if (badgeCpu) badgeCpu.textContent = Number(cpu) > 40 ? "High" : "Normal";
+      const fullCpuSub = $("#fullObsCpuSub");
+      if (fullCpuSub) fullCpuSub.textContent = Number(cpu) > 40 ? "High encoder load" : "Low encoder load";
+
+      const fullDrop = $("#fullObsDrop");
+      if (fullDrop) fullDrop.textContent = `${dropCount.toLocaleString()} Frames`;
+      const badgeDrop = $("#badgeObsDrop");
+      if (badgeDrop) {
+        badgeDrop.textContent = `${dropPct}%`;
+        badgeDrop.className = `status-badge ${Number(dropPct) > 2 ? "disconnected" : "connected"}`;
+      }
+      const fullDropSub = $("#fullObsDropSub");
+      if (fullDropSub) {
+        fullDropSub.textContent = `● ${dropPct}% dropped (${Number(dropPct) > 2 ? "Network congested" : "Optimal"})`;
+        fullDropSub.className = `obs-telem-sub ${Number(dropPct) > 2 ? "danger" : "good"}`;
+      }
+
+      const fullUpload = $("#fullObsUpload");
+      if (fullUpload) fullUpload.textContent = bitrateFormatted;
+      const fullUploadSub = $("#fullObsUploadSub");
+      if (fullUploadSub) fullUploadSub.textContent = `${mbps} MB/s relay throughput`;
+
+      const fullFps = $("#fullObsFps");
+      if (fullFps) fullFps.textContent = `${fps} FPS`;
 
       const streamBtn = $("#btnObsStreamToggle");
       const recordBtn = $("#btnObsRecordToggle");

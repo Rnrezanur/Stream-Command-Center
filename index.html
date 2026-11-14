@@ -446,6 +446,26 @@
               <span class="status-badge" id="chatObsStatusBadge">Ready</span>
             </div>
 
+            <!-- Live Stream Telemetry Bar (Frame Drop, Upload Speed, CPU, FPS) -->
+            <div class="obs-telemetry-mini-grid">
+              <div class="telemetry-mini-item">
+                <span class="telemetry-mini-label">Frame Drop</span>
+                <strong class="telemetry-mini-val good" id="chatObsDrop">0 (0.0%)</strong>
+              </div>
+              <div class="telemetry-mini-item">
+                <span class="telemetry-mini-label">Upload Speed</span>
+                <strong class="telemetry-mini-val" id="chatObsUpload">6,000 kbps</strong>
+              </div>
+              <div class="telemetry-mini-item">
+                <span class="telemetry-mini-label">CPU Usage</span>
+                <strong class="telemetry-mini-val" id="chatObsCpu">4.8%</strong>
+              </div>
+              <div class="telemetry-mini-item">
+                <span class="telemetry-mini-label">Framerate</span>
+                <strong class="telemetry-mini-val good" id="chatObsFps">60.0 FPS</strong>
+              </div>
+            </div>
+
             <div class="chat-obs-actions-grid">
               <button type="button" class="btn-chat-obs-action" id="btnChatObsStream" data-obs-action="stream">
                 <span class="chat-obs-icon">📡</span>
@@ -657,6 +677,45 @@
           <div style="display:flex; align-items:center; gap:10px;">
             <span class="obs-code-val" id="obsPairingCodeDisplay">PAIRING...</span>
             <button type="button" class="btn-copy-sm" id="btnRefreshPairingCode">New Code</button>
+          </div>
+        </div>
+
+        <!-- Live Stream Telemetry Grid (Frame drop, upload speed, CPU usage, FPS) -->
+        <div class="obs-telemetry-full-grid">
+          <div class="obs-telem-card">
+            <div class="obs-telem-top">
+              <span class="obs-telem-lbl">Frame Drop</span>
+              <span class="status-badge connected" id="badgeObsDrop">0.0%</span>
+            </div>
+            <strong class="obs-telem-num" id="fullObsDrop">0 Frames</strong>
+            <span class="obs-telem-sub good" id="fullObsDropSub">● 0.0% dropped (Optimal)</span>
+          </div>
+
+          <div class="obs-telem-card">
+            <div class="obs-telem-top">
+              <span class="obs-telem-lbl">Upload Speed / Bitrate</span>
+              <span class="status-badge connected" id="badgeObsUpload">Stable</span>
+            </div>
+            <strong class="obs-telem-num" id="fullObsUpload">6,000 kbps</strong>
+            <span class="obs-telem-sub" id="fullObsUploadSub">6.0 MB/s relay throughput</span>
+          </div>
+
+          <div class="obs-telem-card">
+            <div class="obs-telem-top">
+              <span class="obs-telem-lbl">CPU Usage</span>
+              <span class="status-badge connected" id="badgeObsCpu">Normal</span>
+            </div>
+            <strong class="obs-telem-num" id="fullObsCpu">4.8%</strong>
+            <span class="obs-telem-sub good" id="fullObsCpuSub">Low encoder load</span>
+          </div>
+
+          <div class="obs-telem-card">
+            <div class="obs-telem-top">
+              <span class="obs-telem-lbl">Render Framerate</span>
+              <span class="status-badge connected" id="badgeObsFps">Smooth</span>
+            </div>
+            <strong class="obs-telem-num" id="fullObsFps">60.0 FPS</strong>
+            <span class="obs-telem-sub good" id="fullObsFpsSub">Target 60 fps lock</span>
           </div>
         </div>
 

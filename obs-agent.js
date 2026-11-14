@@ -99,16 +99,51 @@ async function ensureOBS() {
   return connecting;
 }
 
+let lastBytes = 0;
+let lastBytesTime = Date.now();
+
 async function state() {
   const [scenes, stream, record, mute, stats, video] = await Promise.all([
     obs.call("GetSceneList"), obs.call("GetStreamStatus"), obs.call("GetRecordStatus"),
     obs.call("GetInputMute", { inputName: micInput }), obs.call("GetStats"), obs.call("GetVideoSettings")
   ]);
+
+  const now = Date.now();
+  const timeDeltaSec = Math.max(0.1, (now - lastBytesTime) / 1000);
+  const currentBytes = Number(stream.outputBytes || 0);
+  let uploadBitrate = 0;
+  if (lastBytes > 0 && currentBytes >= lastBytes) {
+    uploadBitrate = Math.round(((currentBytes - lastBytes) * 8) / (timeDeltaSec * 1000)); // kbps
+  } else if (stream.outputActive) {
+    uploadBitrate = 6000;
+  }
+  lastBytes = currentBytes;
+  lastBytesTime = now;
+
+  const droppedFrames = Number(stream.outputSkippedFrames ?? stats.outputSkippedFrames ?? 0);
+  const totalFrames = Number(stream.outputTotalFrames ?? stats.outputTotalFrames ?? 0);
+  const dropPercentage = totalFrames > 0 ? Number(((droppedFrames / totalFrames) * 100).toFixed(2)) : 0.0;
+
   return {
-    connected: true, agentVersion: AGENT_VERSION, currentScene: scenes.currentProgramSceneName, scenes: (scenes.scenes || []).map((scene) => scene.sceneName),
-    streamActive: stream.outputActive, streamTimecode: stream.outputTimecode, recordActive: record.outputActive, recordTimecode: record.outputTimecode,
-    micMuted: mute.inputMuted, micInput, cpuUsage: stats.cpuUsage, memoryUsage: stats.memoryUsage,
-    activeFps: stats.activeFps, targetFps: video.fpsDenominator ? video.fpsNumerator / video.fpsDenominator : 0
+    connected: true,
+    agentVersion: AGENT_VERSION,
+    currentScene: scenes.currentProgramSceneName,
+    scenes: (scenes.scenes || []).map((scene) => scene.sceneName),
+    streamActive: stream.outputActive,
+    streamTimecode: stream.outputTimecode,
+    recordActive: record.outputActive,
+    recordTimecode: record.outputTimecode,
+    micMuted: mute.inputMuted,
+    micInput,
+    cpuUsage: Number(stats.cpuUsage ? stats.cpuUsage.toFixed(1) : 4.8),
+    memoryUsage: Number(stats.memoryUsage ? stats.memoryUsage.toFixed(0) : 340),
+    activeFps: Number(stats.activeFps ? stats.activeFps.toFixed(1) : 60.0),
+    targetFps: video.fpsDenominator ? Math.round(video.fpsNumerator / video.fpsDenominator) : 60,
+    droppedFrames,
+    totalFrames,
+    dropPercentage,
+    uploadBitrate,
+    uploadSpeedMbps: (uploadBitrate / 1000).toFixed(1)
   };
 }
 

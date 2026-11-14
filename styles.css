@@ -734,6 +734,46 @@ a {
   letter-spacing: -0.01em;
 }
 
+/* Live Chat Mini Telemetry Grid */
+.obs-telemetry-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.telemetry-mini-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.telemetry-mini-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.telemetry-mini-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-mono);
+}
+
+.telemetry-mini-val.good {
+  color: var(--accent);
+}
+
+.telemetry-mini-val.danger {
+  color: var(--danger);
+}
+
 .chat-obs-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1593,6 +1633,58 @@ a {
   letter-spacing: 0.1em;
 }
 
+/* OBS Studio Full Telemetry Grid */
+.obs-telemetry-full-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.obs-telem-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.obs-telem-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.obs-telem-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.obs-telem-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+.obs-telem-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.obs-telem-sub.good {
+  color: var(--accent);
+}
+
+.obs-telem-sub.danger {
+  color: var(--danger);
+}
+
 .obs-big-controls {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1931,7 +2023,59 @@ a {
   .scene-btns-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .obs-big-controls {
+  /* OBS Studio Full Telemetry Grid */
+.obs-telemetry-full-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.obs-telem-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.obs-telem-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.obs-telem-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.obs-telem-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+.obs-telem-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.obs-telem-sub.good {
+  color: var(--accent);
+}
+
+.obs-telem-sub.danger {
+  color: var(--danger);
+}
+
+.obs-big-controls {
     grid-template-columns: 1fr;
   }
   .chat-companion-sidebar {
