@@ -845,7 +845,7 @@ a {
 
 /* Chat Filter Bar */
 .chat-filter-bar {
-  padding: 12px 18px;
+  padding: 10px 18px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-subtle);
   display: flex;
@@ -853,6 +853,22 @@ a {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.chat-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .chat-filter-pills {
@@ -863,7 +879,7 @@ a {
 }
 
 .chat-filter-pill {
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
@@ -871,6 +887,10 @@ a {
   background: var(--card);
   border: 1px solid var(--border);
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
 .chat-filter-pill:hover {
@@ -879,9 +899,91 @@ a {
 }
 
 .chat-filter-pill.active {
+  background: var(--card-elevated);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.chat-filter-pill[data-filter="all"].active {
   background: #fff;
   color: #0b0f17;
   border-color: #fff;
+}
+
+.plat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
+.plat-dot.youtube { background: var(--color-yt); }
+.plat-dot.twitch { background: var(--color-twitch); }
+.plat-dot.facebook { background: var(--color-fb); }
+.plat-dot.tiktok { background: var(--color-tiktok); }
+.plat-dot.instagram { background: var(--color-ig); }
+.plat-dot.x { background: var(--color-x); }
+
+.filter-count {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.chat-filter-pill.active .filter-count {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.chat-filter-pill[data-filter="all"].active .filter-count {
+  background: rgba(0, 0, 0, 0.15);
+  color: #0b0f17;
+}
+
+.chat-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chat-search-input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #fff;
+  outline: none;
+  width: 190px;
+  transition: all 0.15s ease;
+}
+
+.chat-search-input:focus {
+  border-color: var(--accent);
+  width: 220px;
+}
+
+.btn-clear-filters {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-clear-filters:hover {
+  color: #fff;
+  border-color: var(--border-hover);
+  background: var(--card-hover);
 }
 
 /* Pinned Comment Banner */

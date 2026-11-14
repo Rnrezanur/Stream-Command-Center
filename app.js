@@ -10,7 +10,8 @@ const state = {
   user: null,
   dashboard: null,
   activeTab: "overview",
-  chatFilter: "all",
+  selectedPlatforms: new Set(["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]),
+  chatSearchQuery: "",
   replyTarget: null,
   pollTimer: null,
   obsTimer: null,
@@ -356,20 +357,67 @@ function renderChatComments(comments) {
   const countBadge = $("#chatCountBadge");
   if (!feed) return;
 
-  const filtered = state.chatFilter === "all"
-    ? comments
-    : comments.filter((c) => c.platform === state.chatFilter);
+  const allPlatforms = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
 
+  // Calculate per-platform counts
+  const counts = { all: comments.length };
+  allPlatforms.forEach((p) => (counts[p] = 0));
+  comments.forEach((c) => {
+    const p = c.platform || "youtube";
+    if (counts[p] !== undefined) counts[p]++;
+  });
+
+  // Update count indicators in filter bar
   if (countSpan) countSpan.textContent = comments.length;
   if (countBadge) countBadge.textContent = comments.length;
+  const filterAllCount = $("#filterCount_all");
+  if (filterAllCount) filterAllCount.textContent = comments.length;
+  allPlatforms.forEach((p) => {
+    const el = $(`#filterCount_${p}`);
+    if (el) el.textContent = counts[p] || 0;
+  });
+
+  // Update active styling on filter pills
+  const allSelected = allPlatforms.every((p) => state.selectedPlatforms.has(p));
+  const allPill = $(`.chat-filter-pill[data-filter="all"]`);
+  if (allPill) allPill.classList.toggle("active", allSelected);
+
+  allPlatforms.forEach((p) => {
+    const pill = $(`.chat-filter-pill[data-filter="${p}"]`);
+    if (pill) pill.classList.toggle("active", state.selectedPlatforms.has(p));
+  });
+
+  // Filter comments by selected platforms
+  let filtered = comments.filter((c) => {
+    const p = c.platform || "youtube";
+    return state.selectedPlatforms.has(p);
+  });
+
+  // Filter comments by search query
+  if (state.chatSearchQuery) {
+    const q = state.chatSearchQuery.toLowerCase();
+    filtered = filtered.filter((c) =>
+      (c.author && c.author.toLowerCase().includes(q)) ||
+      (c.message && c.message.toLowerCase().includes(q))
+    );
+  }
 
   if (filtered.length === 0) {
-    feed.innerHTML = `
-      <div class="empty-chat-state">
-        <div class="empty-chat-icon">💬</div>
-        <h3>Unified Chat Stream Ready</h3>
-        <p>When you go live on YouTube, Twitch, Facebook, TikTok, Instagram or X, comments from viewers will stream here instantly.</p>
-      </div>`;
+    if (comments.length > 0) {
+      feed.innerHTML = `
+        <div class="empty-chat-state">
+          <div class="empty-chat-icon">🔍</div>
+          <h3>No Comments Found</h3>
+          <p>No comments match your active platform filter or search. Click "Select All" above to view comments across all 6 networks.</p>
+        </div>`;
+    } else {
+      feed.innerHTML = `
+        <div class="empty-chat-state">
+          <div class="empty-chat-icon">💬</div>
+          <h3>Unified Chat Stream Ready</h3>
+          <p>When you start broadcasting or viewers comment on YouTube, Twitch, Facebook, TikTok, Instagram or X, messages will appear here in real time.</p>
+        </div>`;
+    }
     return;
   }
 
@@ -417,16 +465,57 @@ function renderPinnedComment(pinned) {
   }
 }
 
-// Chat Platform Filters
+// Chat Platform Filter Click
 $("#chatFilters")?.addEventListener("click", (e) => {
   const pill = e.target.closest(".chat-filter-pill");
-  if (pill && pill.dataset.filter) {
-    $$(".chat-filter-pill").forEach((p) => p.classList.remove("active"));
-    pill.classList.add("active");
-    state.chatFilter = pill.dataset.filter;
-    if (state.dashboard?.comments) {
-      renderChatComments(state.dashboard.comments);
+  if (!pill || !pill.dataset.filter) return;
+  const target = pill.dataset.filter;
+  const allPlatforms = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
+
+  if (target === "all") {
+    // Select all 6 platforms
+    allPlatforms.forEach((p) => state.selectedPlatforms.add(p));
+  } else {
+    const allSelected = allPlatforms.every((p) => state.selectedPlatforms.has(p));
+    if (allSelected) {
+      // If currently all are selected, isolate to the clicked platform (instant focus mode!)
+      state.selectedPlatforms.clear();
+      state.selectedPlatforms.add(target);
+    } else {
+      // Toggle this platform in or out of the set
+      if (state.selectedPlatforms.has(target)) {
+        state.selectedPlatforms.delete(target);
+        // If nothing is left selected, reset to all
+        if (state.selectedPlatforms.size === 0) {
+          allPlatforms.forEach((p) => state.selectedPlatforms.add(p));
+        }
+      } else {
+        state.selectedPlatforms.add(target);
+      }
     }
+  }
+
+  if (state.dashboard?.comments) {
+    renderChatComments(state.dashboard.comments);
+  }
+});
+
+// "Select All" Button
+$("#btnSelectAllFilters")?.addEventListener("click", () => {
+  ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"].forEach((p) => state.selectedPlatforms.add(p));
+  state.chatSearchQuery = "";
+  const searchInput = $("#chatSearchInput");
+  if (searchInput) searchInput.value = "";
+  if (state.dashboard?.comments) {
+    renderChatComments(state.dashboard.comments);
+  }
+});
+
+// Search comments or @user input
+$("#chatSearchInput")?.addEventListener("input", (e) => {
+  state.chatSearchQuery = e.target.value.trim();
+  if (state.dashboard?.comments) {
+    renderChatComments(state.dashboard.comments);
   }
 });
 

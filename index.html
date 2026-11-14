@@ -353,14 +353,49 @@
         <div class="chat-container">
           <!-- Filter Tabs -->
           <div class="chat-filter-bar">
-            <div class="chat-filter-pills" id="chatFilters">
-              <button type="button" class="chat-filter-pill active" data-filter="all">All Comments (<span id="chatCountSpan">0</span>)</button>
-              <button type="button" class="chat-filter-pill" data-filter="youtube">YouTube</button>
-              <button type="button" class="chat-filter-pill" data-filter="twitch">Twitch</button>
-              <button type="button" class="chat-filter-pill" data-filter="facebook">Facebook</button>
-              <button type="button" class="chat-filter-pill" data-filter="tiktok">TikTok</button>
-              <button type="button" class="chat-filter-pill" data-filter="instagram">Instagram</button>
-              <button type="button" class="chat-filter-pill" data-filter="x">X</button>
+            <div class="chat-filter-left">
+              <span class="chat-filter-label">Filter Platforms:</span>
+              <div class="chat-filter-pills" id="chatFilters">
+                <button type="button" class="chat-filter-pill active" data-filter="all">
+                  <span>All</span>
+                  <span class="filter-count" id="filterCount_all">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="youtube">
+                  <span class="plat-dot youtube"></span>
+                  <span>YouTube</span>
+                  <span class="filter-count" id="filterCount_youtube">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="twitch">
+                  <span class="plat-dot twitch"></span>
+                  <span>Twitch</span>
+                  <span class="filter-count" id="filterCount_twitch">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="facebook">
+                  <span class="plat-dot facebook"></span>
+                  <span>Facebook</span>
+                  <span class="filter-count" id="filterCount_facebook">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="tiktok">
+                  <span class="plat-dot tiktok"></span>
+                  <span>TikTok</span>
+                  <span class="filter-count" id="filterCount_tiktok">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="instagram">
+                  <span class="plat-dot instagram"></span>
+                  <span>Instagram</span>
+                  <span class="filter-count" id="filterCount_instagram">0</span>
+                </button>
+                <button type="button" class="chat-filter-pill active" data-filter="x">
+                  <span class="plat-dot x"></span>
+                  <span>X</span>
+                  <span class="filter-count" id="filterCount_x">0</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="chat-filter-right">
+              <input type="text" class="chat-search-input" id="chatSearchInput" placeholder="Search comments or @user..." autocomplete="off">
+              <button type="button" class="btn-clear-filters" id="btnSelectAllFilters" title="Select all platforms">Select All</button>
             </div>
           </div>
 
