@@ -433,14 +433,29 @@ document.addEventListener("click", async (e) => {
     showToast("Redirecting to Instagram / Meta OAuth 2.0...");
     window.location.href = "/auth/instagram";
   } else if (platform === "x") {
-    showToast("Redirecting to X (Twitter) OAuth 2.0...");
-    window.location.href = "/auth/x";
+    if (state.dashboard?.oauthConfigured?.x) {
+      showToast("Redirecting to X (Twitter) OAuth 2.0...");
+      window.location.href = "/auth/x";
+    } else {
+      openPlatformConfigModal("x");
+      showToast("Enter your X handle or Developer Client ID to connect.");
+    }
   } else if (platform === "tiktok") {
-    showToast("Redirecting to TikTok OAuth 2.0...");
-    window.location.href = "/auth/tiktok";
+    if (state.dashboard?.oauthConfigured?.tiktok) {
+      showToast("Redirecting to TikTok OAuth 2.0...");
+      window.location.href = "/auth/tiktok";
+    } else {
+      openPlatformConfigModal("tiktok");
+      showToast("Enter your TikTok handle or Developer Client Key to connect.");
+    }
   } else if (platform === "twitch") {
-    showToast("Redirecting to Twitch OAuth 2.0...");
-    window.location.href = "/auth/twitch";
+    if (state.dashboard?.oauthConfigured?.twitch) {
+      showToast("Redirecting to Twitch OAuth 2.0...");
+      window.location.href = "/auth/twitch";
+    } else {
+      openPlatformConfigModal("twitch");
+      showToast("Enter your Twitch username or Developer Client ID to connect.");
+    }
   } else if (platform === "kick") {
     const ch = prompt("Enter your Kick channel username (e.g. xqc, ninja, or your channel):");
     if (!ch || !ch.trim()) return;
@@ -1484,10 +1499,7 @@ $("#profileForm")?.addEventListener("submit", async (e) => {
 });
 
 // Platform Configure Modal
-document.addEventListener("click", async (e) => {
-  const cfgBtn = e.target.closest('[data-action="configure"]');
-  if (!cfgBtn) return;
-  const platform = cfgBtn.dataset.platform;
+async function openPlatformConfigModal(platform) {
   $("#cfgPlatformKey").value = platform;
   $("#platformModalTitle").textContent = `Configure ${capitalize(platform)}`;
 
@@ -1498,13 +1510,14 @@ document.addEventListener("click", async (e) => {
   try {
     const { settings } = await api("/api/settings");
     const pData = settings[platform] || {};
+    const isOAuthConfigured = Boolean(state.dashboard?.oauthConfigured?.[platform]);
 
     if (platform === "youtube") {
-      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.refreshToken || pData.accountName));
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.refreshToken || pData.accountName));
       bodyEl.innerHTML = `
         <div class="oauth-card">
           <div class="oauth-header">
-            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click Google OAuth 2.0</span>
             ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.accountName || pData.channel || "YouTube")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
           <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with your Google account to automatically stream &amp; ingest YouTube live chat comments in real time.</p>
@@ -1523,18 +1536,24 @@ document.addEventListener("click", async (e) => {
         </div>
       `;
     } else if (platform === "twitch") {
-      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.refreshToken || pData.channel));
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.refreshToken || pData.channel));
       bodyEl.innerHTML = `
         <div class="oauth-card">
           <div class="oauth-header">
-            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click Twitch OAuth 2.0</span>
             ${isConnected ? `<span class="oauth-user-badge">● Connected: @${escapeHtml(pData.accountName || pData.channel || "Twitch")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
           <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Twitch OAuth to connect live stream IRC chat &amp; badges without manual keys.</p>
-          <a href="/auth/twitch" class="btn-oauth twitch">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-            <span>${isConnected ? "Reconnect Twitch with OAuth 2.0" : "Connect with Twitch (OAuth 2.0)"}</span>
-          </a>
+          ${isOAuthConfigured ? `
+            <a href="/auth/twitch" class="btn-oauth twitch">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+              <span>${isConnected ? "Reconnect Twitch with OAuth 2.0" : "Connect with Twitch (OAuth 2.0)"}</span>
+            </a>
+          ` : `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:10px; margin-top:8px; font-size:12px; color:var(--text-muted); line-height:1.4;">
+              💡 <strong>Quick Connect:</strong> Enter your Twitch channel username below to connect live chat and stream stats!
+            </div>
+          `}
         </div>
         <div class="form-group">
           <label class="form-label">Twitch Channel Username</label>
@@ -1546,11 +1565,11 @@ document.addEventListener("click", async (e) => {
         </div>
       `;
     } else if (platform === "facebook") {
-      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.pageAccessToken || pData.page));
+      const isConnected = Boolean(pData.autoConnected && (pData.accessToken || pData.accessTokenSaved || pData.pageAccessToken || pData.page));
       bodyEl.innerHTML = `
         <div class="oauth-card">
           <div class="oauth-header">
-            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click OAuth 2.0</span>
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">1-Click Meta OAuth 2.0</span>
             ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.pageName || pData.page || "Facebook Page")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
           <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with Meta to automatically select your Page and sync Facebook Live video comments.</p>
@@ -1623,21 +1642,27 @@ document.addEventListener("click", async (e) => {
             ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.handle || pData.accountName || "X Account")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
           <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize directly with X to publish live tweets, status updates, and broadcast streams automatically.</p>
-          <a href="/auth/x" class="btn-oauth x">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            <span>${isConnected ? "Reconnect X (Twitter) with OAuth 2.0" : "Connect with X (Twitter OAuth 2.0)"}</span>
-          </a>
+          ${isOAuthConfigured ? `
+            <a href="/auth/x" class="btn-oauth x">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              <span>${isConnected ? "Reconnect X (Twitter) with OAuth 2.0" : "Connect with X (Twitter OAuth 2.0)"}</span>
+            </a>
+          ` : `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:10px; margin-top:8px; font-size:12px; color:var(--text-muted); line-height:1.4;">
+              💡 <strong>Quick Connect:</strong> Enter your X handle (@username) below to connect immediately! Or add your X Developer <code>Client ID</code> to enable 1-Click OAuth login.
+            </div>
+          `}
         </div>
         <div class="form-group">
-          <label class="form-label">X Handle / Username</label>
+          <label class="form-label">X Handle / Username (@username)</label>
           <input type="text" class="form-input" name="handle" placeholder="e.g. @username" value="${escapeHtml(pData.handle || "")}">
         </div>
         <div class="form-group">
-          <label class="form-label">Client ID (OAuth 2.0) <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <label class="form-label">Client ID (OAuth 2.0) <small style="color:var(--text-faint); font-weight:normal;">(optional, from developer.x.com)</small></label>
           <input type="text" class="form-input" name="clientId" placeholder="Twitter Developer Client ID" value="${escapeHtml(pData.clientId || "")}">
         </div>
         <div class="form-group">
-          <label class="form-label">Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional for PKCE public clients)</small></label>
+          <label class="form-label">Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional for PKCE)</small></label>
           <input type="password" class="form-input" name="clientSecret" placeholder="••••••••" value="${escapeHtml(pData.clientSecret || "")}">
         </div>
       `;
@@ -1650,21 +1675,27 @@ document.addEventListener("click", async (e) => {
             ${isConnected ? `<span class="oauth-user-badge">● Connected: ${escapeHtml(pData.handle || pData.accountName || "TikTok Account")}</span>` : `<span style="font-size:11px; color:var(--text-faint);">Not Connected</span>`}
           </div>
           <p style="font-size:12px; color:var(--text-muted); margin:0;">Authorize with TikTok Login Kit v2 to publish videos, stories, and sync creator status.</p>
-          <a href="/auth/tiktok" class="btn-oauth tiktok">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298 0 .59.043.87.126V9.4a6.34 6.34 0 0 0-.87-.06 6.34 6.34 0 1 0 6.34 6.33V8.34a8.28 8.28 0 0 0 4.84 1.56V6.45a4.83 4.83 0 0 1-1.07-.32z"/></svg>
-            <span>${isConnected ? "Reconnect TikTok with OAuth 2.0" : "Connect with TikTok (OAuth 2.0)"}</span>
-          </a>
+          ${isOAuthConfigured ? `
+            <a href="/auth/tiktok" class="btn-oauth tiktok">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298 0 .59.043.87.126V9.4a6.34 6.34 0 0 0-.87-.06 6.34 6.34 0 1 0 6.34 6.33V8.34a8.28 8.28 0 0 0 4.84 1.56V6.45a4.83 4.83 0 0 1-1.07-.32z"/></svg>
+              <span>${isConnected ? "Reconnect TikTok with OAuth 2.0" : "Connect with TikTok (OAuth 2.0)"}</span>
+            </a>
+          ` : `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:10px; margin-top:8px; font-size:12px; color:var(--text-muted); line-height:1.4;">
+              💡 <strong>Quick Connect:</strong> Enter your TikTok handle (@username) below to connect immediately! Or add your TikTok Developer <code>Client Key</code> to enable 1-Click OAuth login.
+            </div>
+          `}
         </div>
         <div class="form-group">
-          <label class="form-label">TikTok Creator Handle</label>
+          <label class="form-label">TikTok Creator Handle (@username)</label>
           <input type="text" class="form-input" name="handle" placeholder="e.g. @yourtiktok" value="${escapeHtml(pData.handle || "")}">
         </div>
         <div class="form-group">
-          <label class="form-label">TikTok Client Key <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <label class="form-label">TikTok Client Key <small style="color:var(--text-faint); font-weight:normal;">(optional, from developers.tiktok.com)</small></label>
           <input type="text" class="form-input" name="clientKey" placeholder="awxxxxxxxxxxxxxx" value="${escapeHtml(pData.clientKey || "")}">
         </div>
         <div class="form-group">
-          <label class="form-label">TikTok Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional if set in env)</small></label>
+          <label class="form-label">TikTok Client Secret <small style="color:var(--text-faint); font-weight:normal;">(optional)</small></label>
           <input type="password" class="form-input" name="clientSecret" placeholder="••••••••" value="${escapeHtml(pData.clientSecret || "")}">
         </div>
       `;
@@ -1683,6 +1714,14 @@ document.addEventListener("click", async (e) => {
   } catch (err) {
     bodyEl.innerHTML = `<div style="color:var(--danger); padding:10px;">Failed to load settings: ${escapeHtml(err.message)}</div>`;
   }
+}
+
+// Click configure buttons
+document.addEventListener("click", async (e) => {
+  const cfgBtn = e.target.closest('[data-action="configure"]');
+  if (cfgBtn) {
+    openPlatformConfigModal(cfgBtn.dataset.platform);
+  }
 });
 
 // Save Platform Config Form Submit
@@ -1696,12 +1735,20 @@ $("#platformConfigForm")?.addEventListener("submit", async (e) => {
     if (key !== "cfgPlatformKey") patch[key] = value.trim();
   });
 
+  // If user entered a handle, channel, page, or key, automatically set autoConnected = true
+  if (patch.handle || patch.channel || patch.page || patch.clientId || patch.clientKey) {
+    patch.autoConnected = true;
+    if (patch.handle && !patch.accountName) patch.accountName = patch.handle;
+    if (patch.channel && !patch.accountName) patch.accountName = patch.channel;
+    if (patch.page && !patch.accountName) patch.accountName = patch.page;
+  }
+
   try {
     const { settings } = await api("/api/settings");
     settings[platform] = { ...(settings[platform] || {}), ...patch };
     await api("/api/settings", { method: "PUT", body: JSON.stringify(settings) });
     closeModal("platformModal");
-    showToast(`Saved settings for ${capitalize(platform)}`);
+    showToast(`✓ Connected & saved settings for ${capitalize(platform)}`);
     refreshDashboard();
   } catch (err) {
     showToast(err.message);

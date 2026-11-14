@@ -822,8 +822,18 @@ async function dashboard(user, req = null, res = null) {
 
   dedupedComments.sort((a, b) => new Date(b.timestamp || b.time || 0) - new Date(a.timestamp || a.time || 0));
   const userAlerts = getUserAlertsState(user.id);
+  const oauthConfigured = {
+    youtube: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
+    twitch: Boolean(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET),
+    facebook: Boolean((process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID) && (process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)),
+    instagram: Boolean((process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID) && (process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)),
+    x: Boolean(process.env.TWITTER_CLIENT_ID || process.env.X_CLIENT_ID || settings.x?.clientId),
+    tiktok: Boolean(process.env.TIKTOK_CLIENT_KEY || settings.tiktok?.clientKey),
+    kick: true
+  };
   return {
     platforms,
+    oauthConfigured,
     comments: dedupedComments.slice(0, 200),
     pinnedComment: aggChat.pinnedComment || userChat.pinnedComment || null,
     totalViewers: Object.values(platforms).reduce((sum, item) => sum + (Number(item.viewers) || 0), 0),
