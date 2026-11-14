@@ -9,8 +9,15 @@ let signedInUser = null;
 let dashboardTimer = null;
 let remoteObsTimer = null;
 let lastRenderedChatHtml = "";
+let currentReplyTarget = null;
+let currentPinnedComment = null;
 const REQUIRED_AGENT_VERSION = "20260610-7";
 const pendingOBS = new Map();
+
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 function showToast(message) {
   toast.textContent = message;
@@ -414,11 +421,21 @@ function renderDashboard(data) {
   const countEl = $("#commentCount");
   if (countEl) countEl.textContent = comments.length;
 
+  // Update pinned comment
+  if (data.pinnedComment !== undefined) {
+    currentPinnedComment = data.pinnedComment;
+    renderPinnedBox(currentPinnedComment);
+  }
+
   const chatFeed = $("#chatFeed");
   if (chatFeed) {
     const nextHtml = comments.length
       ? comments.map(renderComment).join("")
-      : `<p class="empty-state">${signedInUser ? "Broadcasting live! Comments will flow here automatically." : "Sign in to monitor live chat."}</p>`;
+      : `<div class="empty-state-chat">
+          <div class="empty-state-icon">💬</div>
+          <strong>Chat Stream Ready</strong>
+          <p>When you go live on Facebook, YouTube, or Twitch, comments from your viewers will appear here in real time. Click Reply to answer on that platform, or Pin to spotlight a message.</p>
+        </div>`;
     if (nextHtml !== lastRenderedChatHtml) {
       chatFeed.innerHTML = nextHtml;
       lastRenderedChatHtml = nextHtml;
@@ -427,13 +444,91 @@ function renderDashboard(data) {
   }
 }
 
+function setReplyTarget(target) {
+  currentReplyTarget = target;
+  const bar = $("#replyTargetBar");
+  const authorEl = $("#replyTargetAuthor");
+  const platEl = $("#replyTargetPlatform");
+  const bcastBar = $("#broadcastTargetBar");
+  const input = $("#chatInput");
+
+  if (target) {
+    if (bar) bar.style.display = "flex";
+    if (bcastBar) bcastBar.style.display = "none";
+    if (authorEl) authorEl.textContent = `@${target.author}`;
+    if (platEl) {
+      platEl.textContent = target.platform.toUpperCase();
+      platEl.className = `reply-plat-pill ${target.platform}`;
+    }
+    if (input) {
+      input.placeholder = `Reply to @${target.author} on ${capitalize(target.platform)}...`;
+      input.focus();
+    }
+  } else {
+    if (bar) bar.style.display = "none";
+    if (bcastBar) bcastBar.style.display = "flex";
+    if (input) {
+      input.placeholder = "Send message to YouTube, Twitch, Facebook...";
+    }
+  }
+}
+
+async function pinComment(comment) {
+  currentPinnedComment = comment;
+  renderPinnedBox(comment);
+  showToast(`📌 Pinned message from ${capitalize(comment.platform)}`);
+  try {
+    await api("/api/chat/pin", { method: "POST", body: JSON.stringify({ comment }) });
+  } catch (_) {}
+}
+
+async function unpinComment() {
+  currentPinnedComment = null;
+  renderPinnedBox(null);
+  showToast("Unpinned message");
+  try {
+    await api("/api/chat/pin", { method: "POST", body: JSON.stringify({ comment: null }) });
+  } catch (_) {}
+}
+
+function renderPinnedBox(pinned) {
+  const box = $("#chatPinnedBox");
+  if (!box) return;
+  if (!pinned) {
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  const platform = ["youtube", "twitch", "facebook"].includes(pinned.platform) ? pinned.platform : "facebook";
+  box.style.display = "";
+  box.innerHTML = `
+    <div class="pinned-card ${platform}">
+      <div class="pinned-header">
+        <span class="pinned-badge">
+          <svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 2v8m-7 4 3-3V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6l3 3v2H5v-2Zm7 4v6"/></svg>
+          <span>Pinned from ${platform.toUpperCase()}</span>
+        </span>
+        <button type="button" class="btn-unpin-comment" id="btnUnpinComment" title="Unpin message">&times;</button>
+      </div>
+      <div class="pinned-body">
+        <strong class="pinned-author">@${escapeHtml(pinned.author)}</strong>
+        <p class="pinned-text">${escapeHtml(pinned.message)}</p>
+      </div>
+      <button type="button" class="btn-pinned-reply" id="btnPinnedReply">
+        <span>↳ Reply on ${capitalize(platform)}</span>
+      </button>
+    </div>
+  `;
+}
+
 function renderComment(comment) {
   const platform = ["youtube", "twitch", "facebook"].includes(comment.platform) ? comment.platform : "youtube";
   const age = comment.time ? new Date(comment.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "now";
   const isHost = Boolean(comment.isHost);
   const avatarBg = platform === "youtube" ? "var(--youtube)" : platform === "twitch" ? "var(--twitch)" : "var(--facebook)";
+  const replyTag = comment.replyTo ? `<span class="reply-tag">↳ @${escapeHtml(comment.replyTo.author)}</span>` : "";
 
-  return `<article class="comment ${isHost ? "is-host" : ""}" data-platform="${platform}">
+  return `<article class="comment ${isHost ? "is-host" : ""}" data-id="${escapeHtml(comment.id || "")}" data-platform="${platform}" data-author="${escapeHtml(comment.author || "Viewer")}" data-message="${escapeHtml(comment.message || "")}">
     <div class="comment-avatar" style="background:${avatarBg}">
       ${escapeHtml(initials(comment.author || "?"))}
     </div>
@@ -442,9 +537,20 @@ function renderComment(comment) {
         <strong>${escapeHtml(comment.author || "Viewer")}</strong>
         <span class="tag ${platform}-tag">${escapeHtml(platform)}</span>
         ${isHost ? '<span class="tag host-tag">HOST</span>' : ''}
+        ${replyTag}
         <time>${escapeHtml(age)}</time>
       </div>
       <p>${escapeHtml(comment.message || "")}</p>
+      <div class="comment-actions">
+        <button type="button" class="btn-comment-reply" data-action="reply" title="Reply on ${capitalize(platform)}">
+          <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v1.5"/></svg>
+          <span>Reply</span>
+        </button>
+        <button type="button" class="btn-comment-pin" data-action="pin" title="Pin message">
+          <svg viewBox="0 0 24 24"><path d="M12 2v8m-7 4 3-3V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6l3 3v2H5v-2Zm7 4v6"/></svg>
+          <span>Pin</span>
+        </button>
+      </div>
     </div>
   </article>`;
 }
@@ -578,36 +684,114 @@ $("#sceneGrid")?.addEventListener("click", async (event) => {
   }
 });
 
-// 2. CHAT SEND WITH ZERO DELAY (OPTIMISTIC)
+// 2. CHAT SEND & REPLY (PLATFORM-AWARE)
 $("#chatForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = $("#chatInput");
   const message = input.value.trim();
   if (!message) return;
 
-  const filter = $("#chatFilters button.active")?.dataset.filter || "all";
-  const platforms = filter === "all" ? ["youtube", "twitch", "facebook"] : [filter];
-
   input.value = "";
+
+  const replyTarget = currentReplyTarget;
+  const filter = $("#chatFilters button.active")?.dataset.filter || "all";
+  const platform = replyTarget ? replyTarget.platform : (filter === "all" ? "facebook" : filter);
+  const platforms = replyTarget ? [replyTarget.platform] : (filter === "all" ? ["youtube", "twitch", "facebook"] : [filter]);
+
   // Optimistic instant append
   const instant = {
     id: "usr_" + Date.now(),
-    platform: platforms[0],
+    platform,
     author: signedInUser ? signedInUser.name : "Streamer (You)",
     message,
     time: new Date().toISOString(),
-    isHost: true
+    isHost: true,
+    replyTo: replyTarget ? {
+      id: replyTarget.id,
+      author: replyTarget.author,
+      platform
+    } : null
   };
+
   const feed = $("#chatFeed");
-  const empty = feed.querySelector(".empty-state");
+  const empty = feed.querySelector(".empty-state, .empty-state-chat");
   if (empty) empty.remove();
   lastRenderedChatHtml = "";
   feed.insertAdjacentHTML("afterbegin", renderComment(instant));
   applyChatFilter();
 
+  if (replyTarget) {
+    showToast(`↳ Replied to @${replyTarget.author} on ${capitalize(replyTarget.platform)}`);
+    setReplyTarget(null);
+  }
+
   try {
-    await api("/api/chat/send", { method: "POST", body: JSON.stringify({ message, platforms }) });
-  } catch (_) {}
+    await api("/api/chat/send", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        platforms,
+        platform: replyTarget ? replyTarget.platform : undefined,
+        replyToCommentId: replyTarget ? replyTarget.id : undefined,
+        replyToAuthor: replyTarget ? replyTarget.author : undefined
+      })
+    });
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+// CHAT COMMENT INTERACTIONS (REPLY & PIN)
+$("#chatFeed")?.addEventListener("click", (e) => {
+  const replyBtn = e.target.closest(".btn-comment-reply");
+  if (replyBtn) {
+    const commentEl = replyBtn.closest(".comment");
+    if (!commentEl) return;
+    setReplyTarget({
+      id: commentEl.dataset.id,
+      author: commentEl.dataset.author,
+      platform: commentEl.dataset.platform
+    });
+    return;
+  }
+
+  const pinBtn = e.target.closest(".btn-comment-pin");
+  if (pinBtn) {
+    const commentEl = pinBtn.closest(".comment");
+    if (!commentEl) return;
+    pinComment({
+      id: commentEl.dataset.id,
+      author: commentEl.dataset.author,
+      platform: commentEl.dataset.platform,
+      message: commentEl.dataset.message,
+      time: new Date().toISOString()
+    });
+    return;
+  }
+});
+
+$("#btnCancelReply")?.addEventListener("click", () => setReplyTarget(null));
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && currentReplyTarget) {
+    setReplyTarget(null);
+  }
+});
+
+$("#chatPinnedBox")?.addEventListener("click", (e) => {
+  if (e.target.closest("#btnUnpinComment")) {
+    unpinComment();
+    return;
+  }
+  if (e.target.closest("#btnPinnedReply")) {
+    if (currentPinnedComment) {
+      setReplyTarget({
+        id: currentPinnedComment.id,
+        author: currentPinnedComment.author,
+        platform: currentPinnedComment.platform
+      });
+    }
+  }
 });
 
 // 3. CHAT FILTERS

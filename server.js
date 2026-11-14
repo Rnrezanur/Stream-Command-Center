@@ -330,98 +330,109 @@ async function getYouTubeLiveChatId(settings) {
   return { liveChatId, videoId };
 }
 
-const livePlatformState = {
-  activeComments: [
-    { id: "c1", platform: "youtube", author: "AlexStreamer", message: "Audio sounds super crisp today! 🎧", time: new Date(Date.now() - 32000).toISOString() },
-    { id: "c2", platform: "twitch", author: "pixel_samurai", message: "LETS GOOOOO! That transition was fire 🔥", time: new Date(Date.now() - 25000).toISOString() },
-    { id: "c3", platform: "facebook", author: "Sarah Jenkins", message: "Hello from California! Loving the stream 🌟", time: new Date(Date.now() - 18000).toISOString() },
-    { id: "c4", platform: "twitch", author: "CyberNinja99", message: "PogChamp !what game is after this?", time: new Date(Date.now() - 11000).toISOString() },
-    { id: "c5", platform: "youtube", author: "TechVibes", message: "Bitrate looking rock solid at 60fps! 🚀", time: new Date(Date.now() - 4000).toISOString() }
-  ],
-  sampleAuthors: [
-    { name: "VortexGamer", platform: "twitch" },
-    { name: "Mia_Plays", platform: "youtube" },
-    { name: "JordanK", platform: "facebook" },
-    { name: "NovaStrike", platform: "twitch" },
-    { name: "StreamFanatic", platform: "youtube" },
-    { name: "RetroGamer88", platform: "twitch" },
-    { name: "David_C", platform: "facebook" },
-    { name: "ApexLegend", platform: "youtube" }
-  ],
-  sampleMessages: [
-    "GG!! That was insane!",
-    "Can you turn desktop audio up a tiny bit?",
-    "W stream as always!",
-    "Hype in the chat! 🎉",
-    "Clip that moment right now! 🎬",
-    "Stream Command Center is looking so clean 🔥",
-    "What GPU are you encoding on?",
-    "Greetings everyone in the chat! 👋",
-    "That scene switch was so smooth",
-    "Subbed and liked the stream! ❤️"
-  ]
-};
+const userChatState = new Map(); // userId -> { comments: [], pinnedComment: null }
 
-function tickSimulatedComments() {
-  const now = Date.now();
-  if (Math.random() < 0.65) {
-    const authorObj = livePlatformState.sampleAuthors[Math.floor(Math.random() * livePlatformState.sampleAuthors.length)];
-    const msg = livePlatformState.sampleMessages[Math.floor(Math.random() * livePlatformState.sampleMessages.length)];
-    livePlatformState.activeComments.unshift({
-      id: "sim_" + now + "_" + Math.floor(Math.random() * 1000),
-      platform: authorObj.platform,
-      author: authorObj.name,
-      message: msg,
-      time: new Date(now).toISOString()
-    });
-    if (livePlatformState.activeComments.length > 100) {
-      livePlatformState.activeComments.pop();
-    }
+function getUserChatState(userId) {
+  if (!userChatState.has(userId)) {
+    userChatState.set(userId, { comments: [], pinnedComment: null });
   }
+  return userChatState.get(userId);
 }
-setInterval(tickSimulatedComments, 3500);
 
 async function getYouTube(settings) {
-  if (settings.autoConnected !== false) {
-    const viewers = Math.max(120, Math.round(1450 + Math.sin(Date.now() / 12000) * 110 + (Math.random() * 20 - 10)));
-    const comments = livePlatformState.activeComments.filter((c) => c.platform === "youtube");
-    return { connected: true, viewers, comments, broadcastId: "yt_live_stream", channel: settings.channel || "Rezanur Live", oauth: true, status: "Auto-connected (Live)" };
+  if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) {
+    return {
+      connected: Boolean(settings.autoConnected || settings.channel),
+      viewers: 0,
+      comments: [],
+      status: "Offline - Ready to stream",
+      channel: settings.channel || "YouTube Live",
+      oauth: Boolean(settings.refreshToken)
+    };
   }
-  if ((!settings.apiKey && !settings.accessToken) || (!settings.videoId && !settings.channelId)) return { connected: false, viewers: 0, comments: [] };
   let live;
-  try { live = await getYouTubeLiveChatId(settings); } catch (error) {
-    if (/No active YouTube broadcast/.test(error.message)) return { connected: true, viewers: 0, comments: [], status: "No active broadcast detected", oauth: Boolean(settings.refreshToken) };
-    throw error;
+  try {
+    live = await getYouTubeLiveChatId(settings);
+  } catch (error) {
+    return {
+      connected: true,
+      viewers: 0,
+      comments: [],
+      status: "Offline - Ready to stream",
+      channel: settings.channel || settings.channelId || "YouTube Live",
+      oauth: Boolean(settings.refreshToken)
+    };
   }
   const credential = settings.accessToken ? { headers: { Authorization: `Bearer ${settings.accessToken}` } } : {};
   const suffix = settings.accessToken ? "" : `&key=${encodeURIComponent(settings.apiKey)}`;
-  const video = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(live.videoId)}${suffix}`, credential);
-  const details = video.items?.[0]?.liveStreamingDetails || {};
+  let details = {};
+  try {
+    const video = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(live.videoId)}${suffix}`, credential);
+    details = video.items?.[0]?.liveStreamingDetails || {};
+  } catch (_) {}
+
   const comments = [];
   const liveChatId = live.liveChatId;
   if (liveChatId) {
-    const chat = await apiFetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&maxResults=200&liveChatId=${encodeURIComponent(liveChatId)}${suffix}`, credential);
-    for (const item of chat.items || []) comments.push({
-      id: item.id, platform: "youtube", author: item.authorDetails?.displayName || "YouTube user",
-      avatar: item.authorDetails?.profileImageUrl, message: item.snippet?.displayMessage || "", time: item.snippet?.publishedAt
-    });
+    try {
+      const chat = await apiFetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&maxResults=200&liveChatId=${encodeURIComponent(liveChatId)}${suffix}`, credential);
+      for (const item of chat.items || []) {
+        comments.push({
+          id: item.id,
+          platform: "youtube",
+          author: item.authorDetails?.displayName || "YouTube user",
+          avatar: item.authorDetails?.profileImageUrl,
+          message: item.snippet?.displayMessage || "",
+          time: item.snippet?.publishedAt
+        });
+      }
+    } catch (_) {}
   }
-  return { connected: true, viewers: Number(details.concurrentViewers || 0), comments, broadcastId: live.videoId, oauth: Boolean(settings.refreshToken) };
+  const viewers = Number(details.concurrentViewers || 0);
+  return {
+    connected: true,
+    viewers,
+    comments,
+    broadcastId: live.videoId,
+    channel: settings.channel || "YouTube Live",
+    status: viewers > 0 ? "Live Broadcasting" : "Offline - Ready to stream",
+    oauth: Boolean(settings.refreshToken)
+  };
 }
 
 async function getTwitch(settings, userId) {
-  if (settings.autoConnected !== false) {
-    const viewers = Math.max(80, Math.round(890 + Math.cos(Date.now() / 9000) * 75 + (Math.random() * 16 - 8)));
-    const comments = livePlatformState.activeComments.filter((c) => c.platform === "twitch");
-    return { connected: true, viewers, comments, broadcastId: "twitch_live_stream", channel: settings.channel || "rezanur_live", oauth: true, status: "Auto-connected (Live)" };
-  }
   const clientId = settings.clientId || process.env.TWITCH_CLIENT_ID;
-  if (!clientId || !settings.accessToken || !settings.channel) return { connected: false, viewers: 0, comments: [] };
-  const stream = await apiFetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(settings.channel)}`, {
-    headers: { "Client-ID": clientId, Authorization: `Bearer ${settings.accessToken}` }
-  });
+  if (!clientId || !settings.accessToken || !settings.channel) {
+    return {
+      connected: Boolean(settings.autoConnected || settings.channel),
+      viewers: 0,
+      comments: [],
+      status: "Offline - Ready to stream",
+      channel: settings.channel || "rezanur_live",
+      oauth: Boolean(settings.refreshToken)
+    };
+  }
+  let viewers = 0;
+  let isLive = false;
+  try {
+    const stream = await apiFetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(settings.channel)}`, {
+      headers: { "Client-ID": clientId, Authorization: `Bearer ${settings.accessToken}` }
+    });
+    viewers = Number(stream.data?.[0]?.viewer_count || 0);
+    isLive = stream.data?.length > 0;
+  } catch (_) {}
+
   ensureTwitchChat(userId, settings.channel);
-  return { connected: true, viewers: Number(stream.data?.[0]?.viewer_count || 0), comments: twitchChats.get(userId)?.messages || [], oauth: Boolean(settings.refreshToken) };
+  const comments = (twitchChats.get(userId)?.messages || []).slice(-100);
+
+  return {
+    connected: true,
+    viewers,
+    comments,
+    channel: settings.channel,
+    status: isLive ? "Live Broadcasting" : "Offline - Ready to stream",
+    oauth: Boolean(settings.refreshToken)
+  };
 }
 
 function ensureTwitchChat(userId, channel) {
@@ -449,40 +460,70 @@ function ensureTwitchChat(userId, channel) {
 }
 
 async function getFacebook(settings) {
-  if (settings.autoConnected !== false) {
-    const viewers = Math.max(40, Math.round(360 + Math.sin(Date.now() / 16000) * 35 + (Math.random() * 12 - 6)));
-    const comments = livePlatformState.activeComments.filter((c) => c.platform === "facebook");
-    return { connected: true, viewers, comments, broadcastId: "fb_live_stream", page: settings.page || "Rezanur Gaming", oauth: true, status: "Auto-connected (Live)" };
+  if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) {
+    return {
+      connected: Boolean(settings.autoConnected || settings.page),
+      viewers: 0,
+      comments: [],
+      status: "Offline - Ready to stream",
+      page: settings.page || "Rezanur Gaming",
+      oauth: Boolean(settings.accessToken)
+    };
   }
-  if (!settings.accessToken || (!settings.liveVideoId && !settings.pageId)) return { connected: false, viewers: 0, comments: [] };
   const version = settings.graphVersion || "v24.0";
   const cacheKey = `facebook:${settings.pageId || settings.liveVideoId}`;
   let liveVideoId = settings.liveVideoId || detectedBroadcasts.get(cacheKey);
+
+  if (!liveVideoId && settings.pageId) {
+    try {
+      const liveVideos = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}/live_videos?fields=id,status,creation_time&limit=25&access_token=${encodeURIComponent(settings.accessToken)}`);
+      liveVideoId = liveVideos.data?.find((item) => ["LIVE", "LIVE_NOW"].includes(item.status))?.id;
+      if (liveVideoId) detectedBroadcasts.set(cacheKey, liveVideoId);
+    } catch (_) {}
+  }
+
   if (!liveVideoId) {
-    const liveVideos = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(settings.pageId)}/live_videos?fields=id,status,creation_time&limit=25&access_token=${encodeURIComponent(settings.accessToken)}`);
-    liveVideoId = liveVideos.data?.find((item) => ["LIVE", "LIVE_NOW"].includes(item.status))?.id;
-    if (!liveVideoId) return { connected: true, viewers: 0, comments: [], status: "No active broadcast detected" };
-    detectedBroadcasts.set(cacheKey, liveVideoId);
+    return {
+      connected: true,
+      viewers: 0,
+      comments: [],
+      status: "Offline - Ready to stream",
+      page: settings.page || "Facebook Page",
+      oauth: Boolean(settings.accessToken)
+    };
   }
-  const video = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}?fields=live_views,status&access_token=${encodeURIComponent(settings.accessToken)}`);
-  if (video.status && !["LIVE", "LIVE_NOW"].includes(video.status) && !settings.liveVideoId) detectedBroadcasts.delete(cacheKey);
-  let chat;
-  let firstError;
-  for (const edge of ["live_comments", "comments"]) {
-    for (const fields of ["id,from,message,created_time", "id,message,created_time"]) {
+
+  let viewers = 0;
+  const comments = [];
+  try {
+    const video = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}?fields=live_views,status&access_token=${encodeURIComponent(settings.accessToken)}`);
+    viewers = Number(video.live_views || 0);
+
+    for (const edge of ["live_comments", "comments"]) {
       try {
-        chat = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}/${edge}?fields=${fields}&limit=100&access_token=${encodeURIComponent(settings.accessToken)}`);
-        break;
-      } catch (error) {
-        firstError ||= error;
-      }
+        const chat = await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}/${edge}?fields=id,from,message,created_time&limit=100&access_token=${encodeURIComponent(settings.accessToken)}`);
+        for (const item of chat.data || []) {
+          comments.push({
+            id: item.id,
+            platform: "facebook",
+            author: item.from?.name || "Facebook user",
+            message: item.message || "",
+            time: item.created_time
+          });
+        }
+        if (comments.length > 0) break;
+      } catch (_) {}
     }
-    if (chat) break;
-  }
-  if (!chat) throw firstError;
+  } catch (_) {}
+
   return {
-    connected: true, viewers: Number(video.live_views || 0), broadcastId: liveVideoId,
-    comments: (chat.data || []).map((item) => ({ id: item.id, platform: "facebook", author: item.from?.name || "Facebook user", message: item.message || "", time: item.created_time }))
+    connected: true,
+    viewers,
+    comments,
+    broadcastId: liveVideoId,
+    page: settings.page || "Facebook Page",
+    status: viewers > 0 ? "Live Broadcasting" : "Offline - Ready to stream",
+    oauth: Boolean(settings.accessToken)
   };
 }
 
@@ -507,8 +548,19 @@ async function dashboard(user) {
     comments.push(...(platforms[names[index]].comments || []));
     delete platforms[names[index]].comments;
   });
+
+  const userChat = getUserChatState(user.id);
+  if (Array.isArray(userChat.comments)) {
+    comments.push(...userChat.comments);
+  }
+
   comments.sort((a, b) => new Date(b.time) - new Date(a.time));
-  return { platforms, comments: comments.slice(0, 200), totalViewers: Object.values(platforms).reduce((sum, item) => sum + item.viewers, 0) };
+  return {
+    platforms,
+    comments: comments.slice(0, 200),
+    pinnedComment: userChat.pinnedComment || null,
+    totalViewers: Object.values(platforms).reduce((sum, item) => sum + (Number(item.viewers) || 0), 0)
+  };
 }
 
 async function handleApi(req, res, url) {
@@ -916,45 +968,136 @@ async function handleApi(req, res, url) {
     await saveSettings(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
+  if (req.method === "GET" && url.pathname === "/api/chat/pin") {
+    const userChat = getUserChatState(user.id);
+    return json(res, 200, { ok: true, pinnedComment: userChat.pinnedComment || null });
+  }
+  if (req.method === "POST" && url.pathname === "/api/chat/pin") {
+    const body = await readBody(req);
+    const userChat = getUserChatState(user.id);
+    if (!body.comment) {
+      userChat.pinnedComment = null;
+      return json(res, 200, { ok: true, pinnedComment: null, action: "unpinned" });
+    }
+    const c = body.comment;
+    userChat.pinnedComment = {
+      id: c.id || "pin_" + Date.now(),
+      platform: c.platform || "general",
+      author: c.author || "Viewer",
+      message: c.message || "",
+      time: c.time || new Date().toISOString(),
+      pinnedAt: new Date().toISOString()
+    };
+    return json(res, 200, { ok: true, pinnedComment: userChat.pinnedComment, action: "pinned" });
+  }
   if (req.method === "POST" && url.pathname === "/api/chat/send") {
     const body = await readBody(req);
     const message = String(body.message || "").trim();
     if (!message || message.length > 500) return json(res, 400, { error: "Message must contain 1 to 500 characters" });
     const settings = await getSettings(user.id);
-    const requested = Array.isArray(body.platforms) ? body.platforms : ["youtube", "twitch", "facebook"];
+
+    // Target platform: if replying to a specific platform's comment, locks to that platform!
+    const targetPlatform = body.platform ? String(body.platform).toLowerCase() : null;
+    const requested = targetPlatform
+      ? [targetPlatform]
+      : (Array.isArray(body.platforms) && body.platforms.length > 0 ? body.platforms : ["youtube", "twitch", "facebook"]);
+    const replyToAuthor = body.replyToAuthor ? String(body.replyToAuthor).trim() : null;
+    const replyToCommentId = body.replyToCommentId ? String(body.replyToCommentId).trim() : null;
+
+    const userChat = getUserChatState(user.id);
     const results = {};
+
     for (const p of requested) {
       results[p] = { sent: true };
-      livePlatformState.activeComments.unshift({
-        id: "usr_" + Date.now() + "_" + p,
+      const commentRecord = {
+        id: "msg_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         platform: p,
         author: user.name || "Streamer (You)",
         message,
         time: new Date().toISOString(),
-        isHost: true
-      });
+        isHost: true,
+        replyTo: replyToAuthor ? {
+          id: replyToCommentId,
+          author: replyToAuthor,
+          platform: p
+        } : null
+      };
+      userChat.comments.unshift(commentRecord);
     }
+    if (userChat.comments.length > 200) userChat.comments = userChat.comments.slice(0, 200);
+
+    // 1. Post to Facebook if targeted
+    if (requested.includes("facebook") && settings.facebook?.accessToken) {
+      try {
+        const version = settings.facebook.graphVersion || "v24.0";
+        const fbMessage = replyToAuthor ? `@${replyToAuthor} ${message}` : message;
+
+        // Try direct comment thread reply first
+        if (replyToCommentId) {
+          try {
+            await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(replyToCommentId)}/comments`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ message: fbMessage, access_token: settings.facebook.accessToken })
+            });
+            results.facebook = { sent: true, mode: "comment_thread", targetId: replyToCommentId };
+          } catch (replyErr) {
+            console.warn("Direct Facebook comment reply fallback to live video:", replyErr.message);
+          }
+        }
+
+        // If not a direct comment reply or if fallback needed, post to live video comments edge
+        if (!results.facebook?.targetId) {
+          const cacheKey = `facebook:${settings.facebook.pageId || settings.facebook.liveVideoId}`;
+          const liveVideoId = settings.facebook.liveVideoId || detectedBroadcasts.get(cacheKey);
+          if (liveVideoId) {
+            await apiFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(liveVideoId)}/comments`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ message: fbMessage, access_token: settings.facebook.accessToken })
+            });
+            results.facebook = { sent: true, mode: "live_video", videoId: liveVideoId };
+          }
+        }
+      } catch (fbError) {
+        console.warn("Facebook reply send error:", fbError.message);
+        results.facebook = { sent: false, error: fbError.message };
+      }
+    }
+
+    // 2. Post to YouTube if targeted
     if (requested.includes("youtube") && settings.youtube?.refreshToken) {
       try {
         const accessToken = await refreshOAuthToken("youtube", settings);
         const { liveChatId } = await getYouTubeLiveChatId(settings.youtube);
+        const ytMessage = replyToAuthor ? `@${replyToAuthor} ${message}` : message;
         await apiFetch("https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet", {
           method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-          body: JSON.stringify({ snippet: { liveChatId, type: "textMessageEvent", textMessageDetails: { messageText: message } } })
+          body: JSON.stringify({ snippet: { liveChatId, type: "textMessageEvent", textMessageDetails: { messageText: ytMessage } } })
         });
-      } catch (_) {}
+        results.youtube = { sent: true };
+      } catch (ytError) {
+        results.youtube = { sent: false, error: ytError.message };
+      }
     }
+
+    // 3. Post to Twitch if targeted
     if (requested.includes("twitch") && settings.twitch?.refreshToken) {
       try {
         const accessToken = await refreshOAuthToken("twitch", settings);
+        const twMessage = replyToAuthor ? `@${replyToAuthor} ${message}` : message;
         await apiFetch("https://api.twitch.tv/helix/chat/messages", {
           method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Client-ID": process.env.TWITCH_CLIENT_ID, "content-type": "application/json" },
-          body: JSON.stringify({ broadcaster_id: settings.twitch.userId, sender_id: settings.twitch.userId, message })
+          body: JSON.stringify({ broadcaster_id: settings.twitch.userId, sender_id: settings.twitch.userId, message: twMessage })
         });
-      } catch (_) {}
+        results.twitch = { sent: true };
+      } catch (twError) {
+        results.twitch = { sent: false, error: twError.message };
+      }
     }
+
     await saveSettings(user.id, settings);
-    return json(res, 200, { results });
+    return json(res, 200, { ok: true, results, replyTo: replyToAuthor ? { author: replyToAuthor, platform: targetPlatform } : null });
   }
   if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, await dashboard(user));
   if (req.method === "GET" && url.pathname === "/api/videos") {

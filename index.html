@@ -633,18 +633,35 @@
             <button data-filter="facebook" class="filter-fb">Facebook</button>
           </div>
 
+          <!-- PINNED COMMENT BANNER -->
+          <div class="chat-pinned-box" id="chatPinnedBox" style="display: none;"></div>
+
           <!-- SCROLLABLE CHAT FEED -->
           <div class="chat-feed" id="chatFeed">
-            <p class="empty-state">Connecting to live comment streams...</p>
+            <div class="empty-state-chat">
+              <div class="empty-state-icon">💬</div>
+              <strong>Chat Stream Ready</strong>
+              <p>When you go live, comments from YouTube, Twitch &amp; Facebook will appear here in real time. Click Reply to answer directly on that platform, or Pin to spotlight a message.</p>
+            </div>
           </div>
 
           <!-- CHAT COMPOSE FORM -->
           <form class="chat-compose" id="chatForm">
-            <div class="reply-target">
+            <!-- REPLY TARGET BANNER (Visible when replying to a specific comment) -->
+            <div class="reply-target-bar" id="replyTargetBar" style="display: none;">
+              <div class="reply-target-left">
+                <span class="reply-arrow-icon">↳</span>
+                <span>Replying to <strong id="replyTargetAuthor">@Author</strong> on <span class="reply-plat-pill facebook" id="replyTargetPlatform">Facebook</span></span>
+              </div>
+              <button type="button" class="btn-cancel-reply" id="btnCancelReply" title="Cancel reply (Esc)">&times;</button>
+            </div>
+
+            <div class="broadcast-target" id="broadcastTargetBar">
               <span>Broadcasting reply as</span>
               <strong id="chatSenderName">Streamer (You)</strong>
               <span>to all active platforms</span>
             </div>
+
             <div class="compose-row">
               <input id="chatInput" type="text" placeholder="Send message to YouTube, Twitch, Facebook..." autocomplete="off">
               <button type="submit" aria-label="Send comment" title="Send (Enter)">
