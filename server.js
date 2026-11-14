@@ -1628,9 +1628,14 @@ async function handleApi(req, res, url) {
   }
   if (req.method === "POST" && url.pathname === "/api/videos/upload") {
     const body = await readBody(req);
-    const title = String(body.title || "").trim();
-    if (!title) return json(res, 400, { error: "Video title is required" });
+    const kind = ["post", "story", "video"].includes(body.kind) ? body.kind : "video";
+    let title = String(body.title || "").trim();
     const description = String(body.description || "").trim();
+    if (!title) {
+      if (kind === "story") title = "24h Story: " + (description.slice(0, 30) || "Stream Update");
+      else if (kind === "post") title = description.slice(0, 45) || (body.mediaPreview ? "Photo / Graphic Post" : "Social Feed Post");
+      else return json(res, 400, { error: "Video title is required" });
+    }
     const tags = Array.isArray(body.tags)
       ? body.tags
       : String(body.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
@@ -1638,11 +1643,11 @@ async function handleApi(req, res, url) {
     const privacy = ["public", "unlisted", "private"].includes(body.privacy) ? body.privacy : "public";
     const requested = Array.isArray(body.platforms) && body.platforms.length > 0
       ? body.platforms
-      : ["youtube", "facebook", "twitch"];
-    const fileName = String(body.fileName || "broadcast_video.mp4");
+      : (kind === "story" ? ["facebook", "instagram", "tiktok"] : ["facebook", "instagram", "x", "youtube"]);
+    const fileName = String(body.fileName || (kind === "video" ? "broadcast_video.mp4" : "media_post.jpg"));
     const fileSize = Number(body.fileSize || 0);
-    const duration = String(body.duration || "02:15");
-    const thumbnail = typeof body.thumbnail === "string" ? body.thumbnail : null;
+    const duration = String(body.duration || (kind === "story" ? "00:15" : "02:15"));
+    const thumbnail = typeof body.thumbnail === "string" ? body.thumbnail : (typeof body.mediaPreview === "string" ? body.mediaPreview : null);
 
     const settings = await getSettings(user.id);
     const platforms = {};
@@ -1657,23 +1662,26 @@ async function handleApi(req, res, url) {
             await refreshOAuthToken("youtube", settings);
           } catch (_) {}
         }
+        const isPost = kind === "post";
         platforms.youtube = {
           status: "published",
-          platformName: "YouTube Live / VOD",
+          platformName: isPost ? "YouTube Community Post" : "YouTube Shorts / VOD",
           channel: settings.youtube?.accountName || settings.youtube?.channel || "Rezanur Live",
           videoId,
-          url: `https://www.youtube.com/watch?v=${videoId}`,
+          url: isPost ? `https://www.youtube.com/post/${videoId}` : `https://www.youtube.com/watch?v=${videoId}`,
           publishedAt: now
         };
       }
       if (p === "facebook") {
         const videoId = "fb_" + Math.floor(100000000000 + Math.random() * 900000000000);
+        const isStory = kind === "story";
+        const isPost = kind === "post";
         platforms.facebook = {
           status: "published",
-          platformName: "Facebook Video",
+          platformName: isStory ? "Facebook Story" : isPost ? "Facebook Feed Post" : "Facebook Video",
           page: settings.facebook?.page || "Rezanur Gaming",
           videoId,
-          url: `https://www.facebook.com/watch/?v=${videoId}`,
+          url: isStory ? `https://www.facebook.com/stories/${videoId}` : isPost ? `https://www.facebook.com/permalink.php?story_fbid=${videoId}` : `https://www.facebook.com/watch/?v=${videoId}`,
           publishedAt: now
         };
       }
@@ -1690,22 +1698,26 @@ async function handleApi(req, res, url) {
       }
       if (p === "tiktok") {
         const videoId = "tt_" + Math.floor(7000000000000000000 + Math.random() * 1000000000000000000);
+        const isStory = kind === "story";
+        const isPost = kind === "post";
         platforms.tiktok = {
           status: "published",
-          platformName: "TikTok Shorts",
+          platformName: isStory ? "TikTok Story" : isPost ? "TikTok Photo Mode" : "TikTok Shorts",
           handle: `@${settings.twitch?.channel || "rezanur_live"}`,
           videoId,
-          url: `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/video/${videoId}`,
+          url: isStory ? `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/story/${videoId}` : isPost ? `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/photo/${videoId}` : `https://www.tiktok.com/@${(settings.twitch?.channel || "rezanur_live").toLowerCase()}/video/${videoId}`,
           publishedAt: now
         };
       }
       if (p === "instagram") {
         const videoId = "ig_" + randId();
+        const isStory = kind === "story";
+        const isPost = kind === "post";
         platforms.instagram = {
           status: "published",
-          platformName: "Instagram Reels",
+          platformName: isStory ? "Instagram Story" : isPost ? "Instagram Feed Photo" : "Instagram Reels",
           videoId,
-          url: `https://www.instagram.com/reel/${videoId}`,
+          url: isStory ? `https://www.instagram.com/stories/${videoId}` : isPost ? `https://www.instagram.com/p/${videoId}` : `https://www.instagram.com/reel/${videoId}`,
           publishedAt: now
         };
       }
@@ -1713,7 +1725,7 @@ async function handleApi(req, res, url) {
         const videoId = "x_" + Math.floor(1800000000000000000 + Math.random() * 100000000000000000);
         platforms.x = {
           status: "published",
-          platformName: "X Video Broadcast",
+          platformName: kind === "post" ? "X (Twitter) Post" : "X Video Broadcast",
           videoId,
           url: `https://x.com/${settings.twitch?.channel || "rezanur_live"}/status/${videoId}`,
           publishedAt: now
@@ -1724,6 +1736,7 @@ async function handleApi(req, res, url) {
     const videoDoc = {
       id: crypto.randomUUID(),
       user_id: user.id,
+      kind,
       title,
       description,
       tags,
@@ -1733,6 +1746,9 @@ async function handleApi(req, res, url) {
       fileSize,
       duration,
       thumbnail,
+      mediaPreview: typeof body.mediaPreview === "string" ? body.mediaPreview : null,
+      mediaType: body.mediaType || (kind === "video" ? "video" : thumbnail ? "image" : "text"),
+      storyOptions: body.storyOptions || null,
       platforms,
       createdAt: now
     };

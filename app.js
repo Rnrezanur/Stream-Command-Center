@@ -660,12 +660,120 @@ $("#chatComposeForm")?.addEventListener("submit", async (e) => {
 });
 
 // =========================================================================
-// OMNIPUBLISH VIDEO SYNDICATION
+// SOCIAL STUDIO & OMNIPUBLISH (POSTS, PICTURES, STORIES, VIDEOS)
 // =========================================================================
-const dropzone = $("#fileDropzone");
-const fileInput = $("#videoFileInput");
+const studioState = {
+  postType: "post", // "post" | "story" | "video"
+  previewPlatform: "facebook", // "facebook" | "instagram" | "x" | "story"
+  selectedFile: null,
+  mediaDataUrl: null,
+  mediaType: "none", // "image" | "video" | "none"
+  storyGradient: "linear-gradient(135deg, #6366f1, #a855f7)",
+  storyLink: ""
+};
 
-dropzone?.addEventListener("click", () => fileInput?.click());
+const dropzone = $("#fileDropzone");
+const mediaFileInput = $("#mediaFileInput");
+const videoFileInput = $("#videoFileInput");
+const mediaPreviewContainer = $("#mediaPreviewContainer");
+const mediaPreviewImg = $("#mediaPreviewImg");
+const mediaPreviewVideo = $("#mediaPreviewVideo");
+const selectedFileInfo = $("#selectedFileInfo");
+const uploadDesc = $("#uploadDesc");
+const uploadTitle = $("#uploadTitle");
+const charCount = $("#charCount");
+const storyLinkInput = $("#storyLinkInput");
+
+// 1. Post Type Switcher
+$$(".post-type-btn")?.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".post-type-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    setPostType(btn.dataset.type);
+  });
+});
+
+function setPostType(type) {
+  studioState.postType = type;
+  const isPost = type === "post";
+  const isStory = type === "story";
+  const isVideo = type === "video";
+
+  if ($("#groupTitle")) $("#groupTitle").style.display = isVideo ? "flex" : "none";
+  if ($("#storyBgGroup")) $("#storyBgGroup").style.display = isStory ? "flex" : "none";
+  if ($("#storyLinkGroup")) $("#storyLinkGroup").style.display = isStory ? "flex" : "none";
+
+  if ($("#dropzoneIcon")) $("#dropzoneIcon").textContent = isVideo ? "🎬" : isStory ? "📸" : "🖼️";
+  if ($("#dropzoneText")) {
+    $("#dropzoneText").textContent = isVideo
+      ? "Click or drag & drop video file"
+      : isStory
+      ? "Click or drag & drop story picture / clip"
+      : "Click or drag & drop picture / artwork";
+  }
+  if ($("#dropzoneSub")) {
+    $("#dropzoneSub").textContent = isVideo
+      ? "MP4, MOV, or WebM • Up to 4K 60fps"
+      : isStory
+      ? "Vertical 9:16 or standard image/video • Up to 25MB"
+      : "PNG, JPG, WEBP, or GIF • Up to 25MB";
+  }
+
+  if ($("#labelDesc")) {
+    $("#labelDesc").textContent = isVideo ? "Video Description & Notes" : isStory ? "Story Text Overlay / Caption" : "Post Caption & Content";
+  }
+  if (uploadDesc) {
+    uploadDesc.placeholder = isVideo
+      ? "Write your video description, chapters, and links..."
+      : isStory
+      ? "e.g. 🔴 LIVE NOW playing Warzone! Tap link to watch 👉"
+      : "What's happening? Share stream news, highlights, or links...";
+  }
+
+  if ($("#btnSubmitPublishText")) {
+    $("#btnSubmitPublishText").textContent = isVideo
+      ? "Publish Video Across Selected Platforms"
+      : isStory
+      ? "Share 24h Story Across Platforms"
+      : "Publish Post Across Selected Platforms";
+  }
+
+  if ($("#lblFacebook")) $("#lblFacebook").textContent = isStory ? "Facebook Story" : isVideo ? "Facebook Video / Reels" : "Facebook Feed";
+  if ($("#lblInstagram")) $("#lblInstagram").textContent = isStory ? "Instagram Story" : isVideo ? "Instagram Reels" : "Instagram Feed";
+  if ($("#lblTiktok")) $("#lblTiktok").textContent = isStory ? "TikTok Story" : isVideo ? "TikTok Shorts" : "TikTok Photo Mode";
+  if ($("#lblX")) $("#lblX").textContent = isVideo ? "X Broadcast" : "X (Twitter) Post";
+  if ($("#lblYoutube")) $("#lblYoutube").textContent = isVideo ? "YouTube VOD / Shorts" : "YouTube Community";
+
+  if ($("#cbWrapTwitch")) $("#cbWrapTwitch").style.display = isVideo ? "flex" : "none";
+  if ($("#cbWrapYoutube")) $("#cbWrapYoutube").style.display = isStory ? "none" : "flex";
+
+  $$('input[name="pubPlat"]').forEach((cb) => {
+    if (isStory) {
+      cb.checked = ["facebook", "instagram", "tiktok"].includes(cb.value);
+    } else if (isPost) {
+      cb.checked = ["facebook", "instagram", "x", "youtube"].includes(cb.value);
+    } else {
+      cb.checked = true;
+    }
+  });
+
+  if (isStory) {
+    switchPreviewTab("story");
+  } else if (studioState.previewPlatform === "story") {
+    switchPreviewTab("facebook");
+  }
+
+  updateLivePreview();
+}
+
+// 2. Dropzone & File Selection
+dropzone?.addEventListener("click", () => {
+  if (studioState.postType === "video") {
+    videoFileInput?.click();
+  } else {
+    mediaFileInput?.click();
+  }
+});
 
 dropzone?.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -678,40 +786,192 @@ dropzone?.addEventListener("drop", (e) => {
   e.preventDefault();
   dropzone.classList.remove("dragover");
   if (e.dataTransfer.files?.length) {
-    handleFileSelect(e.dataTransfer.files[0]);
+    handleStudioFile(e.dataTransfer.files[0]);
   }
 });
 
-fileInput?.addEventListener("change", (e) => {
-  if (e.target.files?.length) {
-    handleFileSelect(e.target.files[0]);
-  }
+mediaFileInput?.addEventListener("change", (e) => {
+  if (e.target.files?.length) handleStudioFile(e.target.files[0]);
 });
 
-function handleFileSelect(file) {
-  state.selectedVideoFile = file;
+videoFileInput?.addEventListener("change", (e) => {
+  if (e.target.files?.length) handleStudioFile(e.target.files[0]);
+});
+
+function handleStudioFile(file) {
+  studioState.selectedFile = file;
   $("#selectedFileName").textContent = file.name;
   $("#selectedFileSize").textContent = formatBytes(file.size);
-  $("#selectedFileInfo").classList.add("active");
+  selectedFileInfo?.classList.add("active");
   dropzone.style.display = "none";
-  if (!$("#uploadTitle").value) {
-    $("#uploadTitle").value = file.name.replace(/\.[^/.]+$/, "");
+
+  const isImg = file.type.startsWith("image/");
+  const isVid = file.type.startsWith("video/");
+  studioState.mediaType = isImg ? "image" : isVid ? "video" : "none";
+
+  if (uploadTitle && !uploadTitle.value && studioState.postType === "video") {
+    uploadTitle.value = file.name.replace(/\.[^/.]+$/, "");
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    studioState.mediaDataUrl = e.target.result;
+    mediaPreviewContainer?.classList.add("active");
+    if (isImg) {
+      if (mediaPreviewImg) { mediaPreviewImg.src = e.target.result; mediaPreviewImg.style.display = "block"; }
+      if (mediaPreviewVideo) mediaPreviewVideo.style.display = "none";
+    } else if (isVid) {
+      if (mediaPreviewVideo) { mediaPreviewVideo.src = e.target.result; mediaPreviewVideo.style.display = "block"; }
+      if (mediaPreviewImg) mediaPreviewImg.style.display = "none";
+    }
+    updateLivePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearStudioMedia() {
+  studioState.selectedFile = null;
+  studioState.mediaDataUrl = null;
+  studioState.mediaType = "none";
+  selectedFileInfo?.classList.remove("active");
+  mediaPreviewContainer?.classList.remove("active");
+  if (mediaPreviewImg) mediaPreviewImg.src = "";
+  if (mediaPreviewVideo) mediaPreviewVideo.src = "";
+  if (mediaFileInput) mediaFileInput.value = "";
+  if (videoFileInput) videoFileInput.value = "";
+  dropzone.style.display = "block";
+  updateLivePreview();
+}
+
+$("#btnRemoveSelectedFile")?.addEventListener("click", clearStudioMedia);
+$("#btnRemoveMedia")?.addEventListener("click", clearStudioMedia);
+
+// 3. Live Preview & Text Updates
+uploadDesc?.addEventListener("input", () => {
+  const len = uploadDesc.value.length;
+  if (charCount) {
+    charCount.textContent = `${len} / 280 (X limit)`;
+    charCount.style.color = len > 280 ? "#ef4444" : "var(--text-faint)";
+  }
+  updateLivePreview();
+});
+
+storyLinkInput?.addEventListener("input", updateLivePreview);
+
+$$(".hashtag-pill")?.forEach((pill) => {
+  pill.addEventListener("click", () => {
+    const tag = pill.dataset.tag;
+    if (uploadDesc) {
+      uploadDesc.value = (uploadDesc.value.trim() ? `${uploadDesc.value.trim()} ${tag}` : tag) + " ";
+      uploadDesc.dispatchEvent(new Event("input"));
+      uploadDesc.focus();
+    }
+  });
+});
+
+$$(".story-color-swatch")?.forEach((swatch) => {
+  swatch.addEventListener("click", () => {
+    $$(".story-color-swatch").forEach((s) => s.classList.remove("active"));
+    swatch.classList.add("active");
+    studioState.storyGradient = swatch.dataset.gradient;
+    updateLivePreview();
+  });
+});
+
+$$(".preview-tab-btn")?.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    switchPreviewTab(btn.dataset.preview);
+  });
+});
+
+function switchPreviewTab(platform) {
+  studioState.previewPlatform = platform;
+  $$(".preview-tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.preview === platform));
+
+  const isStory = platform === "story";
+  if ($("#feedMockup")) $("#feedMockup").style.display = isStory ? "none" : "flex";
+  if ($("#storyMockup")) $("#storyMockup").style.display = isStory ? "flex" : "none";
+
+  if ($("#mockupMeta")) {
+    if (platform === "facebook") $("#mockupMeta").textContent = "Just now • 🌐 Public";
+    else if (platform === "instagram") $("#mockupMeta").textContent = "Original audio • Sponsored";
+    else if (platform === "x") $("#mockupMeta").textContent = "@rezanur_live • 2m";
+    else $("#mockupMeta").textContent = "Just now • Public";
+  }
+  updateLivePreview();
+}
+
+function updateLivePreview() {
+  const text = uploadDesc?.value.trim() || "What's happening? Share stream news, highlights, or links...";
+  const user = state.user || {};
+  const userName = user.name || "Rezanur Live";
+  const avatarLetter = userName.charAt(0).toUpperCase();
+
+  if ($("#mockupName")) $("#mockupName").textContent = userName;
+  if ($("#mockupAvatar")) $("#mockupAvatar").textContent = avatarLetter;
+  if ($("#mockupContent")) $("#mockupContent").textContent = text;
+
+  const mediaBox = $("#mockupMediaBox");
+  const mediaImg = $("#mockupMediaImg");
+  const mediaVid = $("#mockupMediaVideo");
+
+  if (studioState.mediaDataUrl) {
+    mediaBox?.classList.add("active");
+    if (studioState.mediaType === "image") {
+      if (mediaImg) { mediaImg.src = studioState.mediaDataUrl; mediaImg.style.display = "block"; }
+      if (mediaVid) mediaVid.style.display = "none";
+    } else {
+      if (mediaVid) { mediaVid.src = studioState.mediaDataUrl; mediaVid.style.display = "block"; }
+      if (mediaImg) mediaImg.style.display = "none";
+    }
+  } else {
+    mediaBox?.classList.remove("active");
+    if (mediaImg) mediaImg.src = "";
+    if (mediaVid) mediaVid.src = "";
+  }
+
+  const storyMockup = $("#storyMockup");
+  if (storyMockup) {
+    if (studioState.mediaDataUrl && studioState.mediaType === "image") {
+      storyMockup.style.background = `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url(${studioState.mediaDataUrl}) center/cover no-repeat`;
+    } else {
+      storyMockup.style.background = studioState.storyGradient;
+    }
+  }
+  if ($("#storyMockupName")) $("#storyMockupName").textContent = userName;
+  if ($("#storyMockupAvatar")) $("#storyMockupAvatar").textContent = avatarLetter;
+  if ($("#storyMockupText")) $("#storyMockupText").textContent = uploadDesc?.value.trim() || "🔴 LIVE NOW!";
+  
+  const linkVal = storyLinkInput?.value.trim();
+  const storyLink = $("#storyMockupLink");
+  if (storyLink) {
+    if (linkVal) {
+      storyLink.style.display = "inline-block";
+      storyLink.textContent = `🔗 ${linkVal.replace(/^https?:\/\//, "").slice(0, 18)}...`;
+    } else {
+      storyLink.style.display = "inline-block";
+      storyLink.textContent = "🔗 WATCH STREAM";
+    }
   }
 }
 
-$("#btnRemoveSelectedFile")?.addEventListener("click", () => {
-  state.selectedVideoFile = null;
-  $("#selectedFileInfo").classList.remove("active");
-  dropzone.style.display = "block";
-  if (fileInput) fileInput.value = "";
-});
-
-// Publish Video Submit
+// 4. Submit & Syndication
 $("#btnSubmitPublish")?.addEventListener("click", async () => {
-  const title = $("#uploadTitle").value.trim();
-  if (!title) {
+  const type = studioState.postType;
+  const isVideo = type === "video";
+  const isStory = type === "story";
+  const title = uploadTitle?.value.trim() || (isStory ? "24h Story" : "Social Post");
+  const desc = uploadDesc?.value.trim() || "";
+
+  if (isVideo && !uploadTitle.value.trim()) {
     showToast("Please enter a video title");
-    $("#uploadTitle").focus();
+    uploadTitle?.focus();
+    return;
+  }
+
+  if (!isVideo && !desc && !studioState.selectedFile) {
+    showToast("Please write a caption or attach a picture/clip");
+    uploadDesc?.focus();
     return;
   }
 
@@ -721,49 +981,52 @@ $("#btnSubmitPublish")?.addEventListener("click", async () => {
     return;
   }
 
-  const desc = $("#uploadDesc").value.trim();
-  const fileName = state.selectedVideoFile?.name || `${title.toLowerCase().replace(/\s+/g, "_")}.mp4`;
-  const fileSize = state.selectedVideoFile?.size || 14800000;
+  const fileName = studioState.selectedFile?.name || (isVideo ? `${title.toLowerCase().replace(/\s+/g, "_")}.mp4` : "post_image.jpg");
+  const fileSize = studioState.selectedFile?.size || (isVideo ? 14800000 : 850000);
 
-  // Animate progress bar
   const pBox = $("#uploadProgressBar");
   const pFill = $("#uploadProgressFill");
   const pText = $("#uploadStatusText");
-  pBox.classList.add("active");
-  pFill.style.width = "25%";
-  pText.textContent = "Transcoding master 1080p stream...";
+  pBox?.classList.add("active");
+  if (pFill) pFill.style.width = "30%";
+  if (pText) pText.textContent = isStory ? "Rendering 24h story & stickers..." : isVideo ? "Transcoding 1080p master stream..." : "Formatting media & tags...";
 
   setTimeout(() => {
-    pFill.style.width = "65%";
-    pText.textContent = `Distributing to ${selectedPlats.length} platforms simultaneously...`;
+    if (pFill) pFill.style.width = "70%";
+    if (pText) pText.textContent = `Distributing to ${selectedPlats.length} platforms simultaneously...`;
   }, 400);
 
   try {
-    const res = await api("/api/videos/upload", {
+    await api("/api/videos/upload", {
       method: "POST",
       body: JSON.stringify({
+        kind: type,
         title,
         description: desc,
         platforms: selectedPlats,
         fileName,
-        fileSize
+        fileSize,
+        mediaPreview: studioState.mediaDataUrl,
+        mediaType: studioState.mediaType,
+        storyOptions: isStory ? { bgGradient: studioState.storyGradient, linkUrl: storyLinkInput?.value.trim() } : null
       })
     });
 
-    pFill.style.width = "100%";
-    pText.textContent = "Video successfully syndicated!";
-    showToast(`✓ Published "${title}" to ${selectedPlats.length} platforms!`);
+    if (pFill) pFill.style.width = "100%";
+    if (pText) pText.textContent = `${isStory ? "Story" : isVideo ? "Video" : "Post"} successfully published!`;
+    showToast(`✓ Published ${type} across ${selectedPlats.length} platforms!`);
 
     setTimeout(() => {
-      pBox.classList.remove("active");
-      pFill.style.width = "0%";
-      $("#uploadTitle").value = "";
-      $("#uploadDesc").value = "";
-      $("#btnRemoveSelectedFile")?.click();
+      pBox?.classList.remove("active");
+      if (pFill) pFill.style.width = "0%";
+      if (uploadTitle) uploadTitle.value = "";
+      if (uploadDesc) uploadDesc.value = "";
+      if (storyLinkInput) storyLinkInput.value = "";
+      clearStudioMedia();
       loadVideosHistory();
     }, 900);
   } catch (err) {
-    pBox.classList.remove("active");
+    pBox?.classList.remove("active");
     showToast(err.message);
   }
 });
@@ -774,20 +1037,36 @@ async function loadVideosHistory() {
   try {
     const { videos } = await api("/api/videos");
     if (!videos || !videos.length) {
-      container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-faint);">No videos published yet. Upload your first clip to start syndicating!</div>`;
+      container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-faint);">No publications yet. Create your first post or story to start syndicating!</div>`;
       return;
     }
     container.innerHTML = videos.map((v) => {
       const timeStr = new Date(v.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      const plats = Object.keys(v.platforms || {}).map((p) => `<span class="comment-platform-pill ${p}">${p}</span>`).join(" ");
+      const plats = Object.entries(v.platforms || {}).map(([pKey, pObj]) => {
+        const url = pObj.url || "#";
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="comment-platform-pill ${pKey}" title="View on ${pKey}">${pKey} ↗</a>`;
+      }).join(" ");
+
+      const kind = v.kind || "video";
+      const thumbHtml = v.mediaPreview
+        ? `<div style="width:44px; height:44px; border-radius:6px; overflow:hidden; flex-shrink:0; background:#000;"><img src="${escapeHtml(v.mediaPreview)}" style="width:100%; height:100%; object-fit:cover;"></div>`
+        : `<div style="width:44px; height:44px; border-radius:6px; background:var(--card-elevated); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">${kind === "story" ? "📸" : kind === "post" ? "📝" : "🎬"}</div>`;
 
       return `
         <div class="history-item">
-          <div class="history-top">
-            <span class="history-title">${escapeHtml(v.title)}</span>
-            <span class="history-time">${timeStr}</span>
+          <div style="display:flex; gap:12px; align-items:center;">
+            ${thumbHtml}
+            <div style="flex:1; min-width:0;">
+              <div class="history-top">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="pub-type-badge ${kind}">${kind}</span>
+                  <span class="history-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(v.title || v.description || "Untitled")}</span>
+                </div>
+                <span class="history-time">${timeStr}</span>
+              </div>
+              <div class="history-platforms" style="margin-top:6px;">${plats}</div>
+            </div>
           </div>
-          <div class="history-platforms">${plats}</div>
         </div>
       `;
     }).join("");

@@ -40,7 +40,7 @@
           <span class="tab-badge" id="chatCountBadge">0</span>
         </button>
         <button type="button" class="nav-tab-btn" data-tab="publish">
-          <span>Publish Video</span>
+          <span>Upload &amp; Posts</span>
         </button>
         <button type="button" class="nav-tab-btn" data-tab="alerts">
           <span>Alert Box</span>
@@ -520,74 +520,126 @@
       </div>
     </section>
 
-    <!-- TAB 3: PUBLISH VIDEO (OMNIPUBLISH) -->
+    <!-- TAB 3: PUBLISH & SOCIAL STUDIO -->
     <section class="tab-view" id="tabPublish">
       <div class="section-header">
         <div class="section-title-wrap">
-          <h2>Video Syndication (OmniPublish)</h2>
-          <p class="section-desc">Upload once. Automatically distribute to YouTube, Twitch, Facebook, TikTok, Instagram, and X.</p>
+          <h2>Social Studio &amp; Multi-Platform Upload</h2>
+          <p class="section-desc">Syndicate Posts, Pictures, 24h Stories, and Videos simultaneously across Facebook, Instagram, X (Twitter), TikTok, and YouTube.</p>
         </div>
       </div>
 
       <div class="publish-layout">
-        <!-- Upload Form Card -->
+        <!-- Creator Form Card -->
         <div class="publish-card">
-          <h3 class="publish-card-title">New Video Upload</h3>
+          <!-- Post Type Switcher -->
+          <div class="post-type-selector" id="postTypeSelector">
+            <button type="button" class="post-type-btn active" data-type="post">
+              <span>📝 Post &amp; Picture</span>
+            </button>
+            <button type="button" class="post-type-btn" data-type="story">
+              <span>📸 24h Story</span>
+            </button>
+            <button type="button" class="post-type-btn" data-type="video">
+              <span>🎬 Video / Reel</span>
+            </button>
+          </div>
 
-          <!-- Dropzone -->
+          <!-- Media Dropzone -->
           <div class="file-dropzone" id="fileDropzone">
-            <div class="dropzone-icon">📁</div>
-            <div class="dropzone-text">Click to choose or drag &amp; drop video file</div>
-            <div class="dropzone-sub">MP4, MOV, or WebM &bull; Up to 4K 60fps</div>
+            <div class="dropzone-icon" id="dropzoneIcon">🖼️</div>
+            <div class="dropzone-text" id="dropzoneText">Click or drag &amp; drop picture / artwork</div>
+            <div class="dropzone-sub" id="dropzoneSub">PNG, JPG, WEBP, or GIF &bull; Up to 25MB</div>
+            <input type="file" id="mediaFileInput" accept="image/*" style="display: none;">
             <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm" style="display: none;">
+          </div>
+
+          <!-- Media Preview Box -->
+          <div class="media-preview-container" id="mediaPreviewContainer">
+            <img src="" alt="Preview" class="media-preview-img" id="mediaPreviewImg">
+            <video src="" class="media-preview-img" id="mediaPreviewVideo" controls style="display:none;"></video>
+            <button type="button" class="media-preview-remove" id="btnRemoveMedia" title="Remove media">&times;</button>
           </div>
 
           <div class="selected-file-info" id="selectedFileInfo">
             <div>
-              <strong id="selectedFileName">video.mp4</strong>
-              <div style="font-size:11px; color:var(--text-faint);" id="selectedFileSize">0 MB</div>
+              <strong id="selectedFileName">media_file</strong>
+              <div style="font-size:11px; color:var(--text-faint);" id="selectedFileSize">0 KB</div>
             </div>
             <button type="button" class="btn-icon-subtle" id="btnRemoveSelectedFile" title="Remove file">&times;</button>
           </div>
 
-          <!-- Title & Description -->
-          <div class="form-group">
-            <label class="form-label">Video Title</label>
-            <input type="text" class="form-input" id="uploadTitle" placeholder="e.g. Apex Legends Champion Gameplay #42">
+          <!-- Story Gradient Background Bar (Only in Story mode) -->
+          <div class="form-group" id="storyBgGroup" style="display: none;">
+            <label class="form-label">Story Gradient Background</label>
+            <div class="story-color-row" id="storyColorRow">
+              <div class="story-color-swatch active" data-gradient="linear-gradient(135deg, #6366f1, #a855f7)" style="background: linear-gradient(135deg, #6366f1, #a855f7);" title="Sunset Neon"></div>
+              <div class="story-color-swatch" data-gradient="linear-gradient(135deg, #f43f5e, #fb923c)" style="background: linear-gradient(135deg, #f43f5e, #fb923c);" title="Crimson Fire"></div>
+              <div class="story-color-swatch" data-gradient="linear-gradient(135deg, #06b6d4, #3b82f6)" style="background: linear-gradient(135deg, #06b6d4, #3b82f6);" title="Cyber Ocean"></div>
+              <div class="story-color-swatch" data-gradient="linear-gradient(135deg, #10b981, #059669)" style="background: linear-gradient(135deg, #10b981, #059669);" title="Matrix Emerald"></div>
+              <div class="story-color-swatch" data-gradient="linear-gradient(135deg, #1e293b, #0f172a)" style="background: linear-gradient(135deg, #1e293b, #0f172a);" title="Dark Slate"></div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Caption / Description</label>
-            <textarea class="form-textarea" id="uploadDesc" placeholder="Write your post caption, hashtags, and social links..."></textarea>
+          <!-- Title (Shown in Video mode, optional in Post mode) -->
+          <div class="form-group" id="groupTitle" style="display: none;">
+            <label class="form-label" id="labelTitle">Title</label>
+            <input type="text" class="form-input" id="uploadTitle" placeholder="e.g. Apex Legends Ranked Clutch #42">
           </div>
 
-          <!-- Platform Checkbox Grid -->
+          <!-- Caption / Post Description -->
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label class="form-label" id="labelDesc">Post Caption &amp; Content</label>
+              <span style="font-size:11px; color:var(--text-faint);" id="charCount">0 / 280 (X limit)</span>
+            </div>
+            <textarea class="form-textarea" id="uploadDesc" rows="4" placeholder="What's happening? Share stream news, highlights, or links..."></textarea>
+            
+            <!-- Quick Hashtag Bar -->
+            <div class="hashtag-bar">
+              <span class="hashtag-pill" data-tag="#LiveNow">#LiveNow</span>
+              <span class="hashtag-pill" data-tag="#Gaming">#Gaming</span>
+              <span class="hashtag-pill" data-tag="#Streamer">#Streamer</span>
+              <span class="hashtag-pill" data-tag="#Highlight">#Highlight</span>
+              <span class="hashtag-pill" data-tag="#Setup">#Setup</span>
+              <span class="hashtag-pill" data-tag="#Twitch">#Twitch</span>
+              <span class="hashtag-pill" data-tag="#YouTube">#YouTube</span>
+            </div>
+          </div>
+
+          <!-- Story Link / Sticker Input (Only in Story mode) -->
+          <div class="form-group" id="storyLinkGroup" style="display: none;">
+            <label class="form-label">Story Link Sticker (Swipe-up / Tap URL)</label>
+            <input type="url" class="form-input" id="storyLinkInput" placeholder="https://twitch.tv/yourchannel or your stream URL">
+          </div>
+
+          <!-- Destination Platforms Grid -->
           <div class="form-group">
             <label class="form-label">Destination Platforms</label>
-            <div class="platforms-select-grid">
-              <label class="platform-checkbox-label">
-                <input type="checkbox" name="pubPlat" value="youtube" checked>
-                <span class="checkbox-plat-name">YouTube VOD / Shorts</span>
-              </label>
-              <label class="platform-checkbox-label">
-                <input type="checkbox" name="pubPlat" value="twitch" checked>
-                <span class="checkbox-plat-name">Twitch Highlights</span>
-              </label>
-              <label class="platform-checkbox-label">
+            <div class="platforms-select-grid" id="platformsGrid">
+              <label class="platform-checkbox-label" id="cbWrapFacebook">
                 <input type="checkbox" name="pubPlat" value="facebook" checked>
-                <span class="checkbox-plat-name">Facebook Video / Reels</span>
+                <span class="checkbox-plat-name" id="lblFacebook">Facebook Feed</span>
               </label>
-              <label class="platform-checkbox-label">
-                <input type="checkbox" name="pubPlat" value="tiktok" checked>
-                <span class="checkbox-plat-name">TikTok Shorts</span>
-              </label>
-              <label class="platform-checkbox-label">
+              <label class="platform-checkbox-label" id="cbWrapInstagram">
                 <input type="checkbox" name="pubPlat" value="instagram" checked>
-                <span class="checkbox-plat-name">Instagram Reels</span>
+                <span class="checkbox-plat-name" id="lblInstagram">Instagram Feed</span>
               </label>
-              <label class="platform-checkbox-label">
+              <label class="platform-checkbox-label" id="cbWrapX">
                 <input type="checkbox" name="pubPlat" value="x" checked>
-                <span class="checkbox-plat-name">X (Twitter) Broadcast</span>
+                <span class="checkbox-plat-name" id="lblX">X (Twitter) Post</span>
+              </label>
+              <label class="platform-checkbox-label" id="cbWrapTiktok">
+                <input type="checkbox" name="pubPlat" value="tiktok" checked>
+                <span class="checkbox-plat-name" id="lblTiktok">TikTok Photo Mode</span>
+              </label>
+              <label class="platform-checkbox-label" id="cbWrapYoutube">
+                <input type="checkbox" name="pubPlat" value="youtube" checked>
+                <span class="checkbox-plat-name" id="lblYoutube">YouTube Community</span>
+              </label>
+              <label class="platform-checkbox-label" id="cbWrapTwitch" style="display: none;">
+                <input type="checkbox" name="pubPlat" value="twitch">
+                <span class="checkbox-plat-name" id="lblTwitch">Twitch Highlights</span>
               </label>
             </div>
           </div>
@@ -595,20 +647,69 @@
           <!-- Progress Bar -->
           <div class="progress-box" id="uploadProgressBar">
             <div class="progress-track"><div class="progress-fill" id="uploadProgressFill"></div></div>
-            <span class="progress-status-text" id="uploadStatusText">Transcoding and distributing...</span>
+            <span class="progress-status-text" id="uploadStatusText">Publishing...</span>
           </div>
 
           <button type="button" class="btn-primary" id="btnSubmitPublish" style="justify-content:center; padding:12px;">
-            <span>Publish Video Across Selected Platforms</span>
+            <span id="btnSubmitPublishText">Publish Post Across Selected Platforms</span>
           </button>
         </div>
 
-        <!-- History Card -->
-        <div class="publish-card">
-          <h3 class="publish-card-title">Recent Publications</h3>
-          <div class="history-list" id="uploadHistoryList">
-            <div style="text-align:center; padding:40px 20px; color:var(--text-faint);">
-              No videos published yet. Upload your first clip to start syndicating!
+        <!-- Right Column: Live Social Preview + Recent Publications -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <!-- Live Social Card Preview -->
+          <div class="social-preview-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Live Social Preview</span>
+              <div class="preview-tabs" id="previewTabs">
+                <button type="button" class="preview-tab-btn active" data-preview="facebook">Facebook</button>
+                <button type="button" class="preview-tab-btn" data-preview="instagram">Instagram</button>
+                <button type="button" class="preview-tab-btn" data-preview="x">X / Twitter</button>
+                <button type="button" class="preview-tab-btn" data-preview="story">Story View</button>
+              </div>
+            </div>
+
+            <!-- Feed Post Mockup -->
+            <div class="social-preview-mockup" id="feedMockup">
+              <div class="mockup-user-row">
+                <div class="mockup-avatar" id="mockupAvatar">R</div>
+                <div class="mockup-user-info">
+                  <span class="mockup-username" id="mockupName">Rezanur Live</span>
+                  <span class="mockup-meta" id="mockupMeta">Just now &bull; 🌐 Public</span>
+                </div>
+              </div>
+              <div class="mockup-content" id="mockupContent">What's happening? Share stream news, highlights, or links...</div>
+              <div class="mockup-media-box" id="mockupMediaBox">
+                <img src="" alt="Post media" id="mockupMediaImg">
+                <video src="" id="mockupMediaVideo" controls style="display:none;"></video>
+              </div>
+            </div>
+
+            <!-- Phone Story Mockup -->
+            <div class="story-phone-mockup" id="storyMockup">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="mockup-avatar" style="width:28px; height:28px; font-size:11px;" id="storyMockupAvatar">R</div>
+                <div style="font-size:12px; font-weight:700;" id="storyMockupName">Rezanur</div>
+                <span style="font-size:10px; opacity:0.8;">1m</span>
+              </div>
+              <div style="text-align:center; padding:10px; font-size:15px; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,0.6);" id="storyMockupText">
+                Going live now!
+              </div>
+              <div style="text-align:center; padding-bottom:6px;">
+                <div style="display:inline-block; background:rgba(255,255,255,0.9); color:#000; font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.3);" id="storyMockupLink">
+                  🔗 WATCH STREAM
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Card -->
+          <div class="publish-card">
+            <h3 class="publish-card-title">Recent Publications</h3>
+            <div class="history-list" id="uploadHistoryList">
+              <div style="text-align:center; padding:40px 20px; color:var(--text-faint);">
+                No publications yet. Create your first post or story to start syndicating!
+              </div>
             </div>
           </div>
         </div>
