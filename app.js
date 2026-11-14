@@ -372,14 +372,20 @@ function renderDashboard(data) {
   if (glanceTotalViewers) glanceTotalViewers.textContent = total > 0 ? `${totalFormatted}+` : "0";
 
   // Update platform cards & glance strip
-  for (const name of ["youtube", "twitch", "facebook"]) {
+  for (const name of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
     const card = $(`.platform-card[data-platform="${name}"]`);
     const platform = data.platforms?.[name] || { connected: false, viewers: 0 };
     const vFormatted = Number(platform.viewers || 0).toLocaleString();
 
     if (card) {
       const numEl = card.querySelector(".metric-num");
-      if (numEl) numEl.textContent = vFormatted;
+      if (numEl) {
+        if (["tiktok", "instagram", "x"].includes(name)) {
+          numEl.textContent = platform.connected ? "Active" : "Ready";
+        } else {
+          numEl.textContent = vFormatted;
+        }
+      }
 
       const dot = card.querySelector(".platform-status-dot");
       if (dot) dot.className = `platform-status-dot ${platform.connected ? "connected" : "disconnected"}`;
@@ -392,9 +398,17 @@ function renderDashboard(data) {
 
       const handle = card.querySelector(".platform-handle");
       if (handle) {
-        if (platform.channel) handle.textContent = platform.channel;
+        if (platform.handle) handle.textContent = platform.handle;
+        else if (platform.channel) handle.textContent = platform.channel;
         else if (platform.page) handle.textContent = platform.page;
       }
+    }
+
+    // Update OmniPublish modal connection badges
+    const synBadge = $(`#synConnBadge_${name}`);
+    if (synBadge) {
+      synBadge.className = `plat-conn-badge ${platform.connected ? "connected" : "disconnected"}`;
+      synBadge.textContent = platform.connected ? "● Connected" : "⚡ Connect";
     }
 
     // Update glance strip in Deck view
@@ -522,15 +536,22 @@ function renderPinnedBox(pinned) {
 }
 
 function renderComment(comment) {
-  const platform = ["youtube", "twitch", "facebook"].includes(comment.platform) ? comment.platform : "youtube";
+  const platform = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"].includes(comment.platform) ? comment.platform : "youtube";
   const age = comment.time ? new Date(comment.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "now";
   const isHost = Boolean(comment.isHost);
-  const avatarBg = platform === "youtube" ? "var(--youtube)" : platform === "twitch" ? "var(--twitch)" : "var(--facebook)";
+  const avatarBg = platform === "youtube" ? "var(--youtube)" : platform === "twitch" ? "var(--twitch)" : platform === "tiktok" ? "#010101" : platform === "instagram" ? "#d6249f" : platform === "x" ? "#111" : "var(--facebook)";
   const replyTag = comment.replyTo ? `<span class="reply-tag">↳ @${escapeHtml(comment.replyTo.author)}</span>` : "";
+
+  let avatarContent = escapeHtml(initials(comment.author || "?"));
+  if (isHost && signedInUser?.avatar) {
+    avatarContent = `<img src="${signedInUser.avatar}" alt="Avatar">`;
+  } else if (comment.avatar) {
+    avatarContent = `<img src="${comment.avatar}" alt="Avatar">`;
+  }
 
   return `<article class="comment ${isHost ? "is-host" : ""}" data-id="${escapeHtml(comment.id || "")}" data-platform="${platform}" data-author="${escapeHtml(comment.author || "Viewer")}" data-message="${escapeHtml(comment.message || "")}">
     <div class="comment-avatar" style="background:${avatarBg}">
-      ${escapeHtml(initials(comment.author || "?"))}
+      ${avatarContent}
     </div>
     <div class="comment-content">
       <div class="comment-meta">
@@ -557,11 +578,27 @@ function renderComment(comment) {
 
 function setSignedInUser(user) {
   signedInUser = user;
-  const initialsEl = $("#accountInitials");
+  const initialsTxt = $("#accountInitialsText");
+  const initialsImg = $("#accountInitialsImg");
+  const hdrThumb = $("#headerAvatarThumb");
+  const hdrImg = $("#headerAvatarImg");
+  const hdrDot = $("#headerAccountDot");
   const hdrLabel = $("#headerAccountLabel");
   const chatSender = $("#chatSenderName");
   
-  if (initialsEl) initialsEl.textContent = user ? initials(user.name) : "?";
+  if (user?.avatar) {
+    if (initialsImg) { initialsImg.src = user.avatar; initialsImg.style.display = "block"; }
+    if (initialsTxt) { initialsTxt.style.display = "none"; }
+    if (hdrImg) { hdrImg.src = user.avatar; }
+    if (hdrThumb) { hdrThumb.style.display = "inline-flex"; }
+    if (hdrDot) { hdrDot.style.display = "none"; }
+  } else {
+    if (initialsTxt) { initialsTxt.textContent = user ? initials(user.name) : "?"; initialsTxt.style.display = "block"; }
+    if (initialsImg) { initialsImg.style.display = "none"; }
+    if (hdrThumb) { hdrThumb.style.display = "none"; }
+    if (hdrDot) { hdrDot.style.display = "inline-block"; }
+  }
+
   if (hdrLabel) hdrLabel.textContent = user ? user.name : "Sign in";
   if (chatSender) chatSender.textContent = user ? `${user.name} (You)` : "Streamer (You)";
 
@@ -966,6 +1003,10 @@ function populatePlatformForm(settings) {
   }
   const ytConnected = Boolean(settings.youtube?.refreshTokenSaved || settings.youtube?.autoConnected);
   const twConnected = Boolean(settings.twitch?.refreshTokenSaved || settings.twitch?.autoConnected);
+  const ttConnected = Boolean(settings.tiktok?.autoConnected);
+  const igConnected = Boolean(settings.instagram?.autoConnected);
+  const xConnected = Boolean(settings.x?.autoConnected);
+
   if ($("#youtubeOAuthStatus")) {
     $("#youtubeOAuthStatus").textContent = ytConnected
       ? `Connected as ${settings.youtube?.accountName || settings.youtube?.channel || "YouTube"}.`
@@ -981,6 +1022,30 @@ function populatePlatformForm(settings) {
   }
   if ($(".twitch-oauth strong")) {
     $(".twitch-oauth strong").textContent = twConnected ? "Reconnect Twitch Account" : "Connect with Twitch Account";
+  }
+  if ($("#tiktokOAuthStatus")) {
+    $("#tiktokOAuthStatus").textContent = ttConnected
+      ? `Connected as ${settings.tiktok?.handle || "@rezanur_live"}. Ready for OmniPublish.`
+      : "Auto-connects your TikTok account for instant video & clip syndication.";
+  }
+  if ($("#btnModalTikTokConnect")) {
+    $("#btnModalTikTokConnect").textContent = ttConnected ? "✓ TikTok Connected" : "Auto-Connect TikTok Account";
+  }
+  if ($("#instagramOAuthStatus")) {
+    $("#instagramOAuthStatus").textContent = igConnected
+      ? `Connected as ${settings.instagram?.handle || "@rezanur.studio"}. Ready for Reels.`
+      : "Auto-connects your Instagram account for instant Reels syndication.";
+  }
+  if ($("#btnModalInstagramConnect")) {
+    $("#btnModalInstagramConnect").textContent = igConnected ? "✓ Instagram Connected" : "Auto-Connect Instagram Account";
+  }
+  if ($("#xOAuthStatus")) {
+    $("#xOAuthStatus").textContent = xConnected
+      ? `Connected as ${settings.x?.handle || "@rezanur_live"}. Ready for X Broadcasts.`
+      : "Auto-connects your X profile for instant video tweet syndication.";
+  }
+  if ($("#btnModalXConnect")) {
+    $("#btnModalXConnect").textContent = xConnected ? "✓ X Connected" : "Auto-Connect X (Twitter) Account";
   }
 }
 
@@ -1026,12 +1091,25 @@ document.addEventListener("click", (e) => {
   if (configBtn) openPlatformSettings(configBtn.dataset.platform);
 });
 
+document.addEventListener("click", async (e) => {
+  const modalAutoBtn = e.target.closest('[data-action="auto-connect-modal"]');
+  if (modalAutoBtn) {
+    const p = modalAutoBtn.dataset.platform;
+    await autoConnectPlatforms(p);
+    try {
+      const { settings } = await api("/api/settings");
+      populatePlatformForm(settings || {});
+    } catch (_) {}
+  }
+});
+
 $("#platformForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   $("#platformError").textContent = "";
-  const payload = { youtube: {}, twitch: {}, facebook: {} };
+  const payload = {};
   for (const input of $$("#platformForm [name]")) {
     const [platform, field] = input.name.split(".");
+    payload[platform] = payload[platform] || {};
     const val = input.value.trim();
     if (val) payload[platform][field] = val;
   }
@@ -1174,27 +1252,77 @@ $("#connectionForm")?.addEventListener("submit", async (e) => {
   }
 });
 
-// ACCOUNT MODAL
+// ACCOUNT MODAL & PROFILE CONTROLS
 const accountModal = $("#accountModal");
 let accountModalRegistering = false;
+let accountModalEditMode = true;
+let stagedAvatarDataUrl = null;
 
 function syncAccountModalMode() {
   const form = $("#accountForm");
-  form?.classList.toggle("registering", accountModalRegistering);
-  if ($("#accountTitle")) {
-    $("#accountTitle").textContent = accountModalRegistering
-      ? "Create Account"
-      : (signedInUser ? `Switch Account (${signedInUser.name})` : "Sign in");
-  }
-  if ($("#accountMode")) {
-    $("#accountMode").textContent = accountModalRegistering ? "Sign in instead" : "Create account";
-  }
-  if ($("#logoutButton")) {
-    $("#logoutButton").style.display = signedInUser ? "" : "none";
+  const isEditing = Boolean(accountModalEditMode && signedInUser);
+
+  if (isEditing) {
+    if ($("#accountTitle")) $("#accountTitle").textContent = "Studio Profile Settings";
+    if ($("#accountEyebrow")) $("#accountEyebrow").textContent = "Profile Settings • Live Host";
+    if ($("#accountAvatarSection")) $("#accountAvatarSection").style.display = "flex";
+    if ($("#accountNameLabel")) $("#accountNameLabel").style.display = "flex";
+    if ($("#accountName")) $("#accountName").value = signedInUser.name || "";
+    if ($("#accountEmail")) $("#accountEmail").value = signedInUser.email || "";
+    if ($("#accountPassword")) {
+      $("#accountPassword").value = "";
+      $("#accountPassword").required = false;
+    }
+    if ($("#accountPasswordLabelText")) $("#accountPasswordLabelText").textContent = "Change Password (optional)";
+    if ($("#accountPasswordHint")) $("#accountPasswordHint").style.display = "block";
+    if ($("#accountSubmitBtn")) $("#accountSubmitBtn").textContent = "Save Changes";
+    if ($("#accountMode")) $("#accountMode").textContent = "Switch Account";
+    if ($("#logoutButton")) $("#logoutButton").style.display = "";
+
+    // Sync avatar preview
+    if (stagedAvatarDataUrl) {
+      if ($("#accountAvatarImg")) {
+        $("#accountAvatarImg").src = stagedAvatarDataUrl;
+        $("#accountAvatarImg").style.display = "block";
+      }
+      if ($("#accountAvatarInitials")) $("#accountAvatarInitials").style.display = "none";
+      if ($("#btnRemoveAvatar")) $("#btnRemoveAvatar").style.display = "inline-flex";
+    } else {
+      if ($("#accountAvatarImg")) $("#accountAvatarImg").style.display = "none";
+      if ($("#accountAvatarInitials")) {
+        $("#accountAvatarInitials").style.display = "block";
+        $("#accountAvatarInitials").textContent = initials(signedInUser.name);
+      }
+      if ($("#btnRemoveAvatar")) $("#btnRemoveAvatar").style.display = "none";
+    }
+  } else {
+    // Auth mode (Register / Login)
+    if ($("#accountAvatarSection")) $("#accountAvatarSection").style.display = "none";
+    if ($("#accountPassword")) $("#accountPassword").required = true;
+    if ($("#accountPasswordLabelText")) $("#accountPasswordLabelText").textContent = "Password";
+    if ($("#accountPasswordHint")) $("#accountPasswordHint").style.display = "none";
+    if ($("#logoutButton")) $("#logoutButton").style.display = "none";
+
+    if (accountModalRegistering) {
+      if ($("#accountTitle")) $("#accountTitle").textContent = "Create Account";
+      if ($("#accountEyebrow")) $("#accountEyebrow").textContent = "New Creator Account";
+      if ($("#accountNameLabel")) $("#accountNameLabel").style.display = "flex";
+      if ($("#accountSubmitBtn")) $("#accountSubmitBtn").textContent = "Create Account";
+      if ($("#accountMode")) $("#accountMode").textContent = "Sign in instead";
+    } else {
+      if ($("#accountTitle")) $("#accountTitle").textContent = "Sign In";
+      if ($("#accountEyebrow")) $("#accountEyebrow").textContent = "Creator Sign In";
+      if ($("#accountNameLabel")) $("#accountNameLabel").style.display = "none";
+      if ($("#accountSubmitBtn")) $("#accountSubmitBtn").textContent = "Sign In";
+      if ($("#accountMode")) $("#accountMode").textContent = "Create account";
+    }
   }
 }
 
 function openAccountModal() {
+  accountModalEditMode = Boolean(signedInUser);
+  accountModalRegistering = false;
+  stagedAvatarDataUrl = signedInUser?.avatar || null;
   $("#accountError").textContent = "";
   setModalOpen(accountModal, true);
   syncAccountModalMode();
@@ -1203,8 +1331,72 @@ function openAccountModal() {
 $("#accountButton")?.addEventListener("click", openAccountModal);
 $("#headerAccountButton")?.addEventListener("click", openAccountModal);
 $("#cancelAccount")?.addEventListener("click", () => setModalOpen(accountModal, false));
+
+// AVATAR FILE UPLOAD & PREVIEW
+$("#btnUploadAvatar")?.addEventListener("click", () => {
+  $("#accountAvatarFile")?.click();
+});
+
+$("#accountAvatarFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    $("#accountError").textContent = "Please select a valid image file (PNG, JPG, WebP)";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      // Compress to max 256x256 for fast storage and loading
+      const canvas = document.createElement("canvas");
+      const maxDim = 256;
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+        if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      } else {
+        if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      stagedAvatarDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+      if ($("#accountAvatarImg")) {
+        $("#accountAvatarImg").src = stagedAvatarDataUrl;
+        $("#accountAvatarImg").style.display = "block";
+      }
+      if ($("#accountAvatarInitials")) $("#accountAvatarInitials").style.display = "none";
+      if ($("#btnRemoveAvatar")) $("#btnRemoveAvatar").style.display = "inline-flex";
+      $("#accountError").textContent = "";
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+$("#btnRemoveAvatar")?.addEventListener("click", () => {
+  stagedAvatarDataUrl = null;
+  if ($("#accountAvatarImg")) $("#accountAvatarImg").style.display = "none";
+  if ($("#accountAvatarInitials")) {
+    $("#accountAvatarInitials").style.display = "block";
+    const name = $("#accountName")?.value || signedInUser?.name || "User";
+    $("#accountAvatarInitials").textContent = initials(name);
+  }
+  if ($("#btnRemoveAvatar")) $("#btnRemoveAvatar").style.display = "none";
+  const fileInput = $("#accountAvatarFile");
+  if (fileInput) fileInput.value = "";
+});
+
 $("#accountMode")?.addEventListener("click", () => {
-  accountModalRegistering = !accountModalRegistering;
+  if (accountModalEditMode) {
+    accountModalEditMode = false;
+    accountModalRegistering = false;
+  } else {
+    accountModalRegistering = !accountModalRegistering;
+  }
   $("#accountError").textContent = "";
   syncAccountModalMode();
 });
@@ -1212,6 +1404,41 @@ $("#accountMode")?.addEventListener("click", () => {
 $("#accountForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   $("#accountError").textContent = "";
+
+  // 1. If in Edit Profile mode
+  if (accountModalEditMode && signedInUser) {
+    const name = $("#accountName")?.value.trim();
+    if (!name) {
+      $("#accountError").textContent = "Display name cannot be empty";
+      return;
+    }
+    const password = $("#accountPassword")?.value || "";
+    if (password && password.length < 8) {
+      $("#accountError").textContent = "New password must be at least 8 characters";
+      return;
+    }
+    const payload = {
+      name,
+      avatar: stagedAvatarDataUrl
+    };
+    if (password) payload.password = password;
+
+    try {
+      const result = await api("/api/user/profile", {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      setSignedInUser(result.user);
+      setModalOpen(accountModal, false);
+      showToast("✓ Profile and photo updated successfully!");
+      await refreshDashboard();
+    } catch (error) {
+      $("#accountError").textContent = error.message;
+    }
+    return;
+  }
+
+  // 2. Auth Mode (Sign in or Register)
   const endpoint = accountModalRegistering ? "/api/register" : "/api/login";
   try {
     const result = await api(endpoint, {

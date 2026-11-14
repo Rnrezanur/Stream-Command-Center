@@ -120,8 +120,11 @@
         </button>
       </nav>
 
-      <button class="profile" id="accountButton" aria-label="Account">
-        <div class="avatar" id="accountInitials">RZ</div>
+      <button class="profile" id="accountButton" aria-label="Account" title="Account Profile &amp; Picture">
+        <div class="avatar" id="accountInitials">
+          <span id="accountInitialsText">RZ</span>
+          <img id="accountInitialsImg" src="" alt="Avatar" style="display:none;">
+        </div>
         <span class="online-dot"></span>
       </button>
     </aside>
@@ -181,8 +184,11 @@
             <b id="connectionLabel">Virtual Deck</b>
           </button>
 
-          <button class="connection-pill account-pill" id="headerAccountButton" title="Your Account">
-            <span class="account-dot"></span>
+          <button class="connection-pill account-pill" id="headerAccountButton" title="Your Account Profile">
+            <span class="account-dot" id="headerAccountDot"></span>
+            <div class="header-avatar-thumb" id="headerAvatarThumb" style="display:none;">
+              <img id="headerAvatarImg" src="" alt="Avatar">
+            </div>
             <b id="headerAccountLabel">Rezanur</b>
           </button>
 
@@ -536,6 +542,111 @@
                     </button>
                   </div>
                 </article>
+
+                <!-- TIKTOK CARD -->
+                <article class="platform-card" data-platform="tiktok">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon tiktok">
+                        <svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+                      </div>
+                      <div>
+                        <h3>TikTok</h3>
+                        <span class="platform-handle" id="tiktokHandle">@rezanur_live</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="tiktokStatusDot"></span>
+                  </div>
+
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num">Syndication</span>
+                      <span class="metric-lbl">Active</span>
+                    </div>
+                    <div class="sparkline cyan">
+                      <svg viewBox="0 0 120 34"><path d="M2 28 16 24 28 26 40 19 52 20 65 15 77 16 90 9 104 12 118 4"/><path class="fill" d="M2 28 16 24 28 26 40 19 52 20 65 15 77 16 90 9 104 12 118 4V34H2Z"/></svg>
+                    </div>
+                  </div>
+
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="tiktok">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="tiktok">
+                      Configure
+                    </button>
+                  </div>
+                </article>
+
+                <!-- INSTAGRAM CARD -->
+                <article class="platform-card" data-platform="instagram">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon insta">
+                        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg>
+                      </div>
+                      <div>
+                        <h3>Instagram</h3>
+                        <span class="platform-handle" id="instagramHandle">@rezanur.studio</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="instagramStatusDot"></span>
+                  </div>
+
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num">Reels</span>
+                      <span class="metric-lbl">Active</span>
+                    </div>
+                    <div class="sparkline pink">
+                      <svg viewBox="0 0 120 34"><path d="M2 26 16 27 28 20 40 22 52 16 65 18 77 12 90 15 104 8 118 10"/><path class="fill" d="M2 26 16 27 28 20 40 22 52 16 65 18 77 12 90 15 104 8 118 10V34H2Z"/></svg>
+                    </div>
+                  </div>
+
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="instagram">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="instagram">
+                      Configure
+                    </button>
+                  </div>
+                </article>
+
+                <!-- X (TWITTER) CARD -->
+                <article class="platform-card" data-platform="x">
+                  <div class="platform-card-header">
+                    <div class="platform-badge-group">
+                      <div class="platform-icon x-corp">
+                        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      </div>
+                      <div>
+                        <h3>X (Twitter)</h3>
+                        <span class="platform-handle" id="xHandle">@rezanur_live</span>
+                      </div>
+                    </div>
+                    <span class="platform-status-dot connected" id="xStatusDot"></span>
+                  </div>
+
+                  <div class="platform-card-body">
+                    <div class="viewer-metric-group">
+                      <span class="metric-num">Broadcast</span>
+                      <span class="metric-lbl">Active</span>
+                    </div>
+                    <div class="sparkline white">
+                      <svg viewBox="0 0 120 34"><path d="M2 29 16 25 28 24 40 18 52 19 65 13 77 15 90 7 104 10 118 5"/><path class="fill" d="M2 29 16 25 28 24 40 18 52 19 65 13 77 15 90 7 104 10 118 5V34H2Z"/></svg>
+                    </div>
+                  </div>
+
+                  <div class="platform-card-footer">
+                    <button type="button" class="btn-card-auto connected" data-action="auto-connect" data-platform="x">
+                      ✓ Connected
+                    </button>
+                    <button type="button" class="btn-card-config row-menu" data-platform="x">
+                      Configure
+                    </button>
+                  </div>
+                </article>
               </div>
             </section>
 
@@ -733,27 +844,55 @@
       <form class="modal account-modal" id="accountForm">
         <div class="modal-header-row">
           <div>
-            <p class="eyebrow">Relay Account</p>
+            <p class="eyebrow" id="accountEyebrow">Studio Profile &bull; Account Settings</p>
             <h2 id="accountTitle">Account Profile</h2>
           </div>
           <button type="button" id="cancelAccount" class="icon-button modal-close-btn" aria-label="Close account dialog" title="Close">&times;</button>
         </div>
-        <label class="field-label register-only">
-          <span>Display name</span>
-          <input id="accountName" type="text" autocomplete="name">
+
+        <!-- AVATAR EDIT SECTION -->
+        <div class="avatar-edit-section" id="accountAvatarSection">
+          <div class="avatar-edit-preview-wrap">
+            <div class="avatar-edit-preview" id="accountAvatarPreview">
+              <span id="accountAvatarInitials">RZ</span>
+              <img id="accountAvatarImg" src="" alt="Avatar" style="display: none;">
+            </div>
+            <label for="accountAvatarFile" class="avatar-edit-badge" title="Upload new photo">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </label>
+          </div>
+          <div class="avatar-edit-controls">
+            <input type="file" id="accountAvatarFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
+            <div class="avatar-btns-row">
+              <button type="button" class="btn-avatar-action" id="btnUploadAvatar">
+                <svg viewBox="0 0 24 24" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m14-7-5-5-5 5m5-5v12"/></svg>
+                <span>Upload Photo</span>
+              </button>
+              <button type="button" class="btn-avatar-action remove" id="btnRemoveAvatar" style="display: none;">
+                <span>Remove</span>
+              </button>
+            </div>
+            <span class="avatar-subtext">JPG, PNG or WebP. Shown on your deck, topbar, and live replies.</span>
+          </div>
+        </div>
+
+        <label class="field-label" id="accountNameLabel">
+          <span>Display Name</span>
+          <input id="accountName" type="text" autocomplete="name" placeholder="Your name (e.g. Rezanur)">
         </label>
-        <label class="field-label">
-          <span>Email</span>
+        <label class="field-label" id="accountEmailLabel">
+          <span>Email Address</span>
           <input id="accountEmail" type="email" autocomplete="email" required>
         </label>
-        <label class="field-label">
-          <span>Password</span>
-          <input id="accountPassword" type="password" autocomplete="current-password" minlength="6" required>
+        <label class="field-label" id="accountPasswordLabel">
+          <span id="accountPasswordLabelText">Password</span>
+          <input id="accountPassword" type="password" autocomplete="current-password" minlength="6">
+          <small id="accountPasswordHint" class="field-hint" style="display: none;">Leave blank to keep current password</small>
         </label>
         <p class="connection-error" id="accountError"></p>
         <div class="modal-actions">
           <button type="button" id="accountMode" class="secondary-button">Create account</button>
-          <button type="submit" class="connect-button">Save</button>
+          <button type="submit" id="accountSubmitBtn" class="connect-button">Save Changes</button>
         </div>
         <button type="button" class="text-button logout-button" id="logoutButton">Sign out</button>
       </form>
@@ -762,13 +901,16 @@
     <!-- PLATFORM SETTINGS MODAL -->
     <div class="modal-backdrop" id="platformModal" aria-hidden="true">
       <form class="modal platform-modal" id="platformForm">
-        <p class="eyebrow">Cloud Credentials &bull; OAuth</p>
+        <p class="eyebrow">Cloud Credentials &bull; Multi-Platform</p>
         <h2>Platform Settings</h2>
         
         <div class="settings-tabs">
           <button type="button" class="active" data-settings-tab="youtube">YouTube</button>
           <button type="button" data-settings-tab="twitch">Twitch</button>
           <button type="button" data-settings-tab="facebook">Facebook</button>
+          <button type="button" data-settings-tab="tiktok">TikTok</button>
+          <button type="button" data-settings-tab="instagram">Instagram</button>
+          <button type="button" data-settings-tab="x">X (Twitter)</button>
         </div>
 
         <!-- YOUTUBE TAB -->
@@ -837,6 +979,77 @@
           </label>
           <button type="button" id="testFacebookConnection" class="test-platform-button">Test Connection</button>
           <p class="oauth-status" id="facebookTestStatus">Save before testing.</p>
+        </section>
+
+        <!-- TIKTOK TAB -->
+        <section class="settings-section" data-settings-section="tiktok">
+          <button type="button" class="oauth-button tiktok-oauth" data-action="auto-connect-modal" data-platform="tiktok">
+            <span>♪</span>
+            <strong id="btnModalTikTokConnect">Auto-Connect TikTok Account</strong>
+          </button>
+          <p class="oauth-status" id="tiktokOAuthStatus">Auto-connects your TikTok account for instant video &amp; clip syndication.</p>
+          <label class="field-label">
+            <span>TikTok Handle / Username</span>
+            <input name="tiktok.handle" type="text" placeholder="e.g. @rezanur_live">
+          </label>
+          <label class="field-label">
+            <span>Creator Account Display Name</span>
+            <input name="tiktok.accountName" type="text" placeholder="e.g. Rezanur Live">
+          </label>
+          <label class="field-label">
+            <span>Client Key (Optional)</span>
+            <input name="tiktok.clientKey" type="text" placeholder="TikTok Developer Client Key">
+          </label>
+          <label class="field-label">
+            <span>Access Token (Optional)</span>
+            <input name="tiktok.accessToken" type="password" placeholder="TikTok Open API Access Token">
+          </label>
+        </section>
+
+        <!-- INSTAGRAM TAB -->
+        <section class="settings-section" data-settings-section="instagram">
+          <button type="button" class="oauth-button instagram-oauth" data-action="auto-connect-modal" data-platform="instagram">
+            <span>📸</span>
+            <strong id="btnModalInstagramConnect">Auto-Connect Instagram Account</strong>
+          </button>
+          <p class="oauth-status" id="instagramOAuthStatus">Auto-connects your Instagram account for instant Reels syndication.</p>
+          <label class="field-label">
+            <span>Instagram Handle</span>
+            <input name="instagram.handle" type="text" placeholder="e.g. @rezanur.studio">
+          </label>
+          <label class="field-label">
+            <span>Instagram Account ID</span>
+            <input name="instagram.accountId" type="text" placeholder="Instagram Business Account ID">
+          </label>
+          <label class="field-label">
+            <span>Graph API Access Token</span>
+            <input name="instagram.accessToken" type="password" placeholder="Instagram User / Page Token">
+          </label>
+        </section>
+
+        <!-- X (TWITTER) TAB -->
+        <section class="settings-section" data-settings-section="x">
+          <button type="button" class="oauth-button x-oauth" data-action="auto-connect-modal" data-platform="x">
+            <span>𝕏</span>
+            <strong id="btnModalXConnect">Auto-Connect X (Twitter) Account</strong>
+          </button>
+          <p class="oauth-status" id="xOAuthStatus">Auto-connects your X profile for instant video tweet syndication.</p>
+          <label class="field-label">
+            <span>X Handle / Username</span>
+            <input name="x.handle" type="text" placeholder="e.g. @rezanur_live">
+          </label>
+          <label class="field-label">
+            <span>API Key</span>
+            <input name="x.apiKey" type="password" placeholder="X Consumer Key">
+          </label>
+          <label class="field-label">
+            <span>API Secret</span>
+            <input name="x.apiSecret" type="password" placeholder="X Consumer Secret">
+          </label>
+          <label class="field-label">
+            <span>User Access Token</span>
+            <input name="x.accessToken" type="password" placeholder="X OAuth 1.0a / 2.0 Access Token">
+          </label>
         </section>
 
         <p class="connection-error" id="platformError"></p>
@@ -940,7 +1153,10 @@
 
             <!-- TARGET PLATFORMS SELECTION -->
             <div class="platforms-selector-section">
-              <span class="selector-title">Target Broadcast Platforms:</span>
+              <div class="selector-title-row">
+                <span class="selector-title">Target Broadcast Platforms:</span>
+                <span class="selector-badge-all">All 6 Configured &bull; Multi-Cast Ready</span>
+              </div>
               <div class="target-platforms-grid">
                 <!-- YOUTUBE -->
                 <label class="platform-select-card active" data-target="youtube">
@@ -948,6 +1164,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon yt"><svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg></span>
                     <strong>YouTube</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_youtube">● Connected</span>
                   </div>
                   <small>HD Video &bull; Shorts eligible</small>
                 </label>
@@ -958,6 +1175,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon fb"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></span>
                     <strong>Facebook</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_facebook">● Connected</span>
                   </div>
                   <small>Page Watch &bull; Reels</small>
                 </label>
@@ -968,6 +1186,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon twitch"><svg viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"/></svg></span>
                     <strong>Twitch</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_twitch">● Connected</span>
                   </div>
                   <small>Channel VOD &bull; Highlights</small>
                 </label>
@@ -978,6 +1197,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon tiktok"><svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></span>
                     <strong>TikTok</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_tiktok">● Connected</span>
                   </div>
                   <small>Shorts &bull; Vertical Feed</small>
                 </label>
@@ -988,6 +1208,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon insta"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg></span>
                     <strong>Instagram</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_instagram">● Connected</span>
                   </div>
                   <small>Reels Syndication</small>
                 </label>
@@ -998,6 +1219,7 @@
                   <div class="plat-card-header">
                     <span class="plat-icon x-corp"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
                     <strong>X (Twitter)</strong>
+                    <span class="plat-conn-badge connected" id="synConnBadge_x">● Connected</span>
                   </div>
                   <small>Video Broadcast Post</small>
                 </label>

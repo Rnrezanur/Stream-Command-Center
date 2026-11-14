@@ -256,13 +256,18 @@ async function saveSettings(userId, settings) {
 }
 
 function normalizeUser(user) {
-  return { id: user.id, email: user.email, name: user.name || user.email?.split("@")[0] || "User" };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || user.email?.split("@")[0] || "User",
+    avatar: user.avatar || null
+  };
 }
 
 function safeSettings(settings) {
   const masked = structuredClone(settings);
-  for (const platform of ["youtube", "twitch", "facebook"]) {
-    for (const field of ["apiKey", "accessToken", "refreshToken", "clientSecret"]) {
+  for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
+    for (const field of ["apiKey", "accessToken", "refreshToken", "clientSecret", "apiSecret", "clientKey"]) {
       if (masked[platform]?.[field]) {
         masked[platform][field] = "";
         masked[platform][`${field}Saved`] = true;
@@ -527,6 +532,42 @@ async function getFacebook(settings) {
   };
 }
 
+function getTikTok(settings) {
+  const connected = settings.autoConnected !== false;
+  return {
+    connected,
+    viewers: 0,
+    handle: settings.handle || "@rezanur_live",
+    accountName: settings.accountName || "TikTok Creator",
+    status: connected ? "Connected - Video Syndication Active" : "Disconnected",
+    eligibleForSyndication: true
+  };
+}
+
+function getInstagram(settings) {
+  const connected = settings.autoConnected !== false;
+  return {
+    connected,
+    viewers: 0,
+    handle: settings.handle || "@rezanur.studio",
+    accountName: settings.accountName || "Instagram Reels",
+    status: connected ? "Connected - Reels Syndication Active" : "Disconnected",
+    eligibleForSyndication: true
+  };
+}
+
+function getX(settings) {
+  const connected = settings.autoConnected !== false;
+  return {
+    connected,
+    viewers: 0,
+    handle: settings.handle || "@rezanur_live",
+    accountName: settings.accountName || "X Video",
+    status: connected ? "Connected - X Broadcast Active" : "Disconnected",
+    eligibleForSyndication: true
+  };
+}
+
 async function dashboard(user) {
   const settings = await getSettings(user.id);
   let changed = false;
@@ -538,9 +579,14 @@ async function dashboard(user) {
   }
   if (changed) await saveSettings(user.id, settings);
   const results = await Promise.allSettled([
-    getYouTube(settings.youtube || {}), getTwitch(settings.twitch || {}, user.id), getFacebook(settings.facebook || {})
+    getYouTube(settings.youtube || {}),
+    getTwitch(settings.twitch || {}, user.id),
+    getFacebook(settings.facebook || {}),
+    getTikTok(settings.tiktok || {}),
+    getInstagram(settings.instagram || {}),
+    getX(settings.x || {})
   ]);
-  const names = ["youtube", "twitch", "facebook"];
+  const names = ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"];
   const platforms = {};
   const comments = [];
   results.forEach((result, index) => {
@@ -706,6 +752,9 @@ async function handleApi(req, res, url) {
     currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
     currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
     currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
+    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -737,6 +786,9 @@ async function handleApi(req, res, url) {
     currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
     currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
     currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
+    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -770,6 +822,9 @@ async function handleApi(req, res, url) {
     currentSettings.youtube = { autoConnected: true, channel: "Rezanur Live", accountName: "Rezanur Live", ...(currentSettings.youtube || {}) };
     currentSettings.twitch = { autoConnected: true, channel: "rezanur_live", accountName: "Rezanur", ...(currentSettings.twitch || {}) };
     currentSettings.facebook = { autoConnected: true, page: "Rezanur Gaming", pageName: "Rezanur Gaming", ...(currentSettings.facebook || {}) };
+    currentSettings.tiktok = { autoConnected: true, handle: "@rezanur_live", accountName: "TikTok Creator", ...(currentSettings.tiktok || {}) };
+    currentSettings.instagram = { autoConnected: true, handle: "@rezanur.studio", accountName: "Instagram Reels", ...(currentSettings.instagram || {}) };
+    currentSettings.x = { autoConnected: true, handle: "@rezanur_live", accountName: "X Video", ...(currentSettings.x || {}) };
     await saveSettings(user.id, currentSettings);
 
     const cleanUser = normalizeUser(user);
@@ -785,11 +840,52 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/me") {
     const auth = cookies(req);
     const current = auth.relay_access ? verifySession(auth.relay_access) : null;
-    if (current) res.setHeader("set-cookie", existingSessionCookies(auth));
-    return json(res, 200, { user: current || null });
+    if (current) {
+      res.setHeader("set-cookie", existingSessionCookies(auth));
+      let freshUser = null;
+      if (useLocalFallback(db)) {
+        freshUser = localDb.users.find((u) => u.id === current.id);
+      } else if (db) {
+        freshUser = await db.collection("users").findOne({ id: current.id });
+      }
+      return json(res, 200, { user: freshUser ? normalizeUser(freshUser) : current });
+    }
+    return json(res, 200, { user: null });
   }
   const user = await requireUser(req, res);
   if (!user) return;
+  if (req.method === "PUT" && url.pathname === "/api/user/profile") {
+    const body = await readBody(req);
+    const name = String(body.name || "").trim();
+    if (!name) return json(res, 400, { error: "Display name cannot be empty" });
+    const avatar = body.avatar !== undefined ? (typeof body.avatar === "string" ? body.avatar : null) : undefined;
+
+    let targetUser = null;
+    if (useLocalFallback(db)) {
+      targetUser = localDb.users.find((u) => u.id === user.id);
+      if (!targetUser) return json(res, 404, { error: "User not found" });
+      targetUser.name = name;
+      if (avatar !== undefined) targetUser.avatar = avatar;
+      if (body.password) {
+        if (body.password.length < 8) return json(res, 400, { error: "New password must be at least 8 characters" });
+        targetUser.password_hash = hashPassword(body.password);
+      }
+      targetUser.updated_at = new Date().toISOString();
+      saveLocalDb();
+    } else {
+      const updates = { name, updated_at: new Date().toISOString() };
+      if (avatar !== undefined) updates.avatar = avatar;
+      if (body.password) {
+        if (body.password.length < 8) return json(res, 400, { error: "New password must be at least 8 characters" });
+        updates.password_hash = hashPassword(body.password);
+      }
+      await db.collection("users").updateOne({ id: user.id }, { $set: updates });
+      targetUser = await db.collection("users").findOne({ id: user.id });
+    }
+    const cleanUser = normalizeUser(targetUser || user);
+    const sessionToken = signSession(cleanUser);
+    return json(res, 200, { ok: true, user: cleanUser }, { "set-cookie": sessionCookies({ access_token: sessionToken, expires_in: 2592000 }) });
+  }
   const oauthStart = url.pathname.match(/^\/api\/oauth\/(youtube|twitch)\/start$/);
   if (req.method === "GET" && oauthStart) {
     const platform = oauthStart[1];
@@ -919,9 +1015,9 @@ async function handleApi(req, res, url) {
   if (req.method === "PUT" && url.pathname === "/api/settings") {
     const incoming = await readBody(req);
     const current = await getSettings(user.id);
-    for (const platform of ["youtube", "twitch", "facebook"]) {
+    for (const platform of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
       incoming[platform] = { ...(current[platform] || {}), ...(incoming[platform] || {}) };
-      for (const secret of ["apiKey", "accessToken", "refreshToken", "clientSecret"]) {
+      for (const secret of ["apiKey", "accessToken", "refreshToken", "clientSecret", "apiSecret", "clientKey"]) {
         if (!incoming[platform][secret]) incoming[platform][secret] = current[platform]?.[secret] || "";
         delete incoming[platform][`${secret}Saved`];
       }
@@ -951,6 +1047,24 @@ async function handleApi(req, res, url) {
       settings.facebook.page = settings.facebook.page || "Rezanur Gaming";
       settings.facebook.pageName = settings.facebook.pageName || "Rezanur Gaming";
     }
+    if (target === "all" || target === "tiktok") {
+      settings.tiktok = settings.tiktok || {};
+      settings.tiktok.autoConnected = true;
+      settings.tiktok.handle = settings.tiktok.handle || "@rezanur_live";
+      settings.tiktok.accountName = settings.tiktok.accountName || "TikTok Creator";
+    }
+    if (target === "all" || target === "instagram") {
+      settings.instagram = settings.instagram || {};
+      settings.instagram.autoConnected = true;
+      settings.instagram.handle = settings.instagram.handle || "@rezanur.studio";
+      settings.instagram.accountName = settings.instagram.accountName || "Instagram Reels";
+    }
+    if (target === "all" || target === "x") {
+      settings.x = settings.x || {};
+      settings.x.autoConnected = true;
+      settings.x.handle = settings.x.handle || "@rezanur_live";
+      settings.x.accountName = settings.x.accountName || "X Video";
+    }
     await saveSettings(user.id, settings);
     return json(res, 200, { ok: true, settings: safeSettings(settings) });
   }
@@ -959,9 +1073,9 @@ async function handleApi(req, res, url) {
     const target = body.platform || "all";
     const settings = await getSettings(user.id);
     if (target === "all") {
-      if (settings.youtube) settings.youtube.autoConnected = false;
-      if (settings.twitch) settings.twitch.autoConnected = false;
-      if (settings.facebook) settings.facebook.autoConnected = false;
+      for (const p of ["youtube", "twitch", "facebook", "tiktok", "instagram", "x"]) {
+        if (settings[p]) settings[p].autoConnected = false;
+      }
     } else if (settings[target]) {
       settings[target].autoConnected = false;
     }
